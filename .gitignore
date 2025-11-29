@@ -1,0 +1,62 @@
+################################
+# Visual Studio / IDE Ignores
+################################
+ 
+# Standard Visual Studio directories and files
+.vs/
+*.opensdf
+*.sdf
+*.suo
+*.user
+*.userosscache
+*.ncb
+*.pdb
+*.obj
+*.o
+*.lib
+*.exp
+ 
+# Project/Solution files that are generated or user-specific
+*.vcxproj.user
+*.vcxproj.filters
+*.sln.ide*
+ 
+# CMake
+CMakeLists.txt.user
+CMakeCache.txt
+CMakeFiles/
+Testing/
+_CPack_Packages/
+ 
+################################
+# Compiled Output and Binaries
+################################
+ 
+# Compiled code folders
+[Dd]ebug/
+[Rr]elease/
+x64/
+Win32/
+bin/
+obj/
+ 
+# Executables, DLLs, and other binaries
+*.exe
+*.dll
+*.ilk
+*.idb
+ 
+################################
+# Engine-Specific / Assets
+################################
+ 
+# Large, generated asset files (e.g., compressed textures, baked lighting)
+# It's better to store source assets (like .fbx, .png) and ignore the baked versions.
+*.asset_cache
+*.compiled_shader
+*.hdr.dds
+*.dds # Unless you explicitly want to commit DDS textures.
+ 
+# Temporary and log files
+*.log
+*.tmp
