@@ -1,7 +1,7 @@
 ################################
 # Visual Studio / IDE Ignores
 ################################
- 
+
 # Standard Visual Studio directories and files
 .vs/
 *.opensdf
@@ -15,48 +15,63 @@
 *.o
 *.lib
 *.exp
- 
-# Project/Solution files that are generated or user-specific
+
+# User-specific project/solution files
 *.vcxproj.user
 *.vcxproj.filters
 *.sln.ide*
- 
-# CMake
+
+################################
+# Build Systems (CMake and Vcpkg)
+################################
+
+# CMake Build Directory (most important single ignore)
+/build/
+
+# CMake generated files
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles/
 Testing/
 _CPack_Packages/
- 
+
+# Vcpkg Manifest Mode Installation Directory
+/vcpkg_installed/
+/vcpkg-root/
+/vcpkg-buildtrees/
+/vcpkg-downloads/
+
 ################################
 # Compiled Output and Binaries
 ################################
- 
-# Compiled code folders
+
+# Compiled code folders (in case they are not inside /build/)
 [Dd]ebug/
 [Rr]elease/
 x64/
 Win32/
 bin/
 obj/
- 
+
 # Executables, DLLs, and other binaries
 *.exe
 *.dll
 *.ilk
 *.idb
- 
+
 ################################
-# Engine-Specific / Assets
+# Engine-Specific / Assets & Logs
 ################################
- 
-# Large, generated asset files (e.g., compressed textures, baked lighting)
-# It's better to store source assets (like .fbx, .png) and ignore the baked versions.
+
+# Dear ImGui Editor Layouts (User-specific)
+imgui.ini
+
+# Large, generated asset files
 *.asset_cache
 *.compiled_shader
 *.hdr.dds
-*.dds # Unless you explicitly want to commit DDS textures.
- 
+
 # Temporary and log files
 *.log
 *.tmp
+Thumbs.db
