@@ -1,0 +1,94 @@
+cmake_minimum_required(VERSION 3.20)
+
+project(DX11GameEngine
+  VERSION 0.1.0
+  LANGUAGES CXX
+)
+
+include(cmake/BuildOptions.cmake)
+
+# Prefer vcpkg if available: find CONFIG packages.
+# SDL2 is required at this step.
+set(ENGINE_ENABLE_VCPKG ON CACHE BOOL "Use vcpkg-config packages when available")
+
+if(ENGINE_ENABLE_VCPKG)
+  find_package(SDL2 CONFIG QUIET)
+  # Header-only libraries (optional via vcpkg)
+  find_package(EnTT CONFIG QUIET)
+  find_package(RapidJSON CONFIG QUIET)
+  find_package(imgui CONFIG QUIET)     # integrate rendering later
+  find_package(assimp CONFIG QUIET)    # Used in later steps
+endif()
+
+# Fallback for SDL2 if not found via vcpkg:
+if(NOT SDL2_FOUND)
+  message(STATUS "SDL2 CONFIG not found. You can install 'sdl2:x64-windows' via vcpkg.")
+  # As a minimum, allow an environment or cache variable SDL2_DIR to point to a prebuilt SDL2.
+  # Expect SDL2_DIR to contain lib/cmake/SDL2 or SDL2Config.cmake.
+  if(DEFINED ENV{SDL2_DIR})
+    list(APPEND CMAKE_PREFIX_PATH "$ENV{SDL2_DIR}")
+    find_package(SDL2 CONFIG REQUIRED)
+  elseif(DEFINED SDL2_DIR)
+    list(APPEND CMAKE_PREFIX_PATH "${SDL2_DIR}")
+    find_package(SDL2 CONFIG REQUIRED)
+  else()
+    message(FATAL_ERROR "SDL2 not found. Set SDL2_DIR or install via vcpkg and set the vcpkg toolchain.")
+  endif()
+endif()
+
+# Add source files
+set(ENGINE_SOURCE_FILES
+  src/main.cpp
+)
+
+set(ENGINE_HEADER_FILES
+)
+
+add_executable(DX11GameEngine ${ENGINE_SOURCE_FILES} ${ENGINE_HEADER_FILES})
+
+# Language, warnings, and OS-specific definitions
+target_compile_features(DX11GameEngine PRIVATE cxx_std_14)
+if(MSVC)
+  target_compile_options(DX11GameEngine PRIVATE /W4 /permissive- /EHsc)
+  target_compile_definitions(DX11GameEngine PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
+
+# Include header-only libs if vendored
+target_include_directories(DX11GameEngine PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/external
+)
+
+# Link SDL2
+# SDL2::SDL2main is needed if its WinMain entry is used; we will use standard main(), but keep linkage ready.
+# Some SDL2 packages expose SDL2::SDL2main; some only SDL2::SDL2. Link if available.
+# Guard SDL2 targets (optional safety)
+if(TARGET SDL2::SDL2main)
+  target_link_libraries(DX11GameEngine PRIVATE SDL2::SDL2main)
+endif()
+if(TARGET SDL2::SDL2)
+  target_link_libraries(DX11GameEngine PRIVATE SDL2::SDL2)
+endif()
+
+# Optional: lock MSVC runtime to DLL form
+if(MSVC)
+  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif()
+
+# Windows/DirectX system libs
+if(WIN32)
+  target_link_libraries(DX11GameEngine PRIVATE
+    d3d11
+    dxgi
+    d3dcompiler
+    dxguid
+  )
+endif()
+
+# Organize in IDE
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_SOURCE_FILES} ${ENGINE_HEADER_FILES})
+
+# Print summary
+message(STATUS "DX11GameEngine configured.")
+message(STATUS "  SDL2:         ${SDL2_DIR}")
+message(STATUS "  Using vcpkg:  ${ENGINE_ENABLE_VCPKG}")
