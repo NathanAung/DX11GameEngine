@@ -75,3 +75,79 @@ imgui.ini
 *.log
 *.tmp
 Thumbs.db
+
+# Build directories (CMake/VS)
+[Cc]MakeCache.txt
+[Cc]MakeFiles/
+CMakeFiles/
+CMakeScripts/
+CTestTestfile.cmake
+cmake_install.cmake
+CMakeUserPresets.json
+CMakeSettings.json
+out/
+build/
+Build*/
+bin/
+lib/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+x64/
+x86/
+
+# VS/Visual Studio artifacts
+*.sln
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+/.vs/
+*.opensdf
+*.sdf
+*.cache
+*.user
+*.db
+
+# Ninja/MSBuild
+*.ninja
+*.obj
+*.pdb
+*.idb
+*.ilk
+*.log
+*.tlog
+
+# Generated packages
+*.zip
+*.7z
+*.tar
+*.gz
+
+# vcpkg artifacts
+/vcpkg_installed/
+installed/
+packages/
+
+# IDEs/editors
+.vscode/
+.idea/
+*.code-workspace
+
+# OS junk
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Engine/runtime generated files
+assets/generated/
+temp/
+*.tmp
+
+# External dependencies (if vendored, keep headers but ignore build output)
+external/**/build/
+external/**/bin/
+external/**/lib/
+
+# Cache
+.cache/
