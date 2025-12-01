@@ -42,6 +42,57 @@ struct DX11Context
 // Vertex structure
 struct Vertex { XMFLOAT3 position; XMFLOAT3 color; };
 
+// GLOBAL VARIABLES (made global to allow Update / Render / Clear / Present etc. to keep main clean)
+SDL_Window* g_SDLWindow = nullptr;
+HWND g_Hwnd = nullptr;
+DX11Context g_dx;
+
+// Window dimensions
+const int g_windowWidth = 1280;
+const int g_windowHeight = 720;
+
+// Shaders
+ComPtr<ID3D11VertexShader> g_vertexShader;
+ComPtr<ID3D11PixelShader> g_pixelShader;
+
+ComPtr<ID3D11InputLayout> g_inputLayout;    // input layout for vertex structure
+
+// Buffers
+ComPtr<ID3D11Buffer> g_vertexBuffer;
+ComPtr<ID3D11Buffer> g_indexBuffer;
+
+// States
+ComPtr<ID3D11RasterizerState> g_rasterState;
+ComPtr<ID3D11DepthStencilState> g_depthStencilState;
+
+// Constant buffers
+ComPtr<ID3D11Buffer> g_cbProjection;
+ComPtr<ID3D11Buffer> g_cbView;
+ComPtr<ID3D11Buffer> g_cbWorld;
+
+// Geometry data for a cube
+std::vector<Vertex> g_vertices;
+std::vector<uint16_t> g_indices;
+float g_angle = 0.0f;
+
+// Timing variables
+Uint64 g_perfFreq = 0;
+Uint64 g_lastCounter = 0;
+bool g_running = true;
+bool g_vSync = true; // can toggle later
+
+// Forward declarations for helpers
+static void CreateViews(DX11Context& dx);
+static void Resize(DX11Context& dx, UINT newWidth, UINT newHeight);
+static void InitD3D11(HWND hwnd, DX11Context& dx, UINT width, UINT height);
+static ComPtr<ID3DBlob> CompileShader(const std::wstring& path, const std::string& entry, const std::string& target);
+static ComPtr<ID3D11Buffer> CreateMatrixCB(ID3D11Device* dev);
+static void UpdateMatrixCB(ID3D11DeviceContext* ctx, ID3D11Buffer* cb, const XMMATRIX& m);
+void UnloadContent();
+void Update(float deltaTime);
+void Render();
+void Cleanup();
+
 
 
 // Function to create render target view
@@ -234,68 +285,17 @@ static void UpdateMatrixCB(ID3D11DeviceContext* ctx, ID3D11Buffer* cb, const XMM
 
 
 
-// Main entry point
-int main(int argc, char** argv)
+// Helper to initialize all GPU content (was previously inline in main)
+static void LoadContent()
 {
-    // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
-    {
-        std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
-        return -1;
-    }
-
-    const int windowWidth = 1280;
-    const int windowHeight = 720;
-
-    // Create SDL window suitable for DirectX
-    SDL_Window* window = SDL_CreateWindow(
-        "DX11GameEngine",
-        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        windowWidth, windowHeight,
-        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
-    );
-    if (!window)
-    {
-        std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
-        SDL_Quit();
-        return -1;
-    }
-
-    // Get HWND from SDL window
-    SDL_SysWMinfo wmInfo;
-    SDL_VERSION(&wmInfo.version);
-    if (!SDL_GetWindowWMInfo(window, &wmInfo))
-    {
-        std::fprintf(stderr, "SDL_GetWindowWMInfo failed: %s\n", SDL_GetError());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return -1;
-    }
-    HWND hwnd = wmInfo.info.win.window;
-
-    // Initialize DirectX 11
-    DX11Context dx;
-    try { 
-        InitD3D11(hwnd, dx, (UINT)windowWidth, (UINT)windowHeight); 
-    }
-    catch (const std::exception& e)
-    {
-        std::fprintf(stderr, "DirectX init failed: %s\n", e.what());
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return -1;
-    }
-
     // Shaders
     ComPtr<ID3DBlob> vsBytecode = CompileShader(L"shaders/BasicVS.hlsl", "main", "vs_5_0");
     ComPtr<ID3DBlob> psBytecode = CompileShader(L"shaders/BasicPS.hlsl", "main", "ps_5_0");
 
 	// Create shader objects
-    ComPtr<ID3D11VertexShader> vertexShader;
-    ComPtr<ID3D11PixelShader> pixelShader;
-    HRESULT hr = dx.device->CreateVertexShader(vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), nullptr, vertexShader.GetAddressOf());
+    HRESULT hr = g_dx.device->CreateVertexShader(vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), nullptr, g_vertexShader.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateVertexShader failed");
-    hr = dx.device->CreatePixelShader(psBytecode->GetBufferPointer(), psBytecode->GetBufferSize(), nullptr, pixelShader.GetAddressOf());
+    hr = g_dx.device->CreatePixelShader(psBytecode->GetBufferPointer(), psBytecode->GetBufferSize(), nullptr, g_pixelShader.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreatePixelShader failed");
 
 	// Input layout for vertex structure
@@ -303,19 +303,18 @@ int main(int argc, char** argv)
         { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
         { "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, color),    D3D11_INPUT_PER_VERTEX_DATA, 0 }
     };
-    ComPtr<ID3D11InputLayout> inputLayout;
-    hr = dx.device->CreateInputLayout(layoutDesc, ARRAYSIZE(layoutDesc),
+    hr = g_dx.device->CreateInputLayout(layoutDesc, ARRAYSIZE(layoutDesc),
         vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(),
-        inputLayout.GetAddressOf());
+        g_inputLayout.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed");
 
     // Cube geometry
     const float s = 0.5f;
-    std::vector<Vertex> vertices = {
+    g_vertices = {
         {{-s,-s,-s},{0,0,0}}, {{-s,+s,-s},{0,1,0}}, {{+s,+s,-s},{1,1,0}}, {{+s,-s,-s},{1,0,0}}, // back
         {{-s,-s,+s},{0,0,1}}, {{-s,+s,+s},{0,1,1}}, {{+s,+s,+s},{1,1,1}}, {{+s,-s,+s},{1,0,1}}  // front
     };
-    std::vector<uint16_t> indices = {
+    g_indices = {
         0, 1, 2, 0, 2, 3,
         4, 6, 5, 4, 7, 6,
         4, 5, 1, 4, 1, 0,
@@ -328,23 +327,21 @@ int main(int argc, char** argv)
 	// vertex buffer
     D3D11_BUFFER_DESC vbDesc = {};
     vbDesc.Usage = D3D11_USAGE_DEFAULT;
-    vbDesc.ByteWidth = UINT(vertices.size() * sizeof(Vertex));
+    vbDesc.ByteWidth = UINT(g_vertices.size() * sizeof(Vertex));
     vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
     D3D11_SUBRESOURCE_DATA vbData = {};
-    vbData.pSysMem = vertices.data();
-    ComPtr<ID3D11Buffer> vertexBuffer;
-    hr = dx.device->CreateBuffer(&vbDesc, &vbData, vertexBuffer.GetAddressOf());
+    vbData.pSysMem = g_vertices.data();
+    hr = g_dx.device->CreateBuffer(&vbDesc, &vbData, g_vertexBuffer.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateBuffer(VB) failed");
 
 	// index buffer
     D3D11_BUFFER_DESC ibDesc = {};
     ibDesc.Usage = D3D11_USAGE_DEFAULT;
-    ibDesc.ByteWidth = UINT(indices.size() * sizeof(uint16_t));
+    ibDesc.ByteWidth = UINT(g_indices.size() * sizeof(uint16_t));
     ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
     D3D11_SUBRESOURCE_DATA ibData = {};
-    ibData.pSysMem = indices.data();
-    ComPtr<ID3D11Buffer> indexBuffer;
-    hr = dx.device->CreateBuffer(&ibDesc, &ibData, indexBuffer.GetAddressOf());
+    ibData.pSysMem = g_indices.data();
+    hr = g_dx.device->CreateBuffer(&ibDesc, &ibData, g_indexBuffer.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateBuffer(IB) failed");
 
     // Rasterizer state
@@ -353,8 +350,7 @@ int main(int argc, char** argv)
 	rsDesc.CullMode = D3D11_CULL_BACK;      // don't draw back faces
 	rsDesc.FrontCounterClockwise = FALSE;   // clockwise vertices are front-facing
 	rsDesc.DepthClipEnable = TRUE;          // enable depth clipping
-    ComPtr<ID3D11RasterizerState> rasterState;
-    hr = dx.device->CreateRasterizerState(&rsDesc, rasterState.GetAddressOf());
+    hr = g_dx.device->CreateRasterizerState(&rsDesc, g_rasterState.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateRasterizerState failed");
 
 	// Depth-stencil state
@@ -363,44 +359,100 @@ int main(int argc, char** argv)
 	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL; // enable depth writes
 	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;           // standard less-than depth test
     dsDesc.StencilEnable = FALSE;
-    ComPtr<ID3D11DepthStencilState> depthStencilState;
-    hr = dx.device->CreateDepthStencilState(&dsDesc, depthStencilState.GetAddressOf());
+    hr = g_dx.device->CreateDepthStencilState(&dsDesc, g_depthStencilState.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateDepthStencilState failed");
 
     // Constant buffers: Projection(b0), View(b1), World(b2)
-    ComPtr<ID3D11Buffer> cbProjection = CreateMatrixCB(dx.device.Get());
-    ComPtr<ID3D11Buffer> cbView = CreateMatrixCB(dx.device.Get());
-    ComPtr<ID3D11Buffer> cbWorld = CreateMatrixCB(dx.device.Get());
+    g_cbProjection = CreateMatrixCB(g_dx.device.Get());
+    g_cbView       = CreateMatrixCB(g_dx.device.Get());
+    g_cbWorld      = CreateMatrixCB(g_dx.device.Get());
 
 	// Initial projection matrix
-    auto UpdateProjectionForSize = [&](UINT w, UINT h)
-        {
-			//aspect ratio
-            float aspect = (h == 0) ? 1.0f : (float)w / (float)h;
-            XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspect, 0.1f, 100.0f);
-            UpdateMatrixCB(dx.context.Get(), cbProjection.Get(), proj);
-        };
-    UpdateProjectionForSize(dx.width, dx.height);
+    float aspect = (g_dx.height == 0) ? 1.0f : float(g_dx.width) / float(g_dx.height);
+    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspect, 0.1f, 100.0f);
+    UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), proj);
+}
+
+
+
+// Main entry point
+int main(int argc, char** argv)
+{
+    // Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS) != 0)
+    {
+        std::fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
+        return -1;
+    }
+
+    // Create SDL window suitable for DirectX
+    g_SDLWindow = SDL_CreateWindow(
+        "DX11GameEngine",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        g_windowWidth, g_windowHeight,
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI
+    );
+    if (!g_SDLWindow)
+    {
+        std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        SDL_Quit();
+        return -1;
+    }
+
+    // Get HWND from SDL window
+    SDL_SysWMinfo wmInfo;
+    SDL_VERSION(&wmInfo.version);
+    if (!SDL_GetWindowWMInfo(g_SDLWindow, &wmInfo))
+    {
+        std::fprintf(stderr, "SDL_GetWindowWMInfo failed: %s\n", SDL_GetError());
+        SDL_DestroyWindow(g_SDLWindow);
+        SDL_Quit();
+        return -1;
+    }
+    g_Hwnd = wmInfo.info.win.window;
+
+    // Initialize DirectX 11
+    try { 
+        InitD3D11(g_Hwnd, g_dx, (UINT)g_windowWidth, (UINT)g_windowHeight); 
+    }
+    catch (const std::exception& e)
+    {
+        std::fprintf(stderr, "DirectX init failed: %s\n", e.what());
+        SDL_DestroyWindow(g_SDLWindow);
+        SDL_Quit();
+        return -1;
+    }
+
+    // Load GPU content (shaders, buffers, states, constant buffers, geometry)
+    try {
+        LoadContent();
+    }
+    catch (const std::exception& e)
+    {
+        std::fprintf(stderr, "Content load failed: %s\n", e.what());
+        Cleanup();
+        return -1;
+    }
 
 	// Main loop
-    bool running = true;
-    Uint64 perfFreq = SDL_GetPerformanceFrequency();
-    Uint64 lastCounter = SDL_GetPerformanceCounter();
-    float angle = 0.0f;
+    g_perfFreq = SDL_GetPerformanceFrequency();
+    g_lastCounter = SDL_GetPerformanceCounter();
 
-    while (running)
+    while (g_running)
     {
 		// Event handling
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
-            if (e.type == SDL_QUIT) running = false;
+            if (e.type == SDL_QUIT) g_running = false;
             else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
             {
                 try
                 {
-                    Resize(dx, (UINT)e.window.data1, (UINT)e.window.data2);
-                    UpdateProjectionForSize(dx.width, dx.height);
+                    Resize(g_dx, (UINT)e.window.data1, (UINT)e.window.data2);
+                    float aspect = (g_dx.height == 0) ? 1.0f : float(g_dx.width) / float(g_dx.height);
+                    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspect, 0.1f, 100.0f);
+                    UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), proj);
                 }
                 catch (const std::exception& ex)
                 {
@@ -411,67 +463,132 @@ int main(int argc, char** argv)
 
 		// Update
         Uint64 currentCounter = SDL_GetPerformanceCounter();
-		double dt = double(currentCounter - lastCounter) / double(perfFreq);    // delta time in seconds
-        lastCounter = currentCounter;
+		double dt = double(currentCounter - g_lastCounter) / double(g_perfFreq);    // delta time in seconds
+        g_lastCounter = currentCounter;
 
-        angle += float(dt) * XM_PIDIV4;
+        Update(static_cast<float>(dt));
 
-        // View and World (row-major upload)
-		XMVECTOR eye = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);    // camera position
-		XMVECTOR at = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);      // look-at target
-		XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);      // up direction
-		XMMATRIX view = XMMatrixLookAtLH(eye, at, up);          // view matrix
-		XMMATRIX world = XMMatrixRotationX(angle) * XMMatrixRotationY(angle * 0.7f);    // world matrix, rotating cube
-
-		// Update constant buffers
-        UpdateMatrixCB(dx.context.Get(), cbView.Get(), view);
-        UpdateMatrixCB(dx.context.Get(), cbWorld.Get(), world);
-
-        // Viewport
-        D3D11_VIEWPORT vp;
-        vp.TopLeftX = 0.0f; vp.TopLeftY = 0.0f;
-        vp.Width = float(dx.width); vp.Height = float(dx.height);
-        vp.MinDepth = 0.0f; vp.MaxDepth = 1.0f;
-        dx.context->RSSetViewports(1, &vp);
-
-		// OM; output merger stage which binds render targets and depth-stencil
-        dx.context->OMSetRenderTargets(1, dx.rtv.GetAddressOf(), dx.dsv.Get());
-
-		// Clear render target and depth-stencil
-        const float clearColor[4] = { 0.10f, 0.18f, 0.28f, 1.0f };
-        dx.context->ClearRenderTargetView(dx.rtv.Get(), clearColor);
-        dx.context->ClearDepthStencilView(dx.dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
-		// IA; input assembler stage which binds vertex/index buffers and input layout
-        dx.context->IASetInputLayout(inputLayout.Get());
-        UINT stride = sizeof(Vertex), offset = 0;
-        dx.context->IASetVertexBuffers(0, 1, vertexBuffer.GetAddressOf(), &stride, &offset);
-        dx.context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-        dx.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-		// RS and DS states
-        dx.context->RSSetState(rasterState.Get());
-        dx.context->OMSetDepthStencilState(depthStencilState.Get(), 0);
-
-        // Shaders + CBs (b0=Proj, b1=View, b2=World)
-        dx.context->VSSetShader(vertexShader.Get(), nullptr, 0);
-        ID3D11Buffer* vscbs[] = { cbProjection.Get(), cbView.Get(), cbWorld.Get() };
-        dx.context->VSSetConstantBuffers(0, 3, vscbs);
-        dx.context->PSSetShader(pixelShader.Get(), nullptr, 0);
-
-		// Draw call
-        dx.context->DrawIndexed(static_cast<UINT>(indices.size()), 0, 0);
-        dx.swapChain->Present(1, 0);
+        // Render geometry & present
+        Render();
     }
 
     // Cleanup
-    cbWorld.Reset(); cbView.Reset(); cbProjection.Reset();
-    indexBuffer.Reset(); vertexBuffer.Reset();
-    inputLayout.Reset(); vertexShader.Reset(); pixelShader.Reset();
-    dx.dsv.Reset(); dx.depthStencilBuffer.Reset(); dx.rtv.Reset();
-    dx.swapChain.Reset(); dx.context.Reset(); dx.device.Reset();
-
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    UnloadContent();
+    Cleanup();
     return 0;
+}
+
+
+
+// UPDATE SCENE
+// set up the camera view matrix and update the world matrix to rotate the cube over time
+void Update(float deltaTime) {
+    // View and World (row-major upload)
+	XMVECTOR eye = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);    // camera position
+	XMVECTOR at  = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);      // look-at target
+	XMVECTOR up  = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);      // up direction
+	XMMATRIX view = XMMatrixLookAtLH(eye, at, up);           // view matrix
+
+    g_angle += deltaTime * XM_PIDIV4;
+	XMMATRIX world = XMMatrixRotationX(g_angle) * XMMatrixRotationY(g_angle * 0.7f);    // world matrix, rotating cube
+
+	// Update constant buffers
+    UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), view);
+    UpdateMatrixCB(g_dx.context.Get(), g_cbWorld.Get(), world);
+}
+
+
+
+// HELPER FUNCTION TO CLEAR THE RENDER TARGET AND DEPTH/ STENCIL BUFFER
+// Clear the color and depth buffers.
+void Clear(const FLOAT clearColor[4], FLOAT clearDepth, UINT8 clearStencil)
+{
+    // OM; output merger stage which binds render targets and depth-stencil
+    g_dx.context->OMSetRenderTargets(1, g_dx.rtv.GetAddressOf(), g_dx.dsv.Get());
+    g_dx.context->ClearRenderTargetView(g_dx.rtv.Get(), clearColor);
+    g_dx.context->ClearDepthStencilView(g_dx.dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, clearDepth, clearStencil);
+}
+
+
+
+// HELPER FUNCTION TO PRESENT THE BACK BUFFER TO THE SCREEN
+void Present(bool vSync)
+{
+    // Present method presents the back buffer to the front buffer (screen)
+    // first parameter specifies the sync interval
+    // second parameter specifies presentation options
+    g_dx.swapChain->Present(vSync ? 1 : 0, 0);
+}
+
+
+
+// RENDER THE GEOMETRY
+void Render()
+{
+    // Clear render target and depth-stencil
+    const float clearColor[4] = { 0.10f, 0.18f, 0.28f, 1.0f };
+    Clear(clearColor, 1.0f, 0);
+
+    // Viewport
+    D3D11_VIEWPORT vp;
+    vp.TopLeftX = 0.0f; vp.TopLeftY = 0.0f;
+    vp.Width = float(g_dx.width); vp.Height = float(g_dx.height);
+    vp.MinDepth = 0.0f; vp.MaxDepth = 1.0f;
+    g_dx.context->RSSetViewports(1, &vp);
+
+	// IA; input assembler stage which binds vertex/index buffers and input layout
+    g_dx.context->IASetInputLayout(g_inputLayout.Get());
+    UINT stride = sizeof(Vertex), offset = 0;
+    g_dx.context->IASetVertexBuffers(0, 1, g_vertexBuffer.GetAddressOf(), &stride, &offset);
+    g_dx.context->IASetIndexBuffer(g_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
+    g_dx.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// RS and DS states
+    g_dx.context->RSSetState(g_rasterState.Get());
+    g_dx.context->OMSetDepthStencilState(g_depthStencilState.Get(), 0);
+
+    // Shaders + CBs (b0=Proj, b1=View, b2=World)
+    g_dx.context->VSSetShader(g_vertexShader.Get(), nullptr, 0);
+    ID3D11Buffer* vscbs[] = { g_cbProjection.Get(), g_cbView.Get(), g_cbWorld.Get() };
+    g_dx.context->VSSetConstantBuffers(0, 3, vscbs);
+    g_dx.context->PSSetShader(g_pixelShader.Get(), nullptr, 0);
+
+	// Draw call
+    g_dx.context->DrawIndexed(static_cast<UINT>(g_indices.size()), 0, 0);
+
+    Present(g_vSync);
+}
+
+
+
+// CLEANUP
+
+// Release all game-specific assets
+void UnloadContent()
+{
+    g_cbWorld.Reset(); 
+    g_cbView.Reset(); 
+    g_cbProjection.Reset();
+    g_indexBuffer.Reset();
+    g_vertexBuffer.Reset();
+    g_inputLayout.Reset();
+    g_vertexShader.Reset();
+    g_pixelShader.Reset();
+}
+
+// Release all core system resources
+void Cleanup()
+{
+    g_dx.dsv.Reset();
+    g_dx.depthStencilBuffer.Reset();
+    g_dx.rtv.Reset();
+    g_dx.swapChain.Reset();
+    g_dx.context.Reset();
+    g_dx.device.Reset();
+
+    if (g_SDLWindow) {
+        SDL_DestroyWindow(g_SDLWindow);
+        g_SDLWindow = nullptr;
+    }
+    SDL_Quit();
 }
