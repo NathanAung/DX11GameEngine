@@ -7,6 +7,9 @@ project(DX11GameEngine
 
 include(cmake/BuildOptions.cmake)
 
+# Define where ALL executables and DLLs go for ALL configurations (Debug/Release)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
 # Prefer vcpkg if available: find CONFIG packages.
 # SDL2 is required at this step.
 set(ENGINE_ENABLE_VCPKG ON CACHE BOOL "Use vcpkg-config packages when available")
@@ -92,3 +95,15 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_SOURCE_FILES} ${ENG
 message(STATUS "DX11GameEngine configured.")
 message(STATUS "  SDL2:         ${SDL2_DIR}")
 message(STATUS "  Using vcpkg:  ${ENGINE_ENABLE_VCPKG}")
+
+# Make this target the startup project in VS and set working directory
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT DX11GameEngine)
+set_property(TARGET DX11GameEngine PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+
+# Copy shaders next to the executable
+add_custom_target(CopyShaders ALL
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          ${CMAKE_SOURCE_DIR}/shaders
+          ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders
+)
+add_dependencies(DX11GameEngine CopyShaders)
