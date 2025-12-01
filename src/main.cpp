@@ -1,26 +1,5 @@
-#include <cstdio>       // For std::fprintf
-#include <stdexcept>    // For std::runtime_error
-#include <string>       // For std::string
-#include <vector>       // For std::vector
-
-// SDL2
-#include <SDL.h>
-#include <SDL_syswm.h>
-
-// DirectX 11
-#include <d3d11.h>
-#include <dxgi.h>
-#include <d3dcompiler.h>
-#include <wrl/client.h>     // For Microsoft::WRL::ComPtr
-#include <DirectXMath.h>
-
-// Link necessary libraries
-// pragma comment is a Microsoft-specific directive to link libraries
-#pragma comment(lib, "d3d11.lib")
-#pragma comment(lib, "dxgi.lib")
-#pragma comment(lib, "d3dcompiler.lib")
-#pragma comment(lib, "dxguid.lib")
-
+#include "Engine/Core.h"
+// Common Usings
 using Microsoft::WRL::ComPtr;   // template smart pointer for COM objects
 using namespace DirectX;
 

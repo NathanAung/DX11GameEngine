@@ -45,9 +45,17 @@ set(ENGINE_SOURCE_FILES
 )
 
 set(ENGINE_HEADER_FILES
+  include/Engine/Core.h
 )
 
-add_executable(DX11GameEngine ${ENGINE_SOURCE_FILES} ${ENGINE_HEADER_FILES})
+# Create executable target
+add_executable(DX11GameEngine ${ENGINE_SOURCE_FILES} ${ENGINE_HEADER_FILES} "include/Engine/Core.h")
+
+# Add Precompiled Headers for the executable target
+target_precompile_headers(DX11GameEngine 
+    PRIVATE
+        "include/Engine/Core.h"
+)
 
 # Language, warnings, and OS-specific definitions
 target_compile_features(DX11GameEngine PRIVATE cxx_std_14)
