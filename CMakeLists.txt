@@ -5,6 +5,15 @@ project(DX11GameEngine
   LANGUAGES CXX
 )
 
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+
+    if (MSVC)
+      add_compile_options(/Zc:__cplusplus) # ensure __cplusplus reflects the standard
+    endif()
+
 include(cmake/BuildOptions.cmake)
 
 # Define where ALL executables and DLLs go for ALL configurations (Debug/Release)
@@ -44,12 +53,15 @@ set(ENGINE_SOURCE_FILES
   src/main.cpp
   src/Engine/InputManager.cpp
   src/Engine/Camera.cpp
+  src/Engine/Scene.cpp
 )
 
 set(ENGINE_HEADER_FILES
   include/Engine/Core.h
   include/Engine/InputManager.h
   include/Engine/Camera.h
+  include/Engine/Components.h
+  include/Engine/Scene.h
 )
 
 # Create executable target

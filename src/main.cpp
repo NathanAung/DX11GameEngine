@@ -1,6 +1,7 @@
 #include "Engine/Core.h"
 #include "Engine/InputManager.h"
 #include "Engine/Camera.h"
+#include "Engine/Scene.h" // ECS: Scene + Components
 // Common Usings
 using Microsoft::WRL::ComPtr;   // template smart pointer for COM objects
 using namespace DirectX;
@@ -54,7 +55,6 @@ ComPtr<ID3D11Buffer> g_cbWorld;
 // Geometry data for a cube
 std::vector<Vertex> g_vertices;
 std::vector<uint16_t> g_indices;
-float g_angle = 0.0f;
 
 // Timing variables
 Uint64 g_perfFreq = 0;
@@ -65,6 +65,10 @@ bool g_vSync = true; // can toggle later
 // Input and Camera
 Engine::InputManager g_input;
 Engine::Camera g_camera;
+
+// ECS: Scene and a cube entity
+Engine::Scene g_scene;
+entt::entity g_cubeEntity = entt::null;
 
 // Forward declarations for helpers
 static void CreateViews(DX11Context& dx);
@@ -413,6 +417,9 @@ int main(int argc, char** argv)
     g_camera.SetPosition(XMFLOAT3{ 0.0f, 0.0f, -5.0f });
     g_input.SetMouseCaptured(true);
 
+    // ECS: create a cube entity
+    g_cubeEntity = g_scene.CreateCube("Rotating Cube");
+
     // Load GPU content (shaders, buffers, states, constant buffers, geometry)
     try {
         LoadContent();
@@ -476,14 +483,28 @@ int main(int argc, char** argv)
 
 
 // UPDATE SCENE
-// set up the camera view matrix and update the world matrix to rotate the cube over time
+// ECS-driven cube transform. Camera still updated outside ECS.
 void Update(float deltaTime) {
     // Camera driven by InputManager
     g_camera.UpdateFromInput(g_input, deltaTime);
 
-    // World rotation for the cube
-    g_angle += deltaTime * XM_PIDIV4;
-	XMMATRIX world = XMMatrixRotationX(g_angle) * XMMatrixRotationY(g_angle * 0.7f);
+    // ECS: rotate cube around Y using its TransformComponent
+    auto& tc = g_scene.registry.get<Engine::TransformComponent>(g_cubeEntity);
+
+    static float s_angle = 0.0f;
+    s_angle += deltaTime * XM_PIDIV4; // 45 deg/sec
+
+    // Write rotation quaternion into the component
+    XMVECTOR q = XMQuaternionRotationAxis(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), s_angle);
+    XMStoreFloat4(&tc.rotation, q);
+
+    // Build world matrix from ECS transform (row-major, row-vector math)
+    const XMMATRIX S = XMMatrixScaling(tc.scale.x, tc.scale.y, tc.scale.z);
+    XMVECTOR qn = XMLoadFloat4(&tc.rotation);
+    qn = XMQuaternionNormalize(qn);
+    const XMMATRIX R = XMMatrixRotationQuaternion(qn);
+    const XMMATRIX T = XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
+    const XMMATRIX world = S * R * T;
 
 	// Update constant buffers (View and World). Projection is updated on resize/init.
     UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), g_camera.GetViewMatrix());
