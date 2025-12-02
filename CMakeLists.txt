@@ -42,10 +42,14 @@ endif()
 # Add source files
 set(ENGINE_SOURCE_FILES
   src/main.cpp
+  src/Engine/InputManager.cpp
+  src/Engine/Camera.cpp
 )
 
 set(ENGINE_HEADER_FILES
   include/Engine/Core.h
+  include/Engine/InputManager.h
+  include/Engine/Camera.h
 )
 
 # Create executable target

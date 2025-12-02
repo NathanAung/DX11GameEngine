@@ -1,4 +1,6 @@
 #include "Engine/Core.h"
+#include "Engine/InputManager.h"
+#include "Engine/Camera.h"
 // Common Usings
 using Microsoft::WRL::ComPtr;   // template smart pointer for COM objects
 using namespace DirectX;
@@ -59,6 +61,10 @@ Uint64 g_perfFreq = 0;
 Uint64 g_lastCounter = 0;
 bool g_running = true;
 bool g_vSync = true; // can toggle later
+
+// Input and Camera
+Engine::InputManager g_input;
+Engine::Camera g_camera;
 
 // Forward declarations for helpers
 static void CreateViews(DX11Context& dx);
@@ -346,10 +352,9 @@ static void LoadContent()
     g_cbView       = CreateMatrixCB(g_dx.device.Get());
     g_cbWorld      = CreateMatrixCB(g_dx.device.Get());
 
-	// Initial projection matrix
-    float aspect = (g_dx.height == 0) ? 1.0f : float(g_dx.width) / float(g_dx.height);
-    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspect, 0.1f, 100.0f);
-    UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), proj);
+	// Initial matrices from camera
+    UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), g_camera.GetProjectionMatrix());
+    UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), g_camera.GetViewMatrix());
 }
 
 
@@ -402,6 +407,12 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    // Initialize camera and capture mouse
+    g_camera.SetViewport(g_dx.width, g_dx.height);
+    g_camera.SetLens(XM_PIDIV4, 0.1f, 100.0f);
+    g_camera.SetPosition(XMFLOAT3{ 0.0f, 0.0f, -5.0f });
+    g_input.SetMouseCaptured(true);
+
     // Load GPU content (shaders, buffers, states, constant buffers, geometry)
     try {
         LoadContent();
@@ -419,19 +430,24 @@ int main(int argc, char** argv)
 
     while (g_running)
     {
+		// Begin input frame
+        g_input.BeginFrame();
+
 		// Event handling
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
+            // Feed the input manager first (collect keyboard/mouse state)
+            g_input.ProcessEvent(e);
+
             if (e.type == SDL_QUIT) g_running = false;
             else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
             {
                 try
                 {
                     Resize(g_dx, (UINT)e.window.data1, (UINT)e.window.data2);
-                    float aspect = (g_dx.height == 0) ? 1.0f : float(g_dx.width) / float(g_dx.height);
-                    XMMATRIX proj = XMMatrixPerspectiveFovLH(XM_PIDIV4, aspect, 0.1f, 100.0f);
-                    UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), proj);
+                    g_camera.SetViewport(g_dx.width, g_dx.height);
+                    UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), g_camera.GetProjectionMatrix());
                 }
                 catch (const std::exception& ex)
                 {
@@ -442,10 +458,10 @@ int main(int argc, char** argv)
 
 		// Update
         Uint64 currentCounter = SDL_GetPerformanceCounter();
-		double dt = double(currentCounter - g_lastCounter) / double(g_perfFreq);    // delta time in seconds
+		float dt = float(double(currentCounter - g_lastCounter) / double(g_perfFreq));    // delta time in seconds
         g_lastCounter = currentCounter;
 
-        Update(static_cast<float>(dt));
+        Update(dt);
 
         // Render geometry & present
         Render();
@@ -462,17 +478,15 @@ int main(int argc, char** argv)
 // UPDATE SCENE
 // set up the camera view matrix and update the world matrix to rotate the cube over time
 void Update(float deltaTime) {
-    // View and World (row-major upload)
-	XMVECTOR eye = XMVectorSet(0.0f, 0.0f, -5.0f, 1.0f);    // camera position
-	XMVECTOR at  = XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f);      // look-at target
-	XMVECTOR up  = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);      // up direction
-	XMMATRIX view = XMMatrixLookAtLH(eye, at, up);           // view matrix
+    // Camera driven by InputManager
+    g_camera.UpdateFromInput(g_input, deltaTime);
 
+    // World rotation for the cube
     g_angle += deltaTime * XM_PIDIV4;
-	XMMATRIX world = XMMatrixRotationX(g_angle) * XMMatrixRotationY(g_angle * 0.7f);    // world matrix, rotating cube
+	XMMATRIX world = XMMatrixRotationX(g_angle) * XMMatrixRotationY(g_angle * 0.7f);
 
-	// Update constant buffers
-    UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), view);
+	// Update constant buffers (View and World). Projection is updated on resize/init.
+    UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), g_camera.GetViewMatrix());
     UpdateMatrixCB(g_dx.context.Get(), g_cbWorld.Get(), world);
 }
 

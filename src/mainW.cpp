@@ -1,3 +1,5 @@
+// REFERENCE SCRIPT, UNUSED 
+
 #include <DirectXTemplatePCH.h>
 using namespace DirectX;
 

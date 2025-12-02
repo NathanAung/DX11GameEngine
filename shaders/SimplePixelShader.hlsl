@@ -1,3 +1,4 @@
+// REFERENCE SCRIPT, UNUSED 
 // A simple pixel shader that outputs the input color from the vertex shader
 struct PixelShaderInput
 {

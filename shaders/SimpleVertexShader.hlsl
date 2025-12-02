@@ -1,3 +1,5 @@
+// REFERENCE SCRIPT, UNUSED 
+
 // cbuffer: a constant buffer holds constants that remain the same across multiple shader invocations
 // the GPU can  access all varuables in a constant buffer at once, making it more efficient than using individual variables
 
