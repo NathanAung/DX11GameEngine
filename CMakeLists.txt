@@ -8,11 +8,20 @@ project(DX11GameEngine
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-    set(CMAKE_CXX_EXTENSIONS OFF)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-    if (MSVC)
-      add_compile_options(/Zc:__cplusplus) # ensure __cplusplus reflects the standard
-    endif()
+if (MSVC)
+  # Make __cplusplus report the real standard and use conforming mode
+  add_compile_options(/permissive- /Zc:__cplusplus)
+
+  # Suppress warnings from external headers
+  add_compile_options(/external:W0 /external:anglebrackets)
+  # Tell CMake to pass external include dirs as /external:I
+  set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "/external:I")
+
+  # Help IntelliSense recognize C++17 library features (string_view, etc.)
+  add_compile_definitions(_HAS_CXX17=1)
+endif()
 
 include(cmake/BuildOptions.cmake)
 
@@ -54,6 +63,9 @@ set(ENGINE_SOURCE_FILES
   src/Engine/InputManager.cpp
   src/Engine/Camera.cpp
   src/Engine/Scene.cpp
+  src/Engine/MeshManager.cpp
+  src/Engine/ShaderManager.cpp
+  src/Engine/Systems.cpp
 )
 
 set(ENGINE_HEADER_FILES
@@ -62,6 +74,9 @@ set(ENGINE_HEADER_FILES
   include/Engine/Camera.h
   include/Engine/Components.h
   include/Engine/Scene.h
+  include/Engine/MeshManager.h
+  include/Engine/ShaderManager.h
+  include/Engine/Systems.h
 )
 
 # Create executable target
@@ -80,10 +95,12 @@ if(MSVC)
   target_compile_definitions(DX11GameEngine PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 
-# Include header-only libs if vendored
-target_include_directories(DX11GameEngine PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/external
+# Mark third-party include dirs as SYSTEM so /external:* applies
+target_include_directories(DX11GameEngine
+  PRIVATE ${CMAKE_SOURCE_DIR}/include
+  SYSTEM PRIVATE
+    ${CMAKE_SOURCE_DIR}/external/entt
+    ${CMAKE_SOURCE_DIR}/external/SDL2/include
 )
 
 # Link SDL2

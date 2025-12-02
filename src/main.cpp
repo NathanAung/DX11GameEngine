@@ -1,7 +1,11 @@
 #include "Engine/Core.h"
 #include "Engine/InputManager.h"
 #include "Engine/Camera.h"
-#include "Engine/Scene.h" // ECS: Scene + Components
+#include "Engine/Scene.h"
+#include "Engine/MeshManager.h" 
+#include "Engine/ShaderManager.h"
+#include "Engine/Systems.h"
+
 // Common Usings
 using Microsoft::WRL::ComPtr;   // template smart pointer for COM objects
 using namespace DirectX;
@@ -21,9 +25,6 @@ struct DX11Context
     UINT height = 720;                                          // default height
 };
 
-// Vertex structure
-struct Vertex { XMFLOAT3 position; XMFLOAT3 color; };
-
 // GLOBAL VARIABLES (made global to allow Update / Render / Clear / Present etc. to keep main clean)
 SDL_Window* g_SDLWindow = nullptr;
 HWND g_Hwnd = nullptr;
@@ -33,16 +34,6 @@ DX11Context g_dx;
 const int g_windowWidth = 1280;
 const int g_windowHeight = 720;
 
-// Shaders
-ComPtr<ID3D11VertexShader> g_vertexShader;
-ComPtr<ID3D11PixelShader> g_pixelShader;
-
-ComPtr<ID3D11InputLayout> g_inputLayout;    // input layout for vertex structure
-
-// Buffers
-ComPtr<ID3D11Buffer> g_vertexBuffer;
-ComPtr<ID3D11Buffer> g_indexBuffer;
-
 // States
 ComPtr<ID3D11RasterizerState> g_rasterState;
 ComPtr<ID3D11DepthStencilState> g_depthStencilState;
@@ -51,10 +42,6 @@ ComPtr<ID3D11DepthStencilState> g_depthStencilState;
 ComPtr<ID3D11Buffer> g_cbProjection;
 ComPtr<ID3D11Buffer> g_cbView;
 ComPtr<ID3D11Buffer> g_cbWorld;
-
-// Geometry data for a cube
-std::vector<Vertex> g_vertices;
-std::vector<uint16_t> g_indices;
 
 // Timing variables
 Uint64 g_perfFreq = 0;
@@ -70,11 +57,14 @@ Engine::Camera g_camera;
 Engine::Scene g_scene;
 entt::entity g_cubeEntity = entt::null;
 
+// Managers
+Engine::MeshManager g_meshManager;
+Engine::ShaderManager g_shaderManager;
+
 // Forward declarations for helpers
 static void CreateViews(DX11Context& dx);
 static void Resize(DX11Context& dx, UINT newWidth, UINT newHeight);
 static void InitD3D11(HWND hwnd, DX11Context& dx, UINT width, UINT height);
-static ComPtr<ID3DBlob> CompileShader(const std::wstring& path, const std::string& entry, const std::string& target);
 static ComPtr<ID3D11Buffer> CreateMatrixCB(ID3D11Device* dev);
 static void UpdateMatrixCB(ID3D11DeviceContext* ctx, ID3D11Buffer* cb, const XMMATRIX& m);
 void UnloadContent();
@@ -214,38 +204,6 @@ static void InitD3D11(HWND hwnd, DX11Context& dx, UINT width, UINT height)
 
 
 
-// Function to compile a shader from file
-static ComPtr<ID3DBlob> CompileShader(const std::wstring& path, const std::string& entry, const std::string& target)
-{
-	// Compile flags, enable strictness and row-major packing
-    UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3DCOMPILE_PACK_MATRIX_ROW_MAJOR;
-#if defined(_DEBUG)
-    flags |= D3DCOMPILE_DEBUG;
-#endif
-
-    ComPtr<ID3DBlob> bytecode;
-    ComPtr<ID3DBlob> errors;
-
-    HRESULT hr = D3DCompileFromFile(
-        path.c_str(),
-        nullptr,
-        D3D_COMPILE_STANDARD_FILE_INCLUDE,
-        entry.c_str(),
-        target.c_str(),
-        flags,
-        0,
-        bytecode.GetAddressOf(),
-        errors.GetAddressOf());
-    if (FAILED(hr))
-    {
-        if (errors) std::fprintf(stderr, "Shader compile error (%ls): %s\n", path.c_str(), (char*)errors->GetBufferPointer());
-        throw std::runtime_error("Failed to compile shader");
-    }
-    return bytecode;
-}
-
-
-
 // Creates a constant buffer for a 4x4 matrix
 // Constant buffers: Projection (b0), View (b1), World (b2)
 static ComPtr<ID3D11Buffer> CreateMatrixCB(ID3D11Device* dev)
@@ -277,69 +235,13 @@ static void UpdateMatrixCB(ID3D11DeviceContext* ctx, ID3D11Buffer* cb, const XMM
 // Helper to initialize all GPU content (was previously inline in main)
 static void LoadContent()
 {
-    // Shaders
-    ComPtr<ID3DBlob> vsBytecode = CompileShader(L"shaders/BasicVS.hlsl", "main", "vs_5_0");
-    ComPtr<ID3DBlob> psBytecode = CompileShader(L"shaders/BasicPS.hlsl", "main", "ps_5_0");
-
-	// Create shader objects
-    HRESULT hr = g_dx.device->CreateVertexShader(vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), nullptr, g_vertexShader.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("CreateVertexShader failed");
-    hr = g_dx.device->CreatePixelShader(psBytecode->GetBufferPointer(), psBytecode->GetBufferSize(), nullptr, g_pixelShader.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("CreatePixelShader failed");
-
-	// Input layout for vertex structure
-    D3D11_INPUT_ELEMENT_DESC layoutDesc[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-        { "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Vertex, color),    D3D11_INPUT_PER_VERTEX_DATA, 0 }
-    };
-    hr = g_dx.device->CreateInputLayout(layoutDesc, ARRAYSIZE(layoutDesc),
-        vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(),
-        g_inputLayout.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed");
-
-    // Cube geometry
-    const float s = 0.5f;
-    g_vertices = {
-        {{-s,-s,-s},{0,0,0}}, {{-s,+s,-s},{0,1,0}}, {{+s,+s,-s},{1,1,0}}, {{+s,-s,-s},{1,0,0}}, // back
-        {{-s,-s,+s},{0,0,1}}, {{-s,+s,+s},{0,1,1}}, {{+s,+s,+s},{1,1,1}}, {{+s,-s,+s},{1,0,1}}  // front
-    };
-    g_indices = {
-        0, 1, 2, 0, 2, 3,
-        4, 6, 5, 4, 7, 6,
-        4, 5, 1, 4, 1, 0,
-        3, 2, 6, 3, 6, 7,
-        1, 5, 6, 1, 6, 2,
-        4, 0, 3, 4, 3, 7
-    };
-
-    // Buffers
-	// vertex buffer
-    D3D11_BUFFER_DESC vbDesc = {};
-    vbDesc.Usage = D3D11_USAGE_DEFAULT;
-    vbDesc.ByteWidth = UINT(g_vertices.size() * sizeof(Vertex));
-    vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-    D3D11_SUBRESOURCE_DATA vbData = {};
-    vbData.pSysMem = g_vertices.data();
-    hr = g_dx.device->CreateBuffer(&vbDesc, &vbData, g_vertexBuffer.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("CreateBuffer(VB) failed");
-
-	// index buffer
-    D3D11_BUFFER_DESC ibDesc = {};
-    ibDesc.Usage = D3D11_USAGE_DEFAULT;
-    ibDesc.ByteWidth = UINT(g_indices.size() * sizeof(uint16_t));
-    ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-    D3D11_SUBRESOURCE_DATA ibData = {};
-    ibData.pSysMem = g_indices.data();
-    hr = g_dx.device->CreateBuffer(&ibDesc, &ibData, g_indexBuffer.GetAddressOf());
-    if (FAILED(hr)) throw std::runtime_error("CreateBuffer(IB) failed");
-
     // Rasterizer state
     D3D11_RASTERIZER_DESC rsDesc = {};
     rsDesc.FillMode = D3D11_FILL_SOLID;
 	rsDesc.CullMode = D3D11_CULL_BACK;      // don't draw back faces
 	rsDesc.FrontCounterClockwise = FALSE;   // clockwise vertices are front-facing
 	rsDesc.DepthClipEnable = TRUE;          // enable depth clipping
-    hr = g_dx.device->CreateRasterizerState(&rsDesc, g_rasterState.GetAddressOf());
+    HRESULT hr = g_dx.device->CreateRasterizerState(&rsDesc, g_rasterState.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateRasterizerState failed");
 
 	// Depth-stencil state
@@ -359,6 +261,18 @@ static void LoadContent()
 	// Initial matrices from camera
     UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), g_camera.GetProjectionMatrix());
     UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), g_camera.GetViewMatrix());
+
+    // Load geometry and shaders via managers
+    const int cubeMeshID = g_meshManager.InitializeCube(g_dx.device.Get());
+    const int shaderID   = g_shaderManager.LoadBasicShaders(g_dx.device.Get());
+
+    // Provide CBs to renderer
+    Engine::RenderSystem::SetConstantBuffers(g_cbProjection.Get(), g_cbView.Get(), g_cbWorld.Get());
+
+    // Hook the cube entity to resources
+    auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_cubeEntity);
+    mr.meshID     = 101;      // per spec
+    mr.materialID = 1;        // map materialID -> shaderID(1)
 }
 
 
@@ -420,7 +334,7 @@ int main(int argc, char** argv)
     // ECS: create a cube entity
     g_cubeEntity = g_scene.CreateCube("Rotating Cube");
 
-    // Load GPU content (shaders, buffers, states, constant buffers, geometry)
+    // Load GPU content (states, constant buffers, geometry, shaders)
     try {
         LoadContent();
     }
@@ -470,7 +384,7 @@ int main(int argc, char** argv)
 
         Update(dt);
 
-        // Render geometry & present
+        // Render & present
         Render();
     }
 
@@ -483,99 +397,36 @@ int main(int argc, char** argv)
 
 
 // UPDATE SCENE
-// ECS-driven cube transform. Camera still updated outside ECS.
 void Update(float deltaTime) {
     // Camera driven by InputManager
     g_camera.UpdateFromInput(g_input, deltaTime);
-
-    // ECS: rotate cube around Y using its TransformComponent
-    auto& tc = g_scene.registry.get<Engine::TransformComponent>(g_cubeEntity);
-
-    static float s_angle = 0.0f;
-    s_angle += deltaTime * XM_PIDIV4; // 45 deg/sec
-
-    // Write rotation quaternion into the component
-    XMVECTOR q = XMQuaternionRotationAxis(XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), s_angle);
-    XMStoreFloat4(&tc.rotation, q);
-
-    // Build world matrix from ECS transform (row-major, row-vector math)
-    const XMMATRIX S = XMMatrixScaling(tc.scale.x, tc.scale.y, tc.scale.z);
-    XMVECTOR qn = XMLoadFloat4(&tc.rotation);
-    qn = XMQuaternionNormalize(qn);
-    const XMMATRIX R = XMMatrixRotationQuaternion(qn);
-    const XMMATRIX T = XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
-    const XMMATRIX world = S * R * T;
-
-	// Update constant buffers (View and World). Projection is updated on resize/init.
     UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), g_camera.GetViewMatrix());
-    UpdateMatrixCB(g_dx.context.Get(), g_cbWorld.Get(), world);
+
+    // rotate cube via ECS system
+    Engine::DemoRotationSystem(g_scene, g_cubeEntity, deltaTime);
 }
 
 
 
-// HELPER FUNCTION TO CLEAR THE RENDER TARGET AND DEPTH/ STENCIL BUFFER
-// Clear the color and depth buffers.
-void Clear(const FLOAT clearColor[4], FLOAT clearDepth, UINT8 clearStencil)
-{
-    // OM; output merger stage which binds render targets and depth-stencil
-    g_dx.context->OMSetRenderTargets(1, g_dx.rtv.GetAddressOf(), g_dx.dsv.Get());
-    g_dx.context->ClearRenderTargetView(g_dx.rtv.Get(), clearColor);
-    g_dx.context->ClearDepthStencilView(g_dx.dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, clearDepth, clearStencil);
-}
-
-
-
-// HELPER FUNCTION TO PRESENT THE BACK BUFFER TO THE SCREEN
-void Present(bool vSync)
-{
-    // Present method presents the back buffer to the front buffer (screen)
-    // first parameter specifies the sync interval
-    // second parameter specifies presentation options
-    g_dx.swapChain->Present(vSync ? 1 : 0, 0);
-}
-
-
-
-// RENDER THE GEOMETRY
+// RENDER SCENE
 void Render()
 {
-    // Clear render target and depth-stencil
-    const float clearColor[4] = { 0.10f, 0.18f, 0.28f, 1.0f };
-    Clear(clearColor, 1.0f, 0);
+    // centralized rendering
+    Engine::RenderSystem::SetupFrame(
+        g_dx.context.Get(),
+        g_dx.rtv.Get(),
+        g_dx.dsv.Get(),
+        g_rasterState.Get(),
+        g_depthStencilState.Get(),
+        g_dx.width, g_dx.height);
 
-    // Viewport
-    D3D11_VIEWPORT vp;
-    vp.TopLeftX = 0.0f; vp.TopLeftY = 0.0f;
-    vp.Width = float(g_dx.width); vp.Height = float(g_dx.height);
-    vp.MinDepth = 0.0f; vp.MaxDepth = 1.0f;
-    g_dx.context->RSSetViewports(1, &vp);
+    Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_dx.context.Get());
 
-	// IA; input assembler stage which binds vertex/index buffers and input layout
-    g_dx.context->IASetInputLayout(g_inputLayout.Get());
-    UINT stride = sizeof(Vertex), offset = 0;
-    g_dx.context->IASetVertexBuffers(0, 1, g_vertexBuffer.GetAddressOf(), &stride, &offset);
-    g_dx.context->IASetIndexBuffer(g_indexBuffer.Get(), DXGI_FORMAT_R16_UINT, 0);
-    g_dx.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	// RS and DS states
-    g_dx.context->RSSetState(g_rasterState.Get());
-    g_dx.context->OMSetDepthStencilState(g_depthStencilState.Get(), 0);
-
-    // Shaders + CBs (b0=Proj, b1=View, b2=World)
-    g_dx.context->VSSetShader(g_vertexShader.Get(), nullptr, 0);
-    ID3D11Buffer* vscbs[] = { g_cbProjection.Get(), g_cbView.Get(), g_cbWorld.Get() };
-    g_dx.context->VSSetConstantBuffers(0, 3, vscbs);
-    g_dx.context->PSSetShader(g_pixelShader.Get(), nullptr, 0);
-
-	// Draw call
-    g_dx.context->DrawIndexed(static_cast<UINT>(g_indices.size()), 0, 0);
-
-    Present(g_vSync);
+    // Present back buffer
+    g_dx.swapChain->Present(g_vSync ? 1 : 0, 0);
 }
 
 
-
-// CLEANUP
 
 // Release all game-specific assets
 void UnloadContent()
@@ -583,11 +434,6 @@ void UnloadContent()
     g_cbWorld.Reset(); 
     g_cbView.Reset(); 
     g_cbProjection.Reset();
-    g_indexBuffer.Reset();
-    g_vertexBuffer.Reset();
-    g_inputLayout.Reset();
-    g_vertexShader.Reset();
-    g_pixelShader.Reset();
 }
 
 // Release all core system resources
