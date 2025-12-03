@@ -29,7 +29,7 @@ entt::entity Scene::CreateCube(const std::string& name)
     return e;
 }
 
-entt::entity Scene::CreateCamera(const std::string& name, unsigned width, unsigned height)
+entt::entity Scene::CreateEditorCamera(const std::string& name, unsigned width, unsigned height)
 {
     entt::entity e = CreateEntity(name);
 
@@ -39,15 +39,11 @@ entt::entity Scene::CreateCamera(const std::string& name, unsigned width, unsign
     tf.rotation = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
     tf.scale    = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };
 
-    // Default camera params
-    registry.emplace<CameraComponent>(e, CameraComponent{ DirectX::XM_PIDIV4, 0.1f, 100.0f, true });
-
-    // Viewport and movement/look parameters
-    registry.emplace<ViewportComponent>(e, ViewportComponent{ width, height, 5.0f, 0.0025f, 2.0f });
-
-    // If no active camera set, set this one
+    // Attach camera, viewport, editor cam control
+    registry.emplace<CameraComponent>(e, CameraComponent{});
+    registry.emplace<ViewportComponent>(e, ViewportComponent{ width, height });
+    registry.emplace<EditorCamControlComponent>(e, EditorCamControlComponent{});
     if (m_activeRenderCamera == entt::null)
         m_activeRenderCamera = e;
-
     return e;
 }

@@ -22,7 +22,7 @@ namespace Engine
         // Create a cube entity with MeshRenderer and visible transform
         entt::entity CreateCube(const std::string& name);
 
-        // New: Create camera entity and set as active if none set
-        entt::entity CreateCamera(const std::string& name, unsigned width, unsigned height);
+        // Create camera entity and set as active if none set
+        entt::entity CreateEditorCamera(const std::string& name, unsigned width, unsigned height);
     };
 }

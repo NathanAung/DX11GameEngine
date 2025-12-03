@@ -13,9 +13,14 @@ namespace Engine
     // demo cube rotation logic
     void DemoRotationSystem(Engine::Scene& scene, entt::entity cubeEntity, float dt);
 
-    // camera system: input + view/projection CB updates
-    void CameraSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt,
-                      ID3D11DeviceContext* context, ID3D11Buffer* cbView, ID3D11Buffer* cbProj);
+    // input-driven camera movement and look
+    void CameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt);
+
+    // build view/projection matrices for active camera and upload to GPU
+    void CameraMatrixSystem(Engine::Scene& scene,
+                            ID3D11DeviceContext* context,
+                            ID3D11Buffer* cbView,
+                            ID3D11Buffer* cbProj);
 
     // rendering system
     struct RenderSystem

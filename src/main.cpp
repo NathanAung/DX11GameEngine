@@ -263,8 +263,8 @@ static void LoadContent()
     // Provide CBs to renderer
     Engine::RenderSystem::SetConstantBuffers(g_cbProjection.Get(), g_cbView.Get(), g_cbWorld.Get());
 
-    // Create the ECS camera entity
-    g_scene.CreateCamera("Main Editor Camera", g_dx.width, g_dx.height);
+    // Create the editor camera entity
+    g_scene.CreateEditorCamera("Main Editor Camera", g_dx.width, g_dx.height);
 
     // Hook the cube entity to resources
     auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_cubeEntity);
@@ -399,8 +399,14 @@ int main(int argc, char** argv)
 
 // UPDATE SCENE
 void Update(float deltaTime) {
-    // ECS camera system updates view/projection and handles input
-    Engine::CameraSystem(g_scene, g_input, deltaTime, g_dx.context.Get(), g_cbView.Get(), g_cbProjection.Get());
+    // two-system camera architecture: first input, then matrices upload
+    Engine::CameraInputSystem(g_scene, g_input, deltaTime);
+    Engine::CameraMatrixSystem(
+        g_scene,
+        g_dx.context.Get(),
+        g_cbView.Get(),
+        g_cbProjection.Get()
+    );
 
     // Leave cube rotation system intact
     Engine::DemoRotationSystem(g_scene, g_cubeEntity, deltaTime);
@@ -427,7 +433,6 @@ void Render()
 }
 
 
-
 // Release all game-specific assets
 void UnloadContent()
 {
@@ -435,6 +440,7 @@ void UnloadContent()
     g_cbView.Reset(); 
     g_cbProjection.Reset();
 }
+
 
 // Release all core system resources
 void Cleanup()

@@ -34,22 +34,37 @@ namespace Engine
         int materialID = 0;
     };
 
-    // Camera data (used for future camera entity)
+    // Camera data
     struct CameraComponent
     {
         float FOV = DirectX::XM_PIDIV4;
         float nearClip = 0.1f;
         float farClip = 100.0f;
-		bool invertY = true;
+        bool invertY = true;
     };
 
-    // New: viewport and runtime parameters for the camera
+    // control mode enum for camera
+    enum class CameraControlMode
+    {
+        EditorCam = 0,
+        Scripted
+    };
+
+    // viewport only stores dimensions
     struct ViewportComponent
     {
         unsigned width = 1280;
         unsigned height = 720;
+    };
+
+    // editor camera control parameters moved here
+    struct EditorCamControlComponent
+    {
+        CameraControlMode mode = CameraControlMode::EditorCam;
         float moveSpeed = 5.0f;
         float lookSensitivity = 0.0025f;
         float sprintMultiplier = 2.0f;
+        float yaw = 0.0f;
+        float pitch = 0.0f;
     };
 }
