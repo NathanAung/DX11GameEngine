@@ -60,6 +60,7 @@ endif()
 # Add source files
 set(ENGINE_SOURCE_FILES
   src/main.cpp
+  src/Engine/Renderer.cpp
   src/Engine/InputManager.cpp
   src/Engine/Scene.cpp
   src/Engine/MeshManager.cpp
@@ -69,6 +70,7 @@ set(ENGINE_SOURCE_FILES
 
 set(ENGINE_HEADER_FILES
   include/Engine/Core.h
+  include/Engine/Renderer.h
   include/Engine/InputManager.h
   include/Engine/Components.h
   include/Engine/Scene.h
