@@ -4,6 +4,8 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 
+// MeshManager class handles creation and storage of mesh buffers
+
 namespace Engine
 {
     // Vertex format used by BasicVS.hlsl
@@ -13,6 +15,7 @@ namespace Engine
         DirectX::XMFLOAT3 color;
     };
 
+	// Structure to hold mesh buffers
     struct MeshBuffers
     {
         ID3D11Buffer* vertexBuffer = nullptr;
@@ -32,6 +35,7 @@ namespace Engine
         bool GetMesh(int meshID, MeshBuffers& out) const;
 
     private:
+		// Internal structure to hold mesh data
         struct MeshData
         {
             Microsoft::WRL::ComPtr<ID3D11Buffer> vb;
@@ -41,6 +45,7 @@ namespace Engine
             DXGI_FORMAT idxFmt = DXGI_FORMAT_R16_UINT;
         };
 
+		// Map of meshID to MeshData
         std::unordered_map<int, MeshData> m_meshes;
     };
 }

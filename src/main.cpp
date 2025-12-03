@@ -1,8 +1,7 @@
 #include "Engine/Core.h"
 #include "Engine/InputManager.h"
-#include "Engine/Camera.h"
 #include "Engine/Scene.h"
-#include "Engine/MeshManager.h" 
+#include "Engine/MeshManager.h"
 #include "Engine/ShaderManager.h"
 #include "Engine/Systems.h"
 
@@ -49,9 +48,8 @@ Uint64 g_lastCounter = 0;
 bool g_running = true;
 bool g_vSync = true; // can toggle later
 
-// Input and Camera
+// Input manager
 Engine::InputManager g_input;
-Engine::Camera g_camera;
 
 // ECS: Scene and a cube entity
 Engine::Scene g_scene;
@@ -238,17 +236,17 @@ static void LoadContent()
     // Rasterizer state
     D3D11_RASTERIZER_DESC rsDesc = {};
     rsDesc.FillMode = D3D11_FILL_SOLID;
-	rsDesc.CullMode = D3D11_CULL_BACK;      // don't draw back faces
-	rsDesc.FrontCounterClockwise = FALSE;   // clockwise vertices are front-facing
-	rsDesc.DepthClipEnable = TRUE;          // enable depth clipping
+    rsDesc.CullMode = D3D11_CULL_BACK;      // don't draw back faces
+    rsDesc.FrontCounterClockwise = FALSE;   // clockwise vertices are front-facing
+    rsDesc.DepthClipEnable = TRUE;          // enable depth clipping
     HRESULT hr = g_dx.device->CreateRasterizerState(&rsDesc, g_rasterState.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateRasterizerState failed");
 
-	// Depth-stencil state
+    // Depth-stencil state
     D3D11_DEPTH_STENCIL_DESC dsDesc = {};
     dsDesc.DepthEnable = TRUE;
-	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL; // enable depth writes
-	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;           // standard less-than depth test
+    dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;     // enable depth writes
+    dsDesc.DepthFunc = D3D11_COMPARISON_LESS;               // standard less-than depth test
     dsDesc.StencilEnable = FALSE;
     hr = g_dx.device->CreateDepthStencilState(&dsDesc, g_depthStencilState.GetAddressOf());
     if (FAILED(hr)) throw std::runtime_error("CreateDepthStencilState failed");
@@ -258,10 +256,6 @@ static void LoadContent()
     g_cbView       = CreateMatrixCB(g_dx.device.Get());
     g_cbWorld      = CreateMatrixCB(g_dx.device.Get());
 
-	// Initial matrices from camera
-    UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), g_camera.GetProjectionMatrix());
-    UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), g_camera.GetViewMatrix());
-
     // Load geometry and shaders via managers
     const int cubeMeshID = g_meshManager.InitializeCube(g_dx.device.Get());
     const int shaderID   = g_shaderManager.LoadBasicShaders(g_dx.device.Get());
@@ -269,10 +263,13 @@ static void LoadContent()
     // Provide CBs to renderer
     Engine::RenderSystem::SetConstantBuffers(g_cbProjection.Get(), g_cbView.Get(), g_cbWorld.Get());
 
+    // Create the ECS camera entity
+    g_scene.CreateCamera("Main Editor Camera", g_dx.width, g_dx.height);
+
     // Hook the cube entity to resources
     auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_cubeEntity);
-    mr.meshID     = 101;      // per spec
-    mr.materialID = 1;        // map materialID -> shaderID(1)
+	mr.meshID = 101;    // per spec, temporary ID
+	mr.materialID = 1;  // map materialID -> shaderID(1) (temporary ID)
 }
 
 
@@ -325,10 +322,6 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    // Initialize camera and capture mouse
-    g_camera.SetViewport(g_dx.width, g_dx.height);
-    g_camera.SetLens(XM_PIDIV4, 0.1f, 100.0f);
-    g_camera.SetPosition(XMFLOAT3{ 0.0f, 0.0f, -5.0f });
     g_input.SetMouseCaptured(true);
 
     // ECS: create a cube entity
@@ -345,16 +338,16 @@ int main(int argc, char** argv)
         return -1;
     }
 
-	// Main loop
+    // Main loop
     g_perfFreq = SDL_GetPerformanceFrequency();
     g_lastCounter = SDL_GetPerformanceCounter();
 
     while (g_running)
     {
-		// Begin input frame
+        // Begin input frame
         g_input.BeginFrame();
 
-		// Event handling
+        // Event handling
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
@@ -367,8 +360,16 @@ int main(int argc, char** argv)
                 try
                 {
                     Resize(g_dx, (UINT)e.window.data1, (UINT)e.window.data2);
-                    g_camera.SetViewport(g_dx.width, g_dx.height);
-                    UpdateMatrixCB(g_dx.context.Get(), g_cbProjection.Get(), g_camera.GetProjectionMatrix());
+
+                    // update viewport component on active camera (optional)
+                    if (g_scene.m_activeRenderCamera != entt::null &&
+                        g_scene.registry.valid(g_scene.m_activeRenderCamera) &&
+                        g_scene.registry.all_of<Engine::ViewportComponent>(g_scene.m_activeRenderCamera))
+                    {
+                        auto &vp = g_scene.registry.get<Engine::ViewportComponent>(g_scene.m_activeRenderCamera);
+                        vp.width  = g_dx.width;
+                        vp.height = g_dx.height;
+                    }
                 }
                 catch (const std::exception& ex)
                 {
@@ -377,7 +378,7 @@ int main(int argc, char** argv)
             }
         }
 
-		// Update
+        // Update
         Uint64 currentCounter = SDL_GetPerformanceCounter();
 		float dt = float(double(currentCounter - g_lastCounter) / double(g_perfFreq));    // delta time in seconds
         g_lastCounter = currentCounter;
@@ -398,11 +399,10 @@ int main(int argc, char** argv)
 
 // UPDATE SCENE
 void Update(float deltaTime) {
-    // Camera driven by InputManager
-    g_camera.UpdateFromInput(g_input, deltaTime);
-    UpdateMatrixCB(g_dx.context.Get(), g_cbView.Get(), g_camera.GetViewMatrix());
+    // ECS camera system updates view/projection and handles input
+    Engine::CameraSystem(g_scene, g_input, deltaTime, g_dx.context.Get(), g_cbView.Get(), g_cbProjection.Get());
 
-    // rotate cube via ECS system
+    // Leave cube rotation system intact
     Engine::DemoRotationSystem(g_scene, g_cubeEntity, deltaTime);
 }
 

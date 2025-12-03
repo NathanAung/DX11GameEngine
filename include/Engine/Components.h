@@ -3,6 +3,8 @@
 #include <string>
 #include <DirectXMath.h>
 
+// Components class is used to define various components for ECS architecture
+
 namespace Engine
 {
     // Unique identifier component
@@ -36,7 +38,18 @@ namespace Engine
     struct CameraComponent
     {
         float FOV = DirectX::XM_PIDIV4;
-        float NearClip = 0.1f;
-        float FarClip = 100.0f;
+        float nearClip = 0.1f;
+        float farClip = 100.0f;
+		bool invertY = true;
+    };
+
+    // New: viewport and runtime parameters for the camera
+    struct ViewportComponent
+    {
+        unsigned width = 1280;
+        unsigned height = 720;
+        float moveSpeed = 5.0f;
+        float lookSensitivity = 0.0025f;
+        float sprintMultiplier = 2.0f;
     };
 }

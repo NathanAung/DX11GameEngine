@@ -61,7 +61,6 @@ endif()
 set(ENGINE_SOURCE_FILES
   src/main.cpp
   src/Engine/InputManager.cpp
-  src/Engine/Camera.cpp
   src/Engine/Scene.cpp
   src/Engine/MeshManager.cpp
   src/Engine/ShaderManager.cpp
@@ -71,7 +70,6 @@ set(ENGINE_SOURCE_FILES
 set(ENGINE_HEADER_FILES
   include/Engine/Core.h
   include/Engine/InputManager.h
-  include/Engine/Camera.h
   include/Engine/Components.h
   include/Engine/Scene.h
   include/Engine/MeshManager.h

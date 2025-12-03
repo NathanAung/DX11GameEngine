@@ -25,26 +25,106 @@ namespace Engine
         if (cubeEntity == entt::null) return;
         if (!scene.registry.valid(cubeEntity)) return;
 
+		// get TransformComponent
         auto& tc = scene.registry.get<TransformComponent>(cubeEntity);
 
         static float s_angle = 0.0f;
         s_angle += dt * XM_PIDIV4; // 45 deg/sec
 
         // Rotation around X
-        XMVECTOR qx = XMQuaternionRotationAxis(
-            XMVectorSet(1.f, 0.f, 0.f, 0.f),
-            s_angle
-        );
+        XMVECTOR qx = XMQuaternionRotationAxis(XMVectorSet(1.f, 0.f, 0.f, 0.f), s_angle);
 
         // Rotation around Y (slower)
-        XMVECTOR qy = XMQuaternionRotationAxis(
-            XMVectorSet(0.f, 1.f, 0.f, 0.f),
-            s_angle * 0.7f
-        );
+        XMVECTOR qy = XMQuaternionRotationAxis(XMVectorSet(0.f, 1.f, 0.f, 0.f), s_angle * 0.7f);
 
         // Combine
         XMVECTOR q = XMQuaternionMultiply(qx, qy);
         XMStoreFloat4(&tc.rotation, q);
+    }
+
+    void CameraSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt,
+                      ID3D11DeviceContext* context, ID3D11Buffer* cbView, ID3D11Buffer* cbProj)
+    {
+		// Get active camera entity
+        const entt::entity cam = scene.m_activeRenderCamera;
+        if (cam == entt::null || !scene.registry.valid(cam)) return;
+        if (!scene.registry.all_of<TransformComponent, CameraComponent, ViewportComponent>(cam)) return;
+
+		auto& tf = scene.registry.get<TransformComponent>(cam); // camera transform
+		auto& camc = scene.registry.get<CameraComponent>(cam);  // camera component
+		auto& vp = scene.registry.get<ViewportComponent>(cam);  // viewport component
+
+        // Input-based look: use mouse delta, apply sensitivity, clamp pitch, wrap yaw
+        static float yaw = 0.0f;
+        static float pitch = 0.0f;
+        const auto md = input.GetMouseDelta();
+
+        yaw   += static_cast<float>(md.dx) * vp.lookSensitivity;
+        pitch += static_cast<float>(md.dy) * vp.lookSensitivity * (camc.invertY ? -1.0f : 1.0f);
+
+		// Clamp pitch to avoid gimbal lock
+        const float kPitchLimit = XMConvertToRadians(89.0f);
+        if (pitch >  kPitchLimit) pitch =  kPitchLimit;
+        if (pitch < -kPitchLimit) pitch = -kPitchLimit;
+
+		// Wrap yaw to [-pi, +pi]
+        if (yaw > XM_PI)  yaw -= XM_2PI;
+        if (yaw < -XM_PI) yaw += XM_2PI;
+
+        // Recompute forward/right/up basis from yaw/pitch (LH, yaw=0 looks +Z)
+        const float cy = cosf(yaw);
+        const float sy = sinf(yaw);
+        const float cp = cosf(pitch);
+        const float sp = sinf(pitch);
+
+        XMVECTOR forward = XMVector3Normalize(XMVectorSet(sy * cp, sp, cy * cp, 0.0f));
+        XMVECTOR worldUp = XMVectorSet(0, 1, 0, 0);
+        XMVECTOR right = XMVector3Normalize(XMVector3Cross(worldUp, forward));
+        XMVECTOR up = XMVector3Normalize(XMVector3Cross(forward, right));
+
+        // Move: W/A/S/D (+ Shift sprint), Space to move up
+        float speed = vp.moveSpeed * dt;
+        // Shift key sprint multiplier (Left Shift)
+        if (input.IsKeyDown(Key::LShift)) speed *= vp.sprintMultiplier;
+
+        XMVECTOR move = XMVectorZero();
+        if (input.IsKeyDown(Key::W)) move = XMVectorAdd(move, forward);
+        if (input.IsKeyDown(Key::S)) move = XMVectorSubtract(move, forward);
+        if (input.IsKeyDown(Key::D)) move = XMVectorAdd(move, right);
+        if (input.IsKeyDown(Key::A)) move = XMVectorSubtract(move, right);
+        if (input.IsKeyDown(Key::Space)) move = XMVectorAdd(move, XMVectorSet(0, 1, 0, 0));
+
+        if (!XMVector3Equal(move, XMVectorZero()))
+        {
+            move = XMVector3Normalize(move);
+            move = XMVectorScale(move, speed);
+            XMVECTOR pos = XMVectorAdd(XMLoadFloat3(&tf.position), move);
+            XMStoreFloat3(&tf.position, pos);
+        }
+
+        // Store rotation in TransformComponent as quaternion from basis
+        // Build quaternion from forward (look) and up: derive rotation matrix then quaternion
+        XMMATRIX basis;
+        // Construct a matrix where columns are right, up, forward (LH)
+        basis.r[0] = XMVectorSet(XMVectorGetX(right), XMVectorGetY(right), XMVectorGetZ(right), 0.0f);
+        basis.r[1] = XMVectorSet(XMVectorGetX(up), XMVectorGetY(up), XMVectorGetZ(up), 0.0f);
+        basis.r[2] = XMVectorSet(XMVectorGetX(forward), XMVectorGetY(forward), XMVectorGetZ(forward), 0.0f);
+        basis.r[3] = XMVectorSet(0, 0, 0, 1);
+
+        XMVECTOR q = XMQuaternionRotationMatrix(basis);
+        q = XMQuaternionNormalize(q);
+        XMStoreFloat4(&tf.rotation, q);
+
+        // View matrix (LH): look-to using basis and position
+        const XMMATRIX view = XMMatrixLookToLH(XMLoadFloat3(&tf.position), forward, up);
+
+        // Projection matrix (LH)
+        const float aspect = static_cast<float>(vp.width) / static_cast<float>(vp.height ? vp.height : 1u);
+        const XMMATRIX proj = XMMatrixPerspectiveFovLH(camc.FOV, aspect, camc.nearClip, camc.farClip);
+
+        // Upload to GPU
+        if (cbView) UpdateMatrixCB(context, cbView, view);
+        if (cbProj) UpdateMatrixCB(context, cbProj, proj);
     }
 
     void RenderSystem::SetConstantBuffers(ID3D11Buffer* cbProj, ID3D11Buffer* cbView, ID3D11Buffer* cbWorld)
