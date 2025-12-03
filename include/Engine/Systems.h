@@ -5,6 +5,7 @@
 #include "Engine/MeshManager.h"
 #include "Engine/ShaderManager.h"
 #include "Engine/InputManager.h"
+#include "Engine/Renderer.h"
 
 // Systems for the engine, including various update and rendering systems
 
@@ -16,27 +17,13 @@ namespace Engine
     // input-driven camera movement and look
     void CameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt);
 
-    // build view/projection matrices for active camera and upload to GPU
-    void CameraMatrixSystem(Engine::Scene& scene,
-                            ID3D11DeviceContext* context,
-                            ID3D11Buffer* cbView,
-                            ID3D11Buffer* cbProj);
+    // build view/projection matrices for active camera and upload via renderer
+    void CameraMatrixSystem(Engine::Scene& scene, Engine::Renderer& renderer);
 
-    // rendering system
+    // rendering system: ECS iteration only
     struct RenderSystem
     {
-        // one-time setup to provide constant buffers to the renderer
-        static void SetConstantBuffers(ID3D11Buffer* cbProj, ID3D11Buffer* cbView, ID3D11Buffer* cbWorld);
-
-        // Clears RTV/DSV and sets viewport and default states for a frame
-        static void SetupFrame(ID3D11DeviceContext* context,
-                               ID3D11RenderTargetView* rtv,
-                               ID3D11DepthStencilView* dsv,
-                               ID3D11RasterizerState* rasterState,
-                               ID3D11DepthStencilState* depthStencilState,
-                               UINT width, UINT height);
-
         // Draw all entities that have MeshRendererComponent (+ TransformComponent)
-        static void DrawEntities(Engine::Scene& scene, Engine::MeshManager& meshMan, Engine::ShaderManager& shaderMan, ID3D11DeviceContext* context);
+        static void DrawEntities(Engine::Scene& scene, Engine::MeshManager& meshMan, Engine::ShaderManager& shaderMan, Engine::Renderer& renderer);
     };
 }

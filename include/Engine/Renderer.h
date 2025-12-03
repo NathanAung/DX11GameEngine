@@ -2,9 +2,13 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <wrl/client.h> // For ComPtr
+#include <DirectXMath.h>
 
 namespace Engine
 {
+struct MeshBuffers;
+class ShaderManager;
+
 struct DX11Context
 {
     Microsoft::WRL::ComPtr<ID3D11Device> device;
@@ -27,14 +31,23 @@ public:
     void Present(bool vsync);
     bool Resize(unsigned width, unsigned height);
 
-    // Resource Accessors (for Systems to use)
+    // Frame methods and D3D11 command helpers
+    void BeginFrame();
+    void UpdateViewMatrix(const DirectX::XMMATRIX& view);
+    void UpdateProjectionMatrix(const DirectX::XMMATRIX& proj);
+    void UpdateWorldMatrix(const DirectX::XMMATRIX& world);
+	// Binds shaders from ShaderManager
+    void BindShader(const Engine::ShaderManager& shaderMan, int shaderID);
+	// Submits mesh buffers for drawing
+    void SubmitMesh(const Engine::MeshBuffers& mesh, ID3D11InputLayout* inputLayout);
+	// Issues the draw call
+    void DrawIndexed(UINT indexCount);
+
+    // Resource Accessors (for Systems to use if needed)
     ID3D11Device* GetDevice() const { return m_dx.device.Get(); }
     ID3D11DeviceContext* GetContext() const { return m_dx.context.Get(); }
-    ID3D11Buffer* GetViewCB() const { return m_cbView.Get(); }
-    ID3D11Buffer* GetProjectionCB() const { return m_cbProjection.Get(); }
-    ID3D11Buffer* GetWorldCB() const { return m_cbWorld.Get(); }
 
-    // Frame Setup Accessors (for the main Render function to use)
+    // Frame Setup Accessors
     ID3D11RenderTargetView* GetRTV() const { return m_dx.rtv.Get(); }
     ID3D11DepthStencilView* GetDSV() const { return m_dx.dsv.Get(); }
     ID3D11RasterizerState* GetRasterState() const { return m_rasterState.Get(); }
@@ -61,6 +74,9 @@ private:
     bool CreateViews();
     bool CreateMatrixCB(ID3D11Buffer** outBuffer);
     void ReleaseViews();
+
+    // matrix update helper
+    void UpdateMatrixCB(ID3D11Buffer* cb, const DirectX::XMMATRIX& m);
 };
 
 }

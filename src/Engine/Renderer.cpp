@@ -1,7 +1,9 @@
 #include "Engine/Renderer.h"
-#include <stdexcept>
+#include "Engine/ShaderManager.h"
+#include "Engine/MeshManager.h"
 
 using Microsoft::WRL::ComPtr;
+using namespace DirectX;
 
 namespace Engine
 {
@@ -37,9 +39,9 @@ namespace Engine
 
         ReleaseViews();
 
-        if (m_dx.swapChain) m_dx.swapChain.Reset();
-        if (m_dx.context)   m_dx.context.Reset();
-        if (m_dx.device)    m_dx.device.Reset();
+        m_dx.swapChain.Reset();
+        m_dx.context.Reset();
+        m_dx.device.Reset();
     }
 
     void Renderer::Present(bool vsync)
@@ -70,6 +72,76 @@ namespace Engine
 
         // Recreate render target and depth-stencil views
         return CreateViews();
+    }
+
+    void Renderer::BeginFrame()
+    {
+        // Bind RTV/DSV and clear them
+        m_dx.context->OMSetRenderTargets(1, m_dx.rtv.GetAddressOf(), m_dx.dsv.Get());
+
+        const float clearColor[4] = { 0.10f, 0.18f, 0.28f, 1.0f };
+        m_dx.context->ClearRenderTargetView(m_dx.rtv.Get(), clearColor);
+        m_dx.context->ClearDepthStencilView(m_dx.dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+        // viewport
+        D3D11_VIEWPORT vp{};
+        vp.TopLeftX = 0.0f;
+        vp.TopLeftY = 0.0f;
+        vp.Width    = static_cast<float>(m_dx.width);
+        vp.Height   = static_cast<float>(m_dx.height);
+        vp.MinDepth = 0.0f;
+        vp.MaxDepth = 1.0f;
+        m_dx.context->RSSetViewports(1, &vp);
+
+        // basic states
+        if (m_rasterState)       m_dx.context->RSSetState(m_rasterState.Get());
+        if (m_depthStencilState) m_dx.context->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
+
+        // Bind per-frame CBs (b0=Proj, b1=View, b2=World)
+        ID3D11Buffer* vscbs[] = { m_cbProjection.Get(), m_cbView.Get(), m_cbWorld.Get() };
+        m_dx.context->VSSetConstantBuffers(0, 3, vscbs);
+    }
+
+    void Renderer::UpdateMatrixCB(ID3D11Buffer* cb, const XMMATRIX& m)
+    {
+        XMFLOAT4X4 rm;
+        XMStoreFloat4x4(&rm, m);
+        m_dx.context->UpdateSubresource(cb, 0, nullptr, &rm, 0, 0);
+    }
+
+    void Renderer::UpdateViewMatrix(const XMMATRIX& view)
+    {
+        if (m_cbView) UpdateMatrixCB(m_cbView.Get(), view);
+    }
+
+    void Renderer::UpdateProjectionMatrix(const XMMATRIX& proj)
+    {
+        if (m_cbProjection) UpdateMatrixCB(m_cbProjection.Get(), proj);
+    }
+
+    void Renderer::UpdateWorldMatrix(const XMMATRIX& world)
+    {
+        if (m_cbWorld) UpdateMatrixCB(m_cbWorld.Get(), world);
+    }
+
+    void Renderer::BindShader(const Engine::ShaderManager& shaderMan, int shaderID)
+    {
+        shaderMan.Bind(shaderID, m_dx.context.Get());
+    }
+
+    void Renderer::SubmitMesh(const Engine::MeshBuffers& mesh, ID3D11InputLayout* inputLayout)
+    {
+        UINT stride = mesh.stride;
+        UINT offset = 0;
+        m_dx.context->IASetInputLayout(inputLayout);
+        m_dx.context->IASetVertexBuffers(0, 1, &mesh.vertexBuffer, &stride, &offset);
+        m_dx.context->IASetIndexBuffer(mesh.indexBuffer, mesh.indexFormat, 0);
+        m_dx.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    }
+
+    void Renderer::DrawIndexed(UINT indexCount)
+    {
+        m_dx.context->DrawIndexed(indexCount, 0, 0);
     }
 
     bool Renderer::CreateDeviceAndSwapChain(HWND hwnd)

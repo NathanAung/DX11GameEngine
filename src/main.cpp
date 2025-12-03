@@ -48,12 +48,6 @@ static void LoadContent()
     const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice());
     const int shaderID   = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
 
-    // Provide CBs to renderer systems
-    Engine::RenderSystem::SetConstantBuffers(
-        g_renderer.GetProjectionCB(),
-        g_renderer.GetViewCB(),
-        g_renderer.GetWorldCB());
-
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Main Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
 
@@ -191,35 +185,17 @@ int main(int argc, char** argv)
     return 0;
 }
 
-// UPDATE SCENE
 void Update(float deltaTime) {
-    // two-system camera architecture: first input, then matrices upload
     Engine::CameraInputSystem(g_scene, g_input, deltaTime);
-    Engine::CameraMatrixSystem(
-        g_scene,
-        g_renderer.GetContext(),
-        g_renderer.GetViewCB(),
-        g_renderer.GetProjectionCB()
-    );
-
-    // Leave cube rotation system intact
+    Engine::CameraMatrixSystem(g_scene, g_renderer);
     Engine::DemoRotationSystem(g_scene, g_cubeEntity, deltaTime);
 }
 
-// RENDER SCENE
 void Render()
 {
-    // centralized rendering
-    Engine::RenderSystem::SetupFrame(
-        g_renderer.GetContext(),
-        g_renderer.GetRTV(),
-        g_renderer.GetDSV(),
-        g_renderer.GetRasterState(),
-        g_renderer.GetDepthStencilState(),
-        g_renderer.GetWidth(), g_renderer.GetHeight());
+    g_renderer.BeginFrame();
 
-    Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer.GetContext());
+    Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer);
 
-    // Present back buffer
     g_renderer.Present(g_vSync);
 }
