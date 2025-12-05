@@ -44,11 +44,12 @@ namespace Engine
         if (FAILED(device->CreatePixelShader(psByte->GetBufferPointer(), psByte->GetBufferSize(), nullptr, sd.ps.GetAddressOf())))
             return -1;
 
-        // Input layout (matches Engine::Vertex)
+        // Input layout (matches Engine::Vertex: POSITION, NORMAL, TEXCOORD)
         D3D11_INPUT_ELEMENT_DESC layout[] =
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Engine::Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "COLOR",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Engine::Vertex, color),    D3D11_INPUT_PER_VERTEX_DATA, 0 }
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Engine::Vertex, normal),   D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(Engine::Vertex, texCoord), D3D11_INPUT_PER_VERTEX_DATA, 0 }
         };
         if (FAILED(device->CreateInputLayout(layout, _countof(layout), vsByte->GetBufferPointer(), vsByte->GetBufferSize(), sd.inputLayout.GetAddressOf())))
             return -1;

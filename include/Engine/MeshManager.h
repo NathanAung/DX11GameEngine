@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <DirectXMath.h>
 
 // MeshManager class handles creation and storage of mesh buffers
 
@@ -12,10 +13,11 @@ namespace Engine
     struct Vertex
     {
         DirectX::XMFLOAT3 position;
-        DirectX::XMFLOAT3 color;
+        DirectX::XMFLOAT3 normal;    // NEW: per-vertex normal
+        DirectX::XMFLOAT2 texCoord;  // NEW: per-vertex UV
     };
 
-	// Structure to hold mesh buffers
+    // Structure to hold mesh buffers
     struct MeshBuffers
     {
         ID3D11Buffer* vertexBuffer = nullptr;
@@ -28,14 +30,14 @@ namespace Engine
     class MeshManager
     {
     public:
-		// Creates a unit cube mesh and stores it as meshID 101. Returns 101. (temporary ID)
+        // Creates a unit cube mesh and stores it as meshID 101. Returns 101. (temporary ID)
         int InitializeCube(ID3D11Device* device);
 
         // Retrieves buffers for a mesh ID
         bool GetMesh(int meshID, MeshBuffers& out) const;
 
     private:
-		// Internal structure to hold mesh data
+        // Internal structure to hold mesh data
         struct MeshData
         {
             Microsoft::WRL::ComPtr<ID3D11Buffer> vb;
@@ -45,7 +47,7 @@ namespace Engine
             DXGI_FORMAT idxFmt = DXGI_FORMAT_R16_UINT;
         };
 
-		// Map of meshID to MeshData
+        // Map of meshID to MeshData
         std::unordered_map<int, MeshData> m_meshes;
     };
 }

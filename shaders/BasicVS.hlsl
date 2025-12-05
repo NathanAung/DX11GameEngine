@@ -14,13 +14,15 @@ cbuffer CB_Object : register(b2) // World
 struct VSInput
 {
     float3 position : POSITION;
-    float3 color : COLOR;
+    float3 normal : NORMAL;
+    float2 texCoord : TEXCOORD;
 };
 
 struct VSOutput
 {
     float4 position : SV_POSITION;
-    float3 color : COLOR;
+    float3 normal : NORMAL;
+    float2 texCoord : TEXCOORD;
 };
 
 VSOutput main(VSInput input)
@@ -33,6 +35,8 @@ VSOutput main(VSInput input)
     float4 viewPos = mul(worldPos, g_View);
     o.position = mul(viewPos, g_Projection);
 
-    o.color = input.color;
+    // Pass through normal/texCoord (no tangent basis transform yet)
+    o.normal = input.normal;
+    o.texCoord = input.texCoord;
     return o;
 }
