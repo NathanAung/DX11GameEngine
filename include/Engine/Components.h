@@ -39,7 +39,7 @@ namespace Engine
     {
         float FOV = DirectX::XM_PIDIV4;
         float nearClip = 0.1f;
-        float farClip = 100.0f;
+        float farClip = 5000.0f;
         bool invertY = true;
     };
 

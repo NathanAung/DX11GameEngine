@@ -47,15 +47,28 @@ void Render();
 static void LoadContent()
 {
     // Create resources with renderer device
-    const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice());
+    // const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice()); // replaced by model loading
     const int shaderID   = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
 
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Main Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
 
-    // Hook the cube entity to resources
+    // Load a model; ensure the asset exists and Assimp DLL is present alongside the exe
+    auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");
+
+    // Hook the cube entity to resources (now using first mesh from model)
     auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_cubeEntity);
-    mr.meshID = 101;    // per spec, temporary ID
+    if (!meshIDs.empty())
+    {
+        int firstMeshID = meshIDs[0];
+        mr.meshID = firstMeshID;
+    }
+    else
+    {
+        // fallback to temp cube if model failed to load
+        const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice());
+        mr.meshID = 101;    // per spec, temporary ID
+    }
     mr.materialID = 1;  // map materialID -> shaderID(1) (temporary ID)
 
     // example texture loading via texture manager and keep SRV (Binding to pipeline will be handled when materials are implemented.)

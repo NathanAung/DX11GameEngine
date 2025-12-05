@@ -267,7 +267,7 @@ namespace Engine
         // Rasterizer state
         D3D11_RASTERIZER_DESC rsDesc = {};
         rsDesc.FillMode = D3D11_FILL_SOLID;
-        rsDesc.CullMode = D3D11_CULL_BACK;
+        rsDesc.CullMode = D3D11_CULL_BACK; 
         rsDesc.FrontCounterClockwise = FALSE;
         rsDesc.DepthClipEnable = TRUE;
         HRESULT hr = m_dx.device->CreateRasterizerState(&rsDesc, m_rasterState.GetAddressOf());

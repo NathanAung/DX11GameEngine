@@ -114,6 +114,15 @@ if(TARGET SDL2::SDL2)
   target_link_libraries(DX11GameEngine PRIVATE SDL2::SDL2)
 endif()
 
+# Find Assimp
+find_package(assimp CONFIG REQUIRED)
+
+# Include dirs (only if target doesn’t propagate)
+# target_include_directories(DX11GameEngine PRIVATE ${ASSIMP_INCLUDE_DIRS})
+
+# Link Assimp
+target_link_libraries(DX11GameEngine PRIVATE assimp::assimp)
+
 # Optional: lock MSVC runtime to DLL form
 if(MSVC)
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
