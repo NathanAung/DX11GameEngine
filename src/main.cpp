@@ -5,6 +5,7 @@
 #include "Engine/MeshManager.h"
 #include "Engine/ShaderManager.h"
 #include "Engine/Systems.h"
+#include "Engine/TextureManager.h" // Texture manager include
 
 // Common Usings
 using namespace DirectX;
@@ -33,6 +34,7 @@ entt::entity g_cubeEntity = entt::null;
 // Managers
 Engine::MeshManager g_meshManager;
 Engine::ShaderManager g_shaderManager;
+Engine::TextureManager g_textureManager; // global texture manager instance
 
 // Renderer
 Engine::Renderer g_renderer;
@@ -55,6 +57,9 @@ static void LoadContent()
     auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_cubeEntity);
     mr.meshID = 101;    // per spec, temporary ID
     mr.materialID = 1;  // map materialID -> shaderID(1) (temporary ID)
+
+    // example texture loading via texture manager and keep SRV (Binding to pipeline will be handled when materials are implemented.)
+    // ID3D11ShaderResourceView* srv = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/texture.png");
 }
 
 // Main entry point

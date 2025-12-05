@@ -13,8 +13,8 @@ namespace Engine
     struct Vertex
     {
         DirectX::XMFLOAT3 position;
-        DirectX::XMFLOAT3 normal;    // NEW: per-vertex normal
-        DirectX::XMFLOAT2 texCoord;  // NEW: per-vertex UV
+        DirectX::XMFLOAT3 normal;    // per-vertex normal
+        DirectX::XMFLOAT2 texCoord;  // per-vertex UV
     };
 
     // Structure to hold mesh buffers
