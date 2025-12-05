@@ -69,10 +69,11 @@ static void LoadContent()
         const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice());
         mr.meshID = 101;    // per spec, temporary ID
     }
-    mr.materialID = 1;  // map materialID -> shaderID(1) (temporary ID)
+    mr.materialID = shaderID;  // map materialID -> shaderID(1) (temporary ID)
 
-    // example texture loading via texture manager and keep SRV (Binding to pipeline will be handled when materials are implemented.)
-    // ID3D11ShaderResourceView* srv = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/texture.png");
+    // example texture loading via texture manager and keep SRV
+    ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture.png");
+    mr.texture = tex; // assign texture to component
 }
 
 // Main entry point

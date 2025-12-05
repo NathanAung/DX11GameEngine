@@ -11,6 +11,12 @@
 
 namespace Engine
 {
+    namespace RenderSystem
+    {
+        // pass Renderer to access context and sampler
+        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer);
+    }
+
     // demo cube rotation logic
     void DemoRotationSystem(Engine::Scene& scene, entt::entity cubeEntity, float dt);
 
@@ -19,11 +25,4 @@ namespace Engine
 
     // build view/projection matrices for active camera and upload via renderer
     void CameraMatrixSystem(Engine::Scene& scene, Engine::Renderer& renderer);
-
-    // rendering system: ECS iteration only
-    struct RenderSystem
-    {
-        // Draw all entities that have MeshRendererComponent (+ TransformComponent)
-        static void DrawEntities(Engine::Scene& scene, Engine::MeshManager& meshMan, Engine::ShaderManager& shaderMan, Engine::Renderer& renderer);
-    };
 }

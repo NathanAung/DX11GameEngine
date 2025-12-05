@@ -36,11 +36,11 @@ public:
     void UpdateViewMatrix(const DirectX::XMMATRIX& view);
     void UpdateProjectionMatrix(const DirectX::XMMATRIX& proj);
     void UpdateWorldMatrix(const DirectX::XMMATRIX& world);
-	// Binds shaders from ShaderManager
+    // Binds shaders from ShaderManager
     void BindShader(const Engine::ShaderManager& shaderMan, int shaderID);
-	// Submits mesh buffers for drawing
+    // Submits mesh buffers for drawing
     void SubmitMesh(const Engine::MeshBuffers& mesh, ID3D11InputLayout* inputLayout);
-	// Issues the draw call
+    // Issues the draw call
     void DrawIndexed(UINT indexCount);
 
     // Resource Accessors (for Systems to use if needed)
@@ -52,6 +52,7 @@ public:
     ID3D11DepthStencilView* GetDSV() const { return m_dx.dsv.Get(); }
     ID3D11RasterizerState* GetRasterState() const { return m_rasterState.Get(); }
     ID3D11DepthStencilState* GetDepthStencilState() const { return m_depthStencilState.Get(); }
+    ID3D11SamplerState* GetSamplerState() const { return m_samplerState.Get(); }
     UINT GetWidth() const { return m_dx.width; }
     UINT GetHeight() const { return m_dx.height; }
 
@@ -64,7 +65,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbWorld;
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_rasterState;
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_depthStencilState;
-    // other global ComPtr resources? (shaders, input layout, etc.)
+    Microsoft::WRL::ComPtr<ID3D11SamplerState> m_samplerState;
 
     // Helper for initial resource creation (Rasterizer, Depth/Stencil, CBs)
     bool CreateInitialResources();

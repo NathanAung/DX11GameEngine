@@ -12,7 +12,7 @@ namespace Engine
         m_dx.width = width;
         m_dx.height = height;
 
-		// Create device, context, and swap chain
+        // Create device, context, and swap chain
         if (!CreateDeviceAndSwapChain(hwnd))
             return false;
 
@@ -20,7 +20,7 @@ namespace Engine
         if (!CreateViews())
             return false;
 
-		// Create initial resources: Rasterizer state, Depth/Stencil state, Constant Buffers
+        // Create initial resources: Rasterizer state, Depth/Stencil state, Constant Buffers, Sampler
         if (!CreateInitialResources())
             return false;
 
@@ -30,6 +30,7 @@ namespace Engine
     void Renderer::Shutdown()
     {
         // Reset all ComPtrs (unload and cleanup combined)
+        m_samplerState.Reset();
         m_depthStencilState.Reset();
         m_rasterState.Reset();
 
@@ -267,7 +268,7 @@ namespace Engine
         // Rasterizer state
         D3D11_RASTERIZER_DESC rsDesc = {};
         rsDesc.FillMode = D3D11_FILL_SOLID;
-        rsDesc.CullMode = D3D11_CULL_BACK; 
+        rsDesc.CullMode = D3D11_CULL_BACK;
         rsDesc.FrontCounterClockwise = FALSE;
         rsDesc.DepthClipEnable = TRUE;
         HRESULT hr = m_dx.device->CreateRasterizerState(&rsDesc, m_rasterState.GetAddressOf());
@@ -286,6 +287,25 @@ namespace Engine
         if (!CreateMatrixCB(m_cbProjection.GetAddressOf())) return false;
         if (!CreateMatrixCB(m_cbView.GetAddressOf())) return false;
         if (!CreateMatrixCB(m_cbWorld.GetAddressOf())) return false;
+
+        // Sampler state for PS s0
+        D3D11_SAMPLER_DESC sampDesc = {};
+        sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+        sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+        sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+        sampDesc.MipLODBias = 0.0f;
+        sampDesc.MaxAnisotropy = 1;
+        sampDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
+        sampDesc.BorderColor[0] = 0.0f;
+        sampDesc.BorderColor[1] = 0.0f;
+        sampDesc.BorderColor[2] = 0.0f;
+        sampDesc.BorderColor[3] = 0.0f;
+        sampDesc.MinLOD = 0.0f;
+        sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+
+        hr = m_dx.device->CreateSamplerState(&sampDesc, m_samplerState.GetAddressOf());
+        if (FAILED(hr)) return false;
 
         return true;
     }

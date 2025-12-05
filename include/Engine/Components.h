@@ -2,6 +2,7 @@
 #include <cstdint>
 #include <string>
 #include <DirectXMath.h>
+#include <d3d11.h> // Added for ID3D11ShaderResourceView*
 
 // Components class is used to define various components for ECS architecture
 
@@ -32,6 +33,7 @@ namespace Engine
     {
         int meshID = 0;
         int materialID = 0;
+        ID3D11ShaderResourceView* texture = nullptr; // texture SRV bound to PS t0
     };
 
     // Camera data

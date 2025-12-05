@@ -65,6 +65,7 @@ set(ENGINE_SOURCE_FILES
   src/Engine/Scene.cpp
   src/Engine/MeshManager.cpp
   src/Engine/ShaderManager.cpp
+  src/Engine/TextureManager.cpp
   src/Engine/Systems.cpp
 )
 
@@ -76,6 +77,7 @@ set(ENGINE_HEADER_FILES
   include/Engine/Scene.h
   include/Engine/MeshManager.h
   include/Engine/ShaderManager.h
+  include/Engine/TextureManager.h
   include/Engine/Systems.h
 )
 
@@ -157,3 +159,11 @@ add_custom_target(CopyShaders ALL
           ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders
 )
 add_dependencies(DX11GameEngine CopyShaders)
+
+# Copy assets next to the executable
+add_custom_target(CopyAssets ALL
+  COMMAND ${CMAKE_COMMAND} -E copy_directory
+          ${CMAKE_SOURCE_DIR}/assets
+          ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets
+)
+add_dependencies(DX11GameEngine CopyAssets)

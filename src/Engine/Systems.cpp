@@ -1,4 +1,7 @@
 #include "Engine/Systems.h"
+#include "Engine/Components.h"
+#include "Engine/Renderer.h"
+#include "Engine/MeshManager.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
@@ -126,31 +129,56 @@ namespace Engine
         renderer.UpdateProjectionMatrix(proj);
     }
 
-    void RenderSystem::DrawEntities(Engine::Scene& scene, Engine::MeshManager& meshMan, Engine::ShaderManager& shaderMan, Engine::Renderer& renderer)
+    namespace RenderSystem
     {
-        auto view = scene.registry.view<TransformComponent, MeshRendererComponent>();
-        for (auto ent : view)
+        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer)
         {
-            const auto& tc = view.get<TransformComponent>(ent);
-            const auto& mr = view.get<MeshRendererComponent>(ent);
+            auto* context = renderer.GetContext();
 
-            Engine::MeshBuffers mb{};
-            if (!meshMan.GetMesh(mr.meshID, mb)) continue;
+            // Bind basic shaders (temporary ID 1)
+            renderer.BindShader(shaderManager, 1);
 
-            const XMMATRIX S = XMMatrixScaling(tc.scale.x, tc.scale.y, tc.scale.z);
-            XMVECTOR qn = XMLoadFloat4(&tc.rotation);
-            qn = XMQuaternionNormalize(qn);
-            const XMMATRIX R = XMMatrixRotationQuaternion(qn);
-            const XMMATRIX T = XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
-            const XMMATRIX world = S * R * T;
+            // Bind sampler to PS s0 once per frame
+            ID3D11SamplerState* sampler = renderer.GetSamplerState();
+            if (sampler)
+            {
+                context->PSSetSamplers(0, 1, &sampler);
+            }
 
-            // Update world matrix CB
-            renderer.UpdateWorldMatrix(world);      
+            // Iterate renderable entities (assuming MeshRendererComponent and TransformComponent exist)
+            auto view = scene.registry.view<MeshRendererComponent, TransformComponent>();
+            for (auto entity : view)
+            {
+                auto& mr = view.get<MeshRendererComponent>(entity);
+                auto& tr = view.get<TransformComponent>(entity);
 
-			// Bind shader and draw
-            renderer.BindShader(shaderMan, mr.materialID);
-            renderer.SubmitMesh(mb, shaderMan.GetInputLayout(mr.materialID));
-            renderer.DrawIndexed(mb.indexCount);
+                // World matrix from transform (simple: position only, no rotation/scale)
+                XMMATRIX world =
+                    XMMatrixScaling(tr.scale.x, tr.scale.y, tr.scale.z) *
+                    XMMatrixRotationQuaternion(XMLoadFloat4(&tr.rotation)) *
+                    XMMatrixTranslation(tr.position.x, tr.position.y, tr.position.z);
+                renderer.UpdateWorldMatrix(world);
+
+                // Bind texture if present to PS t0
+                if (mr.texture)
+                {
+                    context->PSSetShaderResources(0, 1, &mr.texture);
+                }
+
+                // Fetch mesh buffers
+                MeshBuffers buffers{};
+                if (!meshManager.GetMesh(mr.meshID, buffers))
+                    continue;
+
+                // Submit and draw
+                ID3D11InputLayout* layout = shaderManager.GetInputLayout(mr.materialID);
+                renderer.SubmitMesh(buffers, layout);
+                renderer.DrawIndexed(buffers.indexCount);
+
+                // unbind texture to avoid hazards with subsequent draws (optional here)
+                // ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
+                // context->PSSetShaderResources(0, 1, nullSRV);
+            }
         }
     }
 }
