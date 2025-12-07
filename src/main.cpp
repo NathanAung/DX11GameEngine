@@ -53,6 +53,9 @@ static void LoadContent()
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Main Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
 
+	// Create a directional light
+	g_scene.CreateDirectionalLight("Sun Light");
+
     // Load a model; ensure the asset exists and Assimp DLL is present alongside the exe
     auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");
 

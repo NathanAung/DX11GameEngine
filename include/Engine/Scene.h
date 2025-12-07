@@ -24,5 +24,8 @@ namespace Engine
 
         // Create camera entity and set as active if none set
         entt::entity CreateEditorCamera(const std::string& name, unsigned width, unsigned height);
+
+		// Create a directional light entity
+		entt::entity CreateDirectionalLight(const char* name);
     };
 }

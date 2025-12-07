@@ -34,6 +34,7 @@ namespace Engine
         m_samplerState.Reset();
         m_depthStencilState.Reset();
         m_rasterState.Reset();
+        m_cbLight.Reset();
 
         m_cbWorld.Reset();
         m_cbView.Reset();
@@ -278,13 +279,21 @@ namespace Engine
         return true;
     }
 
+    void Renderer::UpdateLightConstants(const LightConstants& data)
+    {
+        if (m_cbLight)
+        {
+            m_dx.context->UpdateSubresource(m_cbLight.Get(), 0, nullptr, &data, 0, 0);
+        }
+    }
+
     bool Renderer::CreateInitialResources()
     {
         // Rasterizer state
         D3D11_RASTERIZER_DESC rsDesc = {};
         rsDesc.FillMode = D3D11_FILL_SOLID;
         rsDesc.CullMode = D3D11_CULL_BACK;
-		rsDesc.FrontCounterClockwise = FALSE;   // clockwise vertices are front-facing
+        rsDesc.FrontCounterClockwise = FALSE;   // clockwise vertices are front-facing
         rsDesc.DepthClipEnable = TRUE;
         HRESULT hr = m_dx.device->CreateRasterizerState(&rsDesc, m_rasterState.GetAddressOf());
         if (FAILED(hr)) return false;
@@ -292,8 +301,8 @@ namespace Engine
         // Depth-stencil state
         D3D11_DEPTH_STENCIL_DESC dsDesc = {};
         dsDesc.DepthEnable = TRUE;
-		dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;     // enable writes to depth buffer
-		dsDesc.DepthFunc = D3D11_COMPARISON_LESS;               // standard depth test
+        dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;     // enable writes to depth buffer
+        dsDesc.DepthFunc = D3D11_COMPARISON_LESS;               // standard depth test
         dsDesc.StencilEnable = FALSE;
         hr = m_dx.device->CreateDepthStencilState(&dsDesc, m_depthStencilState.GetAddressOf());
         if (FAILED(hr)) return false;
@@ -305,22 +314,38 @@ namespace Engine
 
         // Sampler state for PS s0
         D3D11_SAMPLER_DESC sampDesc = {};
-		sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;      // linear filtering
-		sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;         // wrap texture coordinates
+        sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;      // linear filtering
+        sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;         // wrap texture coordinates
         sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
         sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-		sampDesc.MipLODBias = 0.0f;                             // no LOD bias
-		sampDesc.MaxAnisotropy = 1;                             // not using anisotropic filtering
-		sampDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;      // no comparison
-		sampDesc.BorderColor[0] = 0.0f;                         // border color (not used with wrap mode)
+        sampDesc.MipLODBias = 0.0f;                             // no LOD bias
+        sampDesc.MaxAnisotropy = 1;                             // not using anisotropic filtering
+        sampDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;      // no comparison
+        sampDesc.BorderColor[0] = 0.0f;                         // border color (not used with wrap mode)
         sampDesc.BorderColor[1] = 0.0f;
         sampDesc.BorderColor[2] = 0.0f;
         sampDesc.BorderColor[3] = 0.0f;
-		sampDesc.MinLOD = 0.0f;                                 // allow highest detail
-		sampDesc.MaxLOD = D3D11_FLOAT32_MAX;                    // allow all mip levels
+        sampDesc.MinLOD = 0.0f;                                 // allow highest detail
+        sampDesc.MaxLOD = D3D11_FLOAT32_MAX;                    // allow all mip levels
 
         hr = m_dx.device->CreateSamplerState(&sampDesc, m_samplerState.GetAddressOf());
         if (FAILED(hr)) return false;
+
+        // Light constant buffer (bind slot to be decided later)
+        {
+            D3D11_BUFFER_DESC cb = {};
+            cb.Usage = D3D11_USAGE_DEFAULT;
+            cb.ByteWidth = static_cast<UINT>(sizeof(LightConstants));
+            cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+            cb.CPUAccessFlags = 0;
+            cb.MiscFlags = 0;
+
+            // Ensure 16-byte multiple (sizeof(LightConstants) is already 48, but keep pattern)
+            cb.ByteWidth = (cb.ByteWidth + 15) & ~15u;
+
+            hr = m_dx.device->CreateBuffer(&cb, nullptr, m_cbLight.GetAddressOf());
+            if (FAILED(hr)) return false;
+        }
 
         return true;
     }

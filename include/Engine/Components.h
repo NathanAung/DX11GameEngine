@@ -34,6 +34,10 @@ namespace Engine
         int meshID = 0;
         int materialID = 0;
         ID3D11ShaderResourceView* texture = nullptr; // texture SRV bound to PS t0
+
+        // Simple PBR material parameters
+        float roughness = 0.5f; // [0..1]
+        float metallic  = 0.0f; // [0..1]
     };
 
     // Camera data
@@ -68,5 +72,13 @@ namespace Engine
         float sprintMultiplier = 2.0f;
         float yaw = 0.0f;
         float pitch = 0.0f;
+    };
+
+    // Light component (direction comes from TransformComponent's rotation)
+    struct LightComponent
+    {
+        DirectX::XMFLOAT3 color{ 1.0f, 1.0f, 1.0f };
+        float intensity = 1.0f; // multiplier
+        // For Phase 3 Step 7, this will be used as directional light. Point/spot will be added later.
     };
 }

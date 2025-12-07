@@ -26,6 +26,18 @@ struct DX11Context
     UINT height = 720;
 };
 
+// Light constant buffer layout (aligned for HLSL cbuffer packing)
+// padding added to ensure 16-byte alignment
+struct LightConstants
+{
+    DirectX::XMFLOAT3 dir;      
+    float padding1;   // pad to 16 bytes
+    DirectX::XMFLOAT3 color;    
+    float intensity;  // pack intensity as scalar
+    DirectX::XMFLOAT3 cameraPos;
+    float padding2;   // pad to 16 bytes
+};
+
 class Renderer
 {
 public:
@@ -38,10 +50,12 @@ public:
     // Frame methods and D3D11 command helpers
     
     // when starting a new frame, clears RTV/DSV
-	void BeginFrame();
+    void BeginFrame();
     void UpdateViewMatrix(const DirectX::XMMATRIX& view);
     void UpdateProjectionMatrix(const DirectX::XMMATRIX& proj);
     void UpdateWorldMatrix(const DirectX::XMMATRIX& world);
+    // upload light constants to GPU
+    void UpdateLightConstants(const LightConstants& data);
     // Binds shaders from ShaderManager
     void BindShader(const Engine::ShaderManager& shaderMan, int shaderID);
     // Submits mesh buffers for drawing
@@ -59,6 +73,7 @@ public:
     ID3D11RasterizerState* GetRasterState() const { return m_rasterState.Get(); }
     ID3D11DepthStencilState* GetDepthStencilState() const { return m_depthStencilState.Get(); }
     ID3D11SamplerState* GetSamplerState() const { return m_samplerState.Get(); }
+	ID3D11Buffer* GetLightCB() const { return m_cbLight.Get(); } // light cbuffer
     UINT GetWidth() const { return m_dx.width; }
     UINT GetHeight() const { return m_dx.height; }
 
@@ -72,6 +87,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_rasterState;
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_depthStencilState;
     Microsoft::WRL::ComPtr<ID3D11SamplerState> m_samplerState;
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbLight; // light cbuffer
 
     // Helper for initial resource creation (Rasterizer, Depth/Stencil, CBs)
     bool CreateInitialResources();
