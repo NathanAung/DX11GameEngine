@@ -5,6 +5,7 @@
 #include <wrl/client.h>
 
 // ShaderManager class handles loading, compiling, and binding shaders
+// flow of shader loading: Load shaders -> Store in map with shaderID -> Bind when rendering
 
 namespace Engine
 {

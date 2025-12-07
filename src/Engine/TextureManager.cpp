@@ -10,7 +10,7 @@ namespace Engine
 {
     ID3D11ShaderResourceView* TextureManager::LoadTexture(ID3D11Device* device, const std::string& filename)
     {
-        // Check Cache
+		// Check Cache, return if found
         auto it = m_textureCache.find(filename);
         if (it != m_textureCache.end())
         {
@@ -20,13 +20,13 @@ namespace Engine
         // Load Image Data (force RGBA)
         int width = 0, height = 0, channels = 0;
         stbi_uc* pixels = stbi_load(filename.c_str(), &width, &height, &channels, 4);
-        if (!pixels || width <= 0 || height <= 0)
+		if (!pixels || width <= 0 || height <= 0)   // failed to load
         {
             if (pixels) stbi_image_free(pixels);
             return nullptr;
         }
 
-        // Create D3D11 Texture
+		// D3D11 Texture Description
         D3D11_TEXTURE2D_DESC texDesc{};
         texDesc.Width = static_cast<UINT>(width);
         texDesc.Height = static_cast<UINT>(height);
@@ -43,8 +43,8 @@ namespace Engine
 		// Initialize with image data
         D3D11_SUBRESOURCE_DATA initData{};
         initData.pSysMem = pixels;
-        initData.SysMemPitch = static_cast<UINT>(width * 4);
-        initData.SysMemSlicePitch = 0;
+		initData.SysMemPitch = static_cast<UINT>(width * 4);    // 4 bytes per pixel (RGBA)
+		initData.SysMemSlicePitch = 0;  // the size of one depth slice for 3D textures, not used here since it's 2D
 
 		// Create Texture2D
         ComPtr<ID3D11Texture2D> texture;
@@ -58,13 +58,14 @@ namespace Engine
             return nullptr;
         }
 
-        // Create Shader Resource View (SRV)
+		// Shader Resource View (SRV) Description
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = texDesc.Format;
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
         srvDesc.Texture2D.MostDetailedMip = 0;
         srvDesc.Texture2D.MipLevels = 1;
 
+        // Create the SRV for the texture
         ComPtr<ID3D11ShaderResourceView> srv;
         hr = device->CreateShaderResourceView(texture.Get(), &srvDesc, srv.GetAddressOf());
         if (FAILED(hr))

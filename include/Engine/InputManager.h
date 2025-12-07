@@ -18,6 +18,7 @@ namespace Engine
         D,
         LShift,
         Space,
+        Esc,
         Count
     };
 
@@ -104,6 +105,7 @@ namespace Engine
             case SDL_SCANCODE_D:      m_keys[static_cast<size_t>(Key::D)] = down; break;
             case SDL_SCANCODE_LSHIFT: m_keys[static_cast<size_t>(Key::LShift)] = down; break;
             case SDL_SCANCODE_SPACE:  m_keys[static_cast<size_t>(Key::Space)] = down; break;
+			case SDL_SCANCODE_ESCAPE: m_keys[static_cast<size_t>(Key::Esc)] = down; break;
             default: break;
             }
         }

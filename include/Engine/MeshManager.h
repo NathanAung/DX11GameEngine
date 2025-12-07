@@ -11,6 +11,7 @@
 #include <assimp/postprocess.h>
 
 // MeshManager class handles creation and storage of mesh buffers
+// Flow of model loading: LoadModel() -> ProcessNode() -> ProcessMesh() -> CreateMeshBuffers()
 
 namespace Engine
 {

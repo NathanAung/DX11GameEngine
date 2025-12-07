@@ -27,9 +27,9 @@ bool g_vSync = true; // can toggle later
 // Input manager
 Engine::InputManager g_input;
 
-// ECS: Scene and a cube entity
+// ECS: Scene and a sample 3d entity
 Engine::Scene g_scene;
-entt::entity g_cubeEntity = entt::null;
+entt::entity g_sampleEntity = entt::null;
 
 // Managers
 Engine::MeshManager g_meshManager;
@@ -56,8 +56,8 @@ static void LoadContent()
     // Load a model; ensure the asset exists and Assimp DLL is present alongside the exe
     auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");
 
-    // Hook the cube entity to resources (now using first mesh from model)
-    auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_cubeEntity);
+    // Hook the sample entity to resources (now using first mesh from model)
+    auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_sampleEntity);
     if (!meshIDs.empty())
     {
         int firstMeshID = meshIDs[0];
@@ -123,8 +123,8 @@ int main(int argc, char** argv)
 
     g_input.SetMouseCaptured(true);
 
-    // ECS: create a cube entity
-    g_cubeEntity = g_scene.CreateCube("Rotating Cube");
+    // ECS: create the sample entity
+    g_sampleEntity = g_scene.CreateSampleEntity("Rotating 3D Model");
 
     // Load GPU content (states, constant buffers, geometry, shaders)
     try {
@@ -207,7 +207,13 @@ int main(int argc, char** argv)
 void Update(float deltaTime) {
     Engine::CameraInputSystem(g_scene, g_input, deltaTime);
     Engine::CameraMatrixSystem(g_scene, g_renderer);
-    Engine::DemoRotationSystem(g_scene, g_cubeEntity, deltaTime);
+    Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
+
+    // exit on escape key
+    if(g_input.IsKeyDown(Engine::Key::Esc))
+    {
+		g_running = false;
+	}
 }
 
 void Render()

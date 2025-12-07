@@ -50,6 +50,7 @@ namespace Engine
         if (FAILED(device->CreateBuffer(&ibDesc, &ibData, ib.GetAddressOf())))
             return -1;
 
+		// Store MeshData
         MeshData md{};
         md.vb = vb;
         md.ib = ib;
@@ -60,6 +61,7 @@ namespace Engine
         m_meshes.emplace(101, std::move(md));   // store as mesh ID 101 (temporary)
         return 101; // temporary mesh ID
     }
+
 
     // Helper: Creates VB/IB for given data, stores MeshData, returns new ID
     int MeshManager::CreateMeshBuffers(ID3D11Device* device,
@@ -86,6 +88,7 @@ namespace Engine
         bool use16 = (indices.size() < 65536);
         DXGI_FORMAT idxFmt = use16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
 
+		// IB
         ComPtr<ID3D11Buffer> ib;
         if (use16)
         {
@@ -127,50 +130,65 @@ namespace Engine
         return id;
     }
 
+
     std::vector<int> MeshManager::LoadModel(ID3D11Device* device, const std::string& filename)
     {
         std::vector<int> meshIDs;
-        Assimp::Importer importer;
+
+		Assimp::Importer importer;  // create an instance of the Importer class
+
+		// Set import flags
         const unsigned int flags =
             aiProcess_Triangulate |
             aiProcess_FlipUVs |
             aiProcess_MakeLeftHanded |
             aiProcess_FlipWindingOrder;
 
+		// Read the file and obtain the scene object
+		// aiScene is the root object for the imported data
         const aiScene* scene = importer.ReadFile(filename, flags);
         if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
         {
             std::fprintf(stderr, "Assimp load failed for '%s'\n", filename.c_str());
             return meshIDs;
         }
+
+        // The node object only contains indices to index the actual objects in the scene.
+        // The scene contains all the data, node is just to keep stuff organized (like relations between nodes).
+
+		// Process the root node recursively to extract meshes
         ProcessNode(device, scene->mRootNode, scene, meshIDs);
         if (meshIDs.empty())
             std::fprintf(stderr, "Assimp: scene loaded but produced no meshes for '%s'\n", filename.c_str());
+
         return meshIDs;
     }
+
 
     void MeshManager::ProcessNode(ID3D11Device* device, aiNode* node, const aiScene* scene, std::vector<int>& outMeshIDs)
     {
         // Process all meshes at this node
         for (unsigned int i = 0; i < node->mNumMeshes; ++i)
-        {
+        {   
+			// Get the mesh object from the scene
             aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
             int id = ProcessMesh(device, mesh, scene);
             if (id != -1)
                 outMeshIDs.push_back(id);
         }
 
-        // Then recurse into children
+		// Then recurse into children nodes
         for (unsigned int i = 0; i < node->mNumChildren; ++i)
         {
             ProcessNode(device, node->mChildren[i], scene, outMeshIDs);
         }
     }
 
+
     int MeshManager::ProcessMesh(ID3D11Device* device, aiMesh* mesh, const aiScene* /*scene*/)
     {
         std::vector<Vertex> vertices;
-        vertices.reserve(mesh->mNumVertices);
+		vertices.reserve(mesh->mNumVertices);   // reserve space
 
         // Extract vertex data
         for (unsigned int i = 0; i < mesh->mNumVertices; ++i)
@@ -212,6 +230,7 @@ namespace Engine
         indices.reserve(mesh->mNumFaces * 3); // triangulated
         for (unsigned int i = 0; i < mesh->mNumFaces; ++i)
         {
+			// Assume triangulated faces
             const aiFace& face = mesh->mFaces[i];
             for (unsigned int j = 0; j < face.mNumIndices; ++j)
             {
@@ -222,6 +241,7 @@ namespace Engine
         // Create buffers and store
         return CreateMeshBuffers(device, vertices, indices);
     }
+
 
     bool MeshManager::GetMesh(int meshID, MeshBuffers& out) const
     {

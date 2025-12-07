@@ -15,7 +15,8 @@ entt::entity Scene::CreateEntity(const std::string& name)
     return e;
 }
 
-entt::entity Scene::CreateCube(const std::string& name)
+
+entt::entity Scene::CreateSampleEntity(const std::string& name)
 {
     entt::entity e = CreateEntity(name);
 
@@ -28,6 +29,7 @@ entt::entity Scene::CreateCube(const std::string& name)
 
     return e;
 }
+
 
 entt::entity Scene::CreateEditorCamera(const std::string& name, unsigned width, unsigned height)
 {

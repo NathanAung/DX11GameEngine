@@ -8,13 +8,13 @@ using namespace DirectX;
 
 namespace Engine
 {
-    void DemoRotationSystem(Engine::Scene& scene, entt::entity cubeEntity, float dt)
+    void DemoRotationSystem(Engine::Scene& scene, entt::entity sampleEntity, float dt)
     {
-        if (cubeEntity == entt::null) return;
-        if (!scene.registry.valid(cubeEntity)) return;
+        if (sampleEntity == entt::null) return;
+        if (!scene.registry.valid(sampleEntity)) return;
 
         // get TransformComponent
-        auto& tc = scene.registry.get<TransformComponent>(cubeEntity);
+        auto& tc = scene.registry.get<TransformComponent>(sampleEntity);
 
         static float s_angle = 0.0f;
         s_angle += dt * XM_PIDIV4; // 45 deg/sec
@@ -37,8 +37,8 @@ namespace Engine
         auto view = scene.registry.view<TransformComponent, EditorCamControlComponent>();
         for (auto ent : view)
         {
-            auto& tf = view.get<TransformComponent>(ent);
-            auto& fc = view.get<EditorCamControlComponent>(ent);
+            auto& tf = view.get<TransformComponent>(ent);           // transform
+			auto& fc = view.get<EditorCamControlComponent>(ent);    // flycam control
 
             if (fc.mode != CameraControlMode::EditorCam)
                 continue;
@@ -93,11 +93,13 @@ namespace Engine
             basis.r[2] = XMVectorSet(XMVectorGetX(forward), XMVectorGetY(forward), XMVectorGetZ(forward), 0.0f);
             basis.r[3] = XMVectorSet(0, 0, 0, 1);
 
+			// Convert to quaternion
             XMVECTOR q = XMQuaternionRotationMatrix(basis);
             q = XMQuaternionNormalize(q);
             XMStoreFloat4(&tf.rotation, q);
         }
     }
+
 
     void CameraMatrixSystem(Engine::Scene& scene, Engine::Renderer& renderer)
     {
@@ -125,9 +127,11 @@ namespace Engine
         const float aspect = static_cast<float>(vp.width) / static_cast<float>(vp.height ? vp.height : 1u);
         const XMMATRIX proj = XMMatrixPerspectiveFovLH(camc.FOV, aspect, camc.nearClip, camc.farClip);
 
+		// Upload to renderer
         renderer.UpdateViewMatrix(view);
         renderer.UpdateProjectionMatrix(proj);
     }
+
 
     namespace RenderSystem
     {

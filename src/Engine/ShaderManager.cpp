@@ -32,6 +32,7 @@ namespace Engine
         return bytecode;
     }
 
+
     int ShaderManager::LoadBasicShaders(ID3D11Device* device)
     {
         ShaderData sd{};
@@ -58,16 +59,21 @@ namespace Engine
 		return 1;   // return shader ID 1 (temporary)
     }
 
+
     void ShaderManager::Bind(int shaderID, ID3D11DeviceContext* context) const
     {
+		// iterator to shader map
         auto it = m_shaders.find(shaderID);
         if (it == m_shaders.end()) return;
 
+		// Bind shaders and input layout
+		// second is used becase map value is pair<key, value>
         const ShaderData& sd = it->second;
         context->VSSetShader(sd.vs.Get(), nullptr, 0);
         context->PSSetShader(sd.ps.Get(), nullptr, 0);
         context->IASetInputLayout(sd.inputLayout.Get());
     }
+
 
     ID3D11InputLayout* ShaderManager::GetInputLayout(int shaderID) const
     {

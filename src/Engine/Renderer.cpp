@@ -27,6 +27,7 @@ namespace Engine
         return true;
     }
 
+
     void Renderer::Shutdown()
     {
         // Reset all ComPtrs (unload and cleanup combined)
@@ -45,12 +46,14 @@ namespace Engine
         m_dx.device.Reset();
     }
 
+
     void Renderer::Present(bool vsync)
     {
         // Present back buffer
         if (m_dx.swapChain)
             m_dx.swapChain->Present(vsync ? 1 : 0, 0);
     }
+
 
     bool Renderer::Resize(unsigned width, unsigned height)
     {
@@ -74,6 +77,7 @@ namespace Engine
         // Recreate render target and depth-stencil views
         return CreateViews();
     }
+
 
     void Renderer::BeginFrame()
     {
@@ -103,6 +107,7 @@ namespace Engine
         m_dx.context->VSSetConstantBuffers(0, 3, vscbs);
     }
 
+
     void Renderer::UpdateMatrixCB(ID3D11Buffer* cb, const XMMATRIX& m)
     {
         XMFLOAT4X4 rm;
@@ -110,25 +115,30 @@ namespace Engine
         m_dx.context->UpdateSubresource(cb, 0, nullptr, &rm, 0, 0);
     }
 
+
     void Renderer::UpdateViewMatrix(const XMMATRIX& view)
     {
         if (m_cbView) UpdateMatrixCB(m_cbView.Get(), view);
     }
+
 
     void Renderer::UpdateProjectionMatrix(const XMMATRIX& proj)
     {
         if (m_cbProjection) UpdateMatrixCB(m_cbProjection.Get(), proj);
     }
 
+
     void Renderer::UpdateWorldMatrix(const XMMATRIX& world)
     {
         if (m_cbWorld) UpdateMatrixCB(m_cbWorld.Get(), world);
     }
 
+
     void Renderer::BindShader(const Engine::ShaderManager& shaderMan, int shaderID)
     {
         shaderMan.Bind(shaderID, m_dx.context.Get());
     }
+
 
     void Renderer::SubmitMesh(const Engine::MeshBuffers& mesh, ID3D11InputLayout* inputLayout)
     {
@@ -140,10 +150,12 @@ namespace Engine
         m_dx.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     }
 
+
     void Renderer::DrawIndexed(UINT indexCount)
     {
         m_dx.context->DrawIndexed(indexCount, 0, 0);
     }
+
 
     bool Renderer::CreateDeviceAndSwapChain(HWND hwnd)
     {
@@ -202,6 +214,7 @@ namespace Engine
         return true;
     }
 
+
     bool Renderer::CreateViews()
     {
         // Release existing RTV/DSV if any
@@ -240,12 +253,14 @@ namespace Engine
         return true;
     }
 
+
     void Renderer::ReleaseViews()
     {
         m_dx.dsv.Reset();
         m_dx.depthStencilBuffer.Reset();
         m_dx.rtv.Reset();
     }
+
 
     bool Renderer::CreateMatrixCB(ID3D11Buffer** outBuffer)
     {
@@ -269,7 +284,7 @@ namespace Engine
         D3D11_RASTERIZER_DESC rsDesc = {};
         rsDesc.FillMode = D3D11_FILL_SOLID;
         rsDesc.CullMode = D3D11_CULL_BACK;
-        rsDesc.FrontCounterClockwise = FALSE;
+		rsDesc.FrontCounterClockwise = FALSE;   // clockwise vertices are front-facing
         rsDesc.DepthClipEnable = TRUE;
         HRESULT hr = m_dx.device->CreateRasterizerState(&rsDesc, m_rasterState.GetAddressOf());
         if (FAILED(hr)) return false;
@@ -277,8 +292,8 @@ namespace Engine
         // Depth-stencil state
         D3D11_DEPTH_STENCIL_DESC dsDesc = {};
         dsDesc.DepthEnable = TRUE;
-        dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
-        dsDesc.DepthFunc = D3D11_COMPARISON_LESS;
+		dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;     // enable writes to depth buffer
+		dsDesc.DepthFunc = D3D11_COMPARISON_LESS;               // standard depth test
         dsDesc.StencilEnable = FALSE;
         hr = m_dx.device->CreateDepthStencilState(&dsDesc, m_depthStencilState.GetAddressOf());
         if (FAILED(hr)) return false;
@@ -290,19 +305,19 @@ namespace Engine
 
         // Sampler state for PS s0
         D3D11_SAMPLER_DESC sampDesc = {};
-        sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-        sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+		sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;      // linear filtering
+		sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;         // wrap texture coordinates
         sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
         sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-        sampDesc.MipLODBias = 0.0f;
-        sampDesc.MaxAnisotropy = 1;
-        sampDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;
-        sampDesc.BorderColor[0] = 0.0f;
+		sampDesc.MipLODBias = 0.0f;                             // no LOD bias
+		sampDesc.MaxAnisotropy = 1;                             // not using anisotropic filtering
+		sampDesc.ComparisonFunc = D3D11_COMPARISON_ALWAYS;      // no comparison
+		sampDesc.BorderColor[0] = 0.0f;                         // border color (not used with wrap mode)
         sampDesc.BorderColor[1] = 0.0f;
         sampDesc.BorderColor[2] = 0.0f;
         sampDesc.BorderColor[3] = 0.0f;
-        sampDesc.MinLOD = 0.0f;
-        sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+		sampDesc.MinLOD = 0.0f;                                 // allow highest detail
+		sampDesc.MaxLOD = D3D11_FLOAT32_MAX;                    // allow all mip levels
 
         hr = m_dx.device->CreateSamplerState(&sampDesc, m_samplerState.GetAddressOf());
         if (FAILED(hr)) return false;

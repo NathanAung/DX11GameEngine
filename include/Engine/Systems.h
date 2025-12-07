@@ -17,8 +17,8 @@ namespace Engine
         void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer);
     }
 
-    // demo cube rotation logic
-    void DemoRotationSystem(Engine::Scene& scene, entt::entity cubeEntity, float dt);
+    // demo rotation logic
+    void DemoRotationSystem(Engine::Scene& scene, entt::entity sampleEntity, float dt);
 
     // input-driven camera movement and look
     void CameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt);

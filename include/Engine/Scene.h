@@ -19,8 +19,8 @@ namespace Engine
         // Create a generic entity with ID, Name and default Transform
         entt::entity CreateEntity(const std::string& name);
 
-        // Create a cube entity with MeshRenderer and visible transform
-        entt::entity CreateCube(const std::string& name);
+        // Create a 3d sample entity with MeshRenderer and visible transform
+        entt::entity CreateSampleEntity(const std::string& name);
 
         // Create camera entity and set as active if none set
         entt::entity CreateEditorCamera(const std::string& name, unsigned width, unsigned height);

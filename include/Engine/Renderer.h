@@ -4,11 +4,15 @@
 #include <wrl/client.h> // For ComPtr
 #include <DirectXMath.h>
 
+// The Renderer class encapsulates DirectX 11 rendering functionality
+// Flow of operations: InitD3D11 -> BeginFrame -> [Update... / Bind... / Submit...] -> DrawIndexed -> Present -> Shutdown
+
 namespace Engine
 {
 struct MeshBuffers;
 class ShaderManager;
 
+// Encapsulates DirectX 11 device, context, swap chain, and views
 struct DX11Context
 {
     Microsoft::WRL::ComPtr<ID3D11Device> device;
@@ -32,7 +36,9 @@ public:
     bool Resize(unsigned width, unsigned height);
 
     // Frame methods and D3D11 command helpers
-    void BeginFrame();
+    
+    // when starting a new frame, clears RTV/DSV
+	void BeginFrame();
     void UpdateViewMatrix(const DirectX::XMMATRIX& view);
     void UpdateProjectionMatrix(const DirectX::XMMATRIX& proj);
     void UpdateWorldMatrix(const DirectX::XMMATRIX& world);
