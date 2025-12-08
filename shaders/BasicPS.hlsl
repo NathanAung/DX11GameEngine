@@ -4,6 +4,22 @@ SamplerState g_Sampler : register(s0);
 // Texture sampling is the process where the GPU looks up a color from a texture (an image) using UV coordinates,
 // and returns that color to your shader
 
+// Flow of pixel shader: input from vertex shader -> sample texture -> compute lighting -> output final color
+
+// Lighting implementation based on PBR (Physically Based Rendering) using Cook-Torrance model
+// This model simulates realistic light interaction with surfaces using microfacet theory
+// Flow of lighting computation: Fresnel -> Distribution -> Geometry -> Final color
+
+// final pixel color is computed as:
+// Pixel Color = Ambient + ((Diffuse + Specular) * Light Radiance * Angle of Incidence)
+// where:
+// - Ambient: small constant term to avoid pure black in unlit areas; typically a fraction of albedo
+// - Diffuse: light scattered equally in all directions; depends on albedo and angle between light and normal
+// - Specular: light reflected in a specific direction based on view and light angles; depends on Fresnel, Distribution, and Geometry terms
+// - Light Radiance: color and intensity of the light source; determines how much light is emitted
+// - Angle of Incidence: cosine of angle between light direction and surface normal; affects brightness based on orientation
+
+
 struct PSInput
 {
     float4 position : SV_POSITION;
@@ -107,7 +123,7 @@ float4 main(PSInput input) : SV_Target
     float3 N = normalize(input.normal);                     // normal
     float3 V = normalize(g_CameraPos - input.worldPos);     // view direction
     float3 L = normalize(-g_LightDir);                      // light direction (from surface to light), negate: want surface->light
-    float3 H = normalize(V + L);                            // half-vector
+    float3 H = normalize(V + L);                            // half-vector (used to calculate how glossy the surface is)
 
     // Light radiance
     float3 radiance = g_LightColor * g_LightIntensity;

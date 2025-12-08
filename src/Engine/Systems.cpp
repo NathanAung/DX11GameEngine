@@ -178,6 +178,7 @@ namespace Engine
                     const auto& lt = lightView.get<LightComponent>(lightEnt);
 
                     // Direction: forward vector from quaternion rotated +Z (LH)
+					// forward is used because directional light shines along its forward axis
                     XMVECTOR q = XMLoadFloat4(&ltTf.rotation);
                     q = XMQuaternionNormalize(q);
                     XMVECTOR forward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), q);
