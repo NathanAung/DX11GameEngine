@@ -38,6 +38,15 @@ struct LightConstants
     float padding2;   // pad to 16 bytes
 };
 
+// Material constant buffer layout (must match HLSL CB_Material register(b4))
+// Ensure it is 16-byte aligned (sizeof == 16)
+struct MaterialConstants
+{
+    float roughness;
+    float metallic;
+    float padding[2]; // Pad to 16 bytes
+};
+
 class Renderer
 {
 public:
@@ -56,6 +65,8 @@ public:
     void UpdateWorldMatrix(const DirectX::XMMATRIX& world);
     // upload light constants to GPU
     void UpdateLightConstants(const LightConstants& data);
+    // upload material constants to GPU
+    void UpdateMaterialConstants(const MaterialConstants& material);
     // Binds shaders from ShaderManager
     void BindShader(const Engine::ShaderManager& shaderMan, int shaderID);
     // Submits mesh buffers for drawing
@@ -87,7 +98,8 @@ private:
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_rasterState;
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_depthStencilState;
     Microsoft::WRL::ComPtr<ID3D11SamplerState> m_samplerState;
-    Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbLight; // light cbuffer
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbLight;    // light cbuffer (PS b3)
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbMaterial; // material cbuffer (PS b4)
 
     // Helper for initial resource creation (Rasterizer, Depth/Stencil, CBs)
     bool CreateInitialResources();

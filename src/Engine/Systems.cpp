@@ -149,6 +149,52 @@ namespace Engine
                 context->PSSetSamplers(0, 1, &sampler);
             }
 
+            // Global light update (find first directional light)
+            {
+                LightConstants lc{};
+                // Default light if none present
+                lc.dir = XMFLOAT3(0.0f, -1.0f, 0.0f);
+                lc.color = XMFLOAT3(1.0f, 1.0f, 1.0f);
+                lc.intensity = 1.0f;
+
+                // Camera position for specular calculations
+                if (scene.m_activeRenderCamera != entt::null &&
+                    scene.registry.valid(scene.m_activeRenderCamera) &&
+                    scene.registry.all_of<TransformComponent>(scene.m_activeRenderCamera))
+                {
+                    const auto& camTf = scene.registry.get<TransformComponent>(scene.m_activeRenderCamera);
+                    lc.cameraPos = camTf.position;
+                }
+                else
+                {
+                    lc.cameraPos = XMFLOAT3(0.0f, 0.0f, -100.0f);
+                }
+
+                // Search for a light entity and extract info
+                auto lightView = scene.registry.view<TransformComponent, LightComponent>();
+                for (auto lightEnt : lightView)
+                {
+                    const auto& ltTf = lightView.get<TransformComponent>(lightEnt);
+                    const auto& lt = lightView.get<LightComponent>(lightEnt);
+
+                    // Direction: forward vector from quaternion rotated +Z (LH)
+                    XMVECTOR q = XMLoadFloat4(&ltTf.rotation);
+                    q = XMQuaternionNormalize(q);
+                    XMVECTOR forward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), q);
+                    XMFLOAT3 fwd{};
+                    XMStoreFloat3(&fwd, XMVector3Normalize(forward));
+
+                    lc.dir = fwd;
+                    lc.color = lt.color;
+                    lc.intensity = lt.intensity;
+
+                    break; // use the first found light
+                }
+
+                // Upload & bind PS b3
+                renderer.UpdateLightConstants(lc);
+            }
+
             // Iterate renderable entities (assuming MeshRendererComponent and TransformComponent exist)
             auto view = scene.registry.view<MeshRendererComponent, TransformComponent>();
             for (auto entity : view)
@@ -156,7 +202,15 @@ namespace Engine
                 auto& mr = view.get<MeshRendererComponent>(entity);
                 auto& tr = view.get<TransformComponent>(entity);
 
-                // World matrix from transform (simple: position only, no rotation/scale)
+                // Per-entity material constants (PS b4)
+                {
+                    Engine::MaterialConstants mat{};
+                    mat.roughness = mr.roughness;
+                    mat.metallic = mr.metallic;
+                    renderer.UpdateMaterialConstants(mat);
+                }
+
+                // World matrix from transform (position, rotation, scale)
                 XMMATRIX world =
                     XMMatrixScaling(tr.scale.x, tr.scale.y, tr.scale.z) *
                     XMMatrixRotationQuaternion(XMLoadFloat4(&tr.rotation)) *

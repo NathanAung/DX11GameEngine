@@ -59,6 +59,9 @@ static void LoadContent()
     // Load a model; ensure the asset exists and Assimp DLL is present alongside the exe
     auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");
 
+    // ECS: create the sample entity
+    g_sampleEntity = g_scene.CreateSampleEntity("Rotating 3D Model");
+
     // Hook the sample entity to resources (now using first mesh from model)
     auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_sampleEntity);
     if (!meshIDs.empty())
@@ -77,6 +80,10 @@ static void LoadContent()
     // example texture loading via texture manager and keep SRV
     ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture.png");
     mr.texture = tex; // assign texture to component
+
+    // PBR value testing
+    mr.roughness = 0.1f; // shiny
+    mr.metallic  = 0.2f; // metallic (with yellow-ish albedo you'd get gold-like)
 }
 
 // Main entry point
@@ -126,10 +133,6 @@ int main(int argc, char** argv)
 
     g_input.SetMouseCaptured(true);
 
-    // ECS: create the sample entity
-    g_sampleEntity = g_scene.CreateSampleEntity("Rotating 3D Model");
-
-    // Load GPU content (states, constant buffers, geometry, shaders)
     try {
         LoadContent();
     }

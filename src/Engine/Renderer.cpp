@@ -35,6 +35,7 @@ namespace Engine
         m_depthStencilState.Reset();
         m_rasterState.Reset();
         m_cbLight.Reset();
+        m_cbMaterial.Reset();
 
         m_cbWorld.Reset();
         m_cbView.Reset();
@@ -284,6 +285,20 @@ namespace Engine
         if (m_cbLight)
         {
             m_dx.context->UpdateSubresource(m_cbLight.Get(), 0, nullptr, &data, 0, 0);
+            // Bind to PS at slot b3 (matches HLSL CB_Light : register(b3))
+            ID3D11Buffer* cbs[] = { m_cbLight.Get() };
+            m_dx.context->PSSetConstantBuffers(3, 1, cbs);
+        }
+    }
+
+    void Renderer::UpdateMaterialConstants(const MaterialConstants& material)
+    {
+        if (m_cbMaterial)
+        {
+            m_dx.context->UpdateSubresource(m_cbMaterial.Get(), 0, nullptr, &material, 0, 0);
+            // Bind to PS at slot b4 (matches HLSL CB_Material : register(b4))
+            ID3D11Buffer* cbs[] = { m_cbMaterial.Get() };
+            m_dx.context->PSSetConstantBuffers(4, 1, cbs);
         }
     }
 
@@ -331,7 +346,7 @@ namespace Engine
         hr = m_dx.device->CreateSamplerState(&sampDesc, m_samplerState.GetAddressOf());
         if (FAILED(hr)) return false;
 
-        // Light constant buffer (bind slot to be decided later)
+        // Light constant buffer (PS b3)
         {
             D3D11_BUFFER_DESC cb = {};
             cb.Usage = D3D11_USAGE_DEFAULT;
@@ -340,10 +355,26 @@ namespace Engine
             cb.CPUAccessFlags = 0;
             cb.MiscFlags = 0;
 
-            // Ensure 16-byte multiple (sizeof(LightConstants) is already 48, but keep pattern)
+            // Ensure 16-byte multiple
             cb.ByteWidth = (cb.ByteWidth + 15) & ~15u;
 
             hr = m_dx.device->CreateBuffer(&cb, nullptr, m_cbLight.GetAddressOf());
+            if (FAILED(hr)) return false;
+        }
+
+        // Material constant buffer (PS b4)
+        {
+            D3D11_BUFFER_DESC cb = {};
+            cb.Usage = D3D11_USAGE_DEFAULT;
+            cb.ByteWidth = static_cast<UINT>(sizeof(MaterialConstants)); // sizeof(MaterialConstants) should be 16
+            cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+            cb.CPUAccessFlags = 0;
+            cb.MiscFlags = 0;
+
+            // Ensure 16-byte multiple
+            cb.ByteWidth = (cb.ByteWidth + 15) & ~15u;
+
+            hr = m_dx.device->CreateBuffer(&cb, nullptr, m_cbMaterial.GetAddressOf());
             if (FAILED(hr)) return false;
         }
 
