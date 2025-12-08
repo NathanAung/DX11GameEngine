@@ -39,8 +39,9 @@ VSOutput main(VSInput input)
     float4 viewPos = mul(worldPos4, g_View);
     o.position = mul(viewPos, g_Projection);
 
-    // Pass through normal/texCoord (no tangent basis transform yet)
-    o.normal = input.normal;
+    // Transform normal by World's upper-left 3x3 (rotation/scale) and normalize
+    // Pass through texCoord (no tangent basis transform yet)
+    o.normal = normalize(mul(input.normal, (float3x3) g_World));
     o.texCoord = input.texCoord;
 
     // world position for view direction
