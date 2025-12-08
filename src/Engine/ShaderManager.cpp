@@ -46,6 +46,7 @@ namespace Engine
             return -1;
 
         // Input layout (matches Engine::Vertex: POSITION, NORMAL, TEXCOORD)
+        // describes how vertex data, stored in memory, is organized and interpreted by the Input-Assembler (IA) stage of the graphics pipeline
         D3D11_INPUT_ELEMENT_DESC layout[] =
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Engine::Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0 },

@@ -148,7 +148,7 @@ namespace Engine
         m_dx.context->IASetInputLayout(inputLayout);
         m_dx.context->IASetVertexBuffers(0, 1, &mesh.vertexBuffer, &stride, &offset);
         m_dx.context->IASetIndexBuffer(mesh.indexBuffer, mesh.indexFormat, 0);
-        m_dx.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_dx.context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);    // specifies how to interpret vertex data; every 3 vertices form a triangle
     }
 
 
