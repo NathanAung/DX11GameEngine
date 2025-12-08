@@ -284,6 +284,7 @@ namespace Engine
     {
         if (m_cbLight)
         {
+			// Upload light data to GPU
             m_dx.context->UpdateSubresource(m_cbLight.Get(), 0, nullptr, &data, 0, 0);
             // Bind to PS at slot b3 (matches HLSL CB_Light : register(b3))
             ID3D11Buffer* cbs[] = { m_cbLight.Get() };

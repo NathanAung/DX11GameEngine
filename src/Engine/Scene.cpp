@@ -67,7 +67,7 @@ namespace Engine
         tc.position = XMFLOAT3(0, 0, 0);
         registry.emplace<TransformComponent>(e, tc);
 
-        // White light, intensity 1.0
+        // White light, intensity 5.0
         LightComponent lc{};
         lc.color = XMFLOAT3(1.0f, 1.0f, 1.0f);
         lc.intensity = 5.0f;

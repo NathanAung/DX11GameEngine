@@ -184,6 +184,7 @@ namespace Engine
                     XMFLOAT3 fwd{};
                     XMStoreFloat3(&fwd, XMVector3Normalize(forward));
 
+					// Fill light constants with first found light's data
                     lc.dir = fwd;
                     lc.color = lt.color;
                     lc.intensity = lt.intensity;
@@ -191,7 +192,7 @@ namespace Engine
                     break; // use the first found light
                 }
 
-                // Upload & bind PS b3
+				// Upload to renderer and bind to PS b3
                 renderer.UpdateLightConstants(lc);
             }
 
