@@ -74,11 +74,22 @@ namespace Engine
         float pitch = 0.0f;
     };
 
-    // Light component (direction comes from TransformComponent's rotation)
+    // Light types 
+    enum class LightType : unsigned int
+    {
+        Directional = 0,
+        Point       = 1,
+        Spot        = 2
+    };
+
+    // Light component
+    // Direction is derived from the entity's Transform rotation.
     struct LightComponent
     {
         DirectX::XMFLOAT3 color{ 1.0f, 1.0f, 1.0f };
-        float intensity = 1.0f; // multiplier
-        // For Phase 3 Step 7, this will be used as directional light. Point/spot will be added later.
+        float intensity = 1.0f;                         // multiplier
+        LightType type = LightType::Directional;
+        float range = 10.0f;                            // attenuation range for Point/Spot
+		float spotAngle = DirectX::XM_PIDIV4;           // radians, cone angle for Spot
     };
 }

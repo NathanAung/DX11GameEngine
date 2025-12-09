@@ -25,7 +25,23 @@ namespace Engine
         // Create camera entity and set as active if none set
         entt::entity CreateEditorCamera(const std::string& name, unsigned width, unsigned height);
 
-		// Create a directional light entity
-		entt::entity CreateDirectionalLight(const char* name);
+        // Create a directional light entity
+        entt::entity CreateDirectionalLight(const char* name);
+
+        // Create a point light entity (position/range set on Transform/LightComponent)
+        entt::entity CreatePointLight(const char* name,
+                                      const DirectX::XMFLOAT3& position,
+                                      const DirectX::XMFLOAT3& color,
+                                      float intensity,
+                                      float range);
+
+        // Create a spot light entity (position/direction via Transform rotation, cone via spotAngle)
+        entt::entity CreateSpotLight(const char* name,
+                                     const DirectX::XMFLOAT3& position,
+                                     const DirectX::XMFLOAT3& direction, // world-space forward
+                                     const DirectX::XMFLOAT3& color,
+                                     float intensity,
+                                     float range,
+                                     float spotAngleRadians);
     };
 }

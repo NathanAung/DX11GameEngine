@@ -30,14 +30,25 @@ struct PSInput
 
 
 // Must match C++ LightConstants layout exactly (register b3)
+struct LightData
+{
+    float3 position;    // For Point/Spot
+    float range;        // For Point/Spot attenuation
+    float3 direction;   // For Directional/Spot
+    float spotAngle;    // For Spot cone
+    float3 color;
+    float intensity;
+    uint type;          // 0=Dir, 1=Point, 2=Spot
+    float3 padding;     // pad to 16B alignment
+};
+
+
+// the number of lights is hardcoded for now since HLSL needs to know array sizes at compile time
 cbuffer CB_Light : register(b3)
 {
-    float3 g_LightDir;
-    float pad1; // direction (from light toward world). negate for surface-to-light.
-    float3 g_LightColor;
-    float g_LightIntensity;
     float3 g_CameraPos;
-    float pad2;
+    uint g_LightCount;
+    LightData g_Lights[4]; // MUST MATCH MAX_LIGHTS
 }
 
 
@@ -92,7 +103,6 @@ float DistributionGGX(float3 N, float3 H, float roughness)
 // NdotX is the cosine of angle between normal and view/light direction
 float GeometrySchlickGGX(float NdotX, float roughness)
 {
-    //float r = roughness;
     float k = (roughness + 1.0);
     k = (k * k) / 8.0;
     return NdotX / (NdotX * (1.0 - k) + k);
@@ -113,45 +123,91 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
 }
 
 
+// Attenuation approximation for point/spot lights.
+// For PBR, an inverse-square law is preferred; here a soft range cutoff with inverse-square is combined.
+float ComputeAttenuation(float distance, float range)
+{
+    float soft = pow(saturate(1.0 - pow(distance / max(range, 1e-4), 4.0)), 2.0);
+    float invSq = 1.0 / (distance * distance + 1.0);
+    return soft * invSq;
+}
+
+
 float4 main(PSInput input) : SV_Target
 {
     // Sample base color (albedo)
     float4 albedoTex = g_Texture.Sample(g_Sampler, input.texCoord);
     float3 albedo = albedoTex.rgb;
 
-    // Setup vectors
+    // Setup base vectors
     float3 N = normalize(input.normal);                     // normal
     float3 V = normalize(g_CameraPos - input.worldPos);     // view direction
-    float3 L = normalize(-g_LightDir);                      // light direction (from surface to light), negate: want surface->light
-    float3 H = normalize(V + L);                            // half-vector (used to calculate how glossy the surface is)
-
-    // Light radiance
-    float3 radiance = g_LightColor * g_LightIntensity;
 
     // Base reflectivity F0: ~0.04 for dielectrics, albedo for metals
     float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, saturate(g_Metallic));
 
-    // Cook-Torrance BRDF terms
-    // The Cook-Torrance model combines microfacet distribution, geometry, and Fresnel terms to simulate realistic specular reflection
-    // D: normal distribution, G: geometry, F: fresnel
-    float D = DistributionGGX(N, H, g_Roughness);
-    float G = GeometrySmith(N, V, L, g_Roughness);
-    float NdotV = saturate(dot(N, V));
-    float NdotL = saturate(dot(N, L));
-    float3 F = FresnelSchlick(saturate(dot(H, V)), F0);
+    // Accumulate lighting from all active lights
+    float3 Lo = float3(0.0, 0.0, 0.0);
 
-    float3 numerator = D * G * F;
-    float denom = max(4.0 * NdotV * NdotL, 1e-4);
-    float3 specular = numerator / denom;
+    [loop]
+    for (uint i = 0; i < g_LightCount; ++i)
+    {
+        LightData light = g_Lights[i];
 
-    // Energy conservation; ensures that the surface does not reflect more light than it receives
-    float3 kS = F;
-    float3 kD = 1.0 - kS;
-    kD *= (1.0 - saturate(g_Metallic)); // metals have no diffuse
+        // Compute L and attenuation depending on light type
+        float3 L = float3(0, 0, 0);
+        float attenuation = 1.0;
 
-    // Final lighting (one directional light)
-    float3 diffuse = (kD * albedo) / PI;
-    float3 Lo = (diffuse + specular) * radiance * NdotL;
+        if (light.type == 0) // Directional
+        {
+            L = normalize(-light.direction);
+            attenuation = 1.0;
+        }
+        else
+        {
+            float3 toLight = light.position - input.worldPos;
+            float dist = length(toLight);
+            L = (dist > 1e-4) ? (toLight / dist) : float3(0, 0, 0);
+            attenuation = ComputeAttenuation(dist, light.range);
+
+            if (light.type == 2) // Spot
+            {
+                // test cone: compare angle between spotlight direction and L
+                float theta = dot(normalize(-light.direction), L);
+                // inside cone if angle less than spotAngle (use cos for comparison)
+                if (theta <= cos(light.spotAngle))
+                {
+                    attenuation = 0.0;
+                }
+                // edge smoothening can be added here later
+            }
+        }
+
+        // Radiance per light
+        float3 radiance = light.color * light.intensity * attenuation;
+
+        // Cook-Torrance BRDF terms per-light
+        float3 H = normalize(V + L);
+        float D = DistributionGGX(N, H, g_Roughness);
+        float G = GeometrySmith(N, V, L, g_Roughness);
+        float NdotV = saturate(dot(N, V));
+        float NdotL = saturate(dot(N, L));
+        float3 F = FresnelSchlick(saturate(dot(H, V)), F0);
+
+        float3 numerator = D * G * F;
+        float denom = max(4.0 * NdotV * NdotL, 1e-4);
+        float3 specular = numerator / denom;
+
+        // Energy conservation; ensures that the surface does not reflect more light than it receives
+        float3 kS = F;
+        float3 kD = 1.0 - kS;
+        kD *= (1.0 - saturate(g_Metallic)); // metals have no diffuse
+
+        float3 diffuse = (kD * albedo) / PI;
+
+        // Accumulate contribution of this light
+        Lo += (diffuse + specular) * radiance * NdotL;
+    }
 
     // Add a small ambient term to avoid pure black in unlit areas
     float3 ambient = 0.03 * albedo;

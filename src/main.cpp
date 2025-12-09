@@ -53,8 +53,37 @@ static void LoadContent()
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Main Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
 
-	// Create a directional light
-	g_scene.CreateDirectionalLight("Sun Light");
+    // Create a directional light
+    g_scene.CreateDirectionalLight("Sun Light");
+
+    // Create a sample point light (red) near the model
+    g_scene.CreatePointLight(
+        "Red Point Light",
+        XMFLOAT3{ 0.0f, 0.0f, 5.0f },       // position
+		XMFLOAT3{ 1.0f, 0.2f, 0.2f },       // color (red)
+        800.0f,                             // intensity
+        1000.0f                             // range
+    );
+
+	// Create a sample spot light (blue) aimed at the model from above
+    {
+		// calculate direction vector from position to target
+        XMFLOAT3 spotPos{ 0.0f, 30.0f, 5.0f };
+        XMFLOAT3 target{ 0.0f, -1.0f, 0.0f };
+        XMVECTOR dir = XMVector3Normalize(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&spotPos)));
+        XMFLOAT3 dirF{};
+        XMStoreFloat3(&dirF, dir);
+
+        g_scene.CreateSpotLight(
+            "Blue Spot Light",
+            spotPos,
+            dirF,
+			XMFLOAT3{ 0.2f, 0.4f, 1.0f },       // color (blue)
+            400.0f,                             // intensity
+            1000.0f,                            // range
+            XM_PIDIV4                           // 45 deg cone
+        );
+    }
 
     // Load a model; ensure the asset exists and Assimp DLL is present alongside the exe
     auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");

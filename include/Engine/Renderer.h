@@ -26,25 +26,37 @@ struct DX11Context
     UINT height = 720;
 };
 
-// Light constant buffer layout (aligned for HLSL cbuffer packing)
+// Per-light data sent to the pixel shader (HLSL-compatible, 16B packing)
+struct LightData
+{
+    DirectX::XMFLOAT3 position;  // For Point/Spot
+    float range;                 // For Point/Spot attenuation
+    DirectX::XMFLOAT3 direction; // For Directional/Spot
+    float spotAngle;             // For Spot cone
+    DirectX::XMFLOAT3 color;
+    float intensity;
+    unsigned int type;           // 0=Dir, 1=Point, 2=Spot
+    DirectX::XMFLOAT3 padding;   // Pad to 16-byte alignment
+};
+
+#define MAX_LIGHTS 4 // temporary maximum number of lights
+
+// Light constant buffer layout (must match HLSL CB_Light register(b3))
 // padding added to ensure 16-byte alignment
 struct LightConstants
 {
-    DirectX::XMFLOAT3 dir;      
-    float padding1;   // pad to 16 bytes
-    DirectX::XMFLOAT3 color;    
-    float intensity;  // pack intensity as scalar
     DirectX::XMFLOAT3 cameraPos;
-    float padding2;   // pad to 16 bytes
+    unsigned int lightCount;     // Actual number of active lights
+	LightData lights[MAX_LIGHTS];   // fixed-size array is used since HLSL CBs require known size
 };
 
 // Material constant buffer layout (must match HLSL CB_Material register(b4))
-// Ensure it is 16-byte aligned (sizeof == 16)
+// padding added to ensure 16-byte alignment
 struct MaterialConstants
 {
     float roughness;
     float metallic;
-    float padding[2]; // Pad to 16 bytes
+    float padding[2]; // Pad to 16-byte alignment
 };
 
 class Renderer
@@ -84,7 +96,7 @@ public:
     ID3D11RasterizerState* GetRasterState() const { return m_rasterState.Get(); }
     ID3D11DepthStencilState* GetDepthStencilState() const { return m_depthStencilState.Get(); }
     ID3D11SamplerState* GetSamplerState() const { return m_samplerState.Get(); }
-	ID3D11Buffer* GetLightCB() const { return m_cbLight.Get(); } // light cbuffer
+    ID3D11Buffer* GetLightCB() const { return m_cbLight.Get(); } // light cbuffer
     UINT GetWidth() const { return m_dx.width; }
     UINT GetHeight() const { return m_dx.height; }
 

@@ -149,13 +149,10 @@ namespace Engine
                 context->PSSetSamplers(0, 1, &sampler);
             }
 
-            // Global light update (find first directional light)
+            // Global lights update: collect up to MAX_LIGHTS
             {
-                LightConstants lc{};
-                // Default light if none present
-                lc.dir = XMFLOAT3(0.0f, -1.0f, 0.0f);
-                lc.color = XMFLOAT3(1.0f, 1.0f, 1.0f);
-                lc.intensity = 1.0f;
+                Engine::LightConstants lc{};
+                lc.lightCount = 0;
 
                 // Camera position for specular calculations
                 if (scene.m_activeRenderCamera != entt::null &&
@@ -170,10 +167,12 @@ namespace Engine
                     lc.cameraPos = XMFLOAT3(0.0f, 0.0f, -100.0f);
                 }
 
-                // Search for a light entity and extract info
+                // Search for light entities and extract info
                 auto lightView = scene.registry.view<TransformComponent, LightComponent>();
                 for (auto lightEnt : lightView)
                 {
+                    if (lc.lightCount >= MAX_LIGHTS) break;
+
                     const auto& ltTf = lightView.get<TransformComponent>(lightEnt);
                     const auto& lt = lightView.get<LightComponent>(lightEnt);
 
@@ -185,15 +184,38 @@ namespace Engine
                     XMFLOAT3 fwd{};
                     XMStoreFloat3(&fwd, XMVector3Normalize(forward));
 
-					// Fill light constants with first found light's data
-                    lc.dir = fwd;
-                    lc.color = lt.color;
-                    lc.intensity = lt.intensity;
+                    // Fill per-light data
+                    Engine::LightData ld{};
+                    ld.position  = ltTf.position;  // used by point/spot
+                    ld.range     = lt.range;       // attenuation range for point/spot
+                    ld.direction = fwd;            // used by directional/spot
+                    ld.spotAngle = lt.spotAngle;
+                    ld.color     = lt.color;
+                    ld.intensity = lt.intensity;
+                    ld.type      = static_cast<unsigned int>(lt.type);
+                    ld.padding   = XMFLOAT3(0.0f, 0.0f, 0.0f);
 
-                    break; // use the first found light
+                    lc.lights[lc.lightCount] = ld;
+                    lc.lightCount++;
                 }
 
-				// Upload to renderer and bind to PS b3
+                // If no light present, push a default directional light
+                if (lc.lightCount == 0)
+                {
+                    Engine::LightData ld{};
+                    ld.position  = XMFLOAT3(0,0,0);
+                    ld.range     = 10.0f;
+                    ld.direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
+                    ld.spotAngle = XM_PIDIV4;
+                    ld.color     = XMFLOAT3(1.0f, 1.0f, 1.0f);
+                    ld.intensity = 1.0f;
+                    ld.type      = static_cast<unsigned int>(Engine::LightType::Directional);
+                    ld.padding   = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                    lc.lights[0] = ld;
+                    lc.lightCount = 1;
+                }
+
+                // Upload & bind PS b3
                 renderer.UpdateLightConstants(lc);
             }
 

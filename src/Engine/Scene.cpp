@@ -70,7 +70,83 @@ namespace Engine
         // White light, intensity 5.0
         LightComponent lc{};
         lc.color = XMFLOAT3(1.0f, 1.0f, 1.0f);
-        lc.intensity = 5.0f;
+        lc.intensity = 2.0f;
+        lc.type = LightType::Directional;
+        registry.emplace<LightComponent>(e, lc);
+
+        return e;
+    }
+
+
+    entt::entity Scene::CreatePointLight(const char* name,
+                                         const DirectX::XMFLOAT3& position,
+                                         const DirectX::XMFLOAT3& color,
+                                         float intensity,
+                                         float range)
+    {
+        entt::entity e = registry.create();
+        registry.emplace<NameComponent>(e, std::string(name));
+
+        TransformComponent tc{};
+        tc.position = position;
+        tc.rotation = XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
+        tc.scale    = XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+        registry.emplace<TransformComponent>(e, tc);
+
+        LightComponent lc{};
+        lc.color     = color;
+        lc.intensity = intensity;
+        lc.type      = LightType::Point;
+        lc.range     = range;
+        // spotAngle unused for point
+        registry.emplace<LightComponent>(e, lc);
+
+        return e;
+    }
+
+
+    entt::entity Scene::CreateSpotLight(const char* name,
+                                        const DirectX::XMFLOAT3& position,
+                                        const DirectX::XMFLOAT3& direction, // world-space forward
+                                        const DirectX::XMFLOAT3& color,
+                                        float intensity,
+                                        float range,
+                                        float spotAngleRadians)
+    {
+        entt::entity e = registry.create();
+        registry.emplace<NameComponent>(e, std::string(name));
+
+        // Build a quaternion that aligns +Z with desired direction (LH)
+        // Compute basis from forward and world up
+        XMVECTOR fwd = XMVector3Normalize(XMLoadFloat3(&direction));
+        XMVECTOR worldUp = XMVectorSet(0, 1, 0, 0);
+        // Handle degenerate up direction by adjusting if needed
+        XMVECTOR right = XMVector3Normalize(XMVector3Cross(worldUp, fwd));
+        XMVECTOR up = XMVector3Normalize(XMVector3Cross(fwd, right));
+
+		// Create rotation matrix
+        XMMATRIX basis;
+        basis.r[0] = XMVectorSet(XMVectorGetX(right), XMVectorGetY(right), XMVectorGetZ(right), 0.0f);
+        basis.r[1] = XMVectorSet(XMVectorGetX(up),    XMVectorGetY(up),    XMVectorGetZ(up),    0.0f);
+        basis.r[2] = XMVectorSet(XMVectorGetX(fwd),   XMVectorGetY(fwd),   XMVectorGetZ(fwd),   0.0f);
+        basis.r[3] = XMVectorSet(0, 0, 0, 1);
+
+		// Convert to quaternion
+        XMVECTOR q = XMQuaternionRotationMatrix(basis);
+        q = XMQuaternionNormalize(q);
+
+        TransformComponent tc{};
+        tc.position = position;
+        XMStoreFloat4(&tc.rotation, q);
+        tc.scale = XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+        registry.emplace<TransformComponent>(e, tc);
+
+        LightComponent lc{};
+        lc.color     = color;
+        lc.intensity = intensity;
+        lc.type      = LightType::Spot;
+        lc.range     = range;
+        lc.spotAngle = spotAngleRadians;
         registry.emplace<LightComponent>(e, lc);
 
         return e;
