@@ -13,17 +13,17 @@ struct VSOutput
 // b0=Projection, b1=View, b2=World (same layout as BasicVS)
 cbuffer CB_Projection : register(b0)
 {
-    float4x4 g_Projection;
+    row_major float4x4 g_Projection;
 }
 
 cbuffer CB_View : register(b1)
 {
-    float4x4 g_View;
+    row_major float4x4 g_View;
 }
 
 cbuffer CB_World : register(b2)
 {
-    float4x4 g_World;
+    row_major float4x4 g_World;
 }
 
 VSOutput main(VSInput input)

@@ -408,27 +408,25 @@ namespace Engine
         if (m_skyboxDepthState) ctx->OMSetDepthStencilState(m_skyboxDepthState.Get(), 0);
         if (m_skyboxRasterState) ctx->RSSetState(m_skyboxRasterState.Get());
 
-        // Build matrices
-        XMVECTOR qn = XMLoadFloat4(&camTrans.rotation);
-        qn = XMQuaternionNormalize(qn);
-        XMMATRIX camR = XMMatrixRotationQuaternion(qn);
+        // Skybox world: identity (no scaling here; cube size handled in mesh)
+        DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
 
-        // Skybox world: identity (or scale slightly > 1 if needed)
-        XMMATRIX world = XMMatrixIdentity();
+        // Build view rotation only (strip translation)
+        // Use Transpose(R) == Inverse(R) for pure rotation for numerical stability
+        DirectX::XMVECTOR qn = DirectX::XMLoadFloat4(&camTrans.rotation);
+        qn = DirectX::XMQuaternionNormalize(qn);
+        DirectX::XMMATRIX viewRotOnly = DirectX::XMMatrixTranspose(DirectX::XMMatrixRotationQuaternion(qn));
 
-        // View without translation (rotation only)
-        XMMATRIX viewNoTrans = XMMatrixInverse(nullptr, camR);
-
-        // Projection (recomputed from CameraComponent)
+        // Projection using camera FOV and current aspect
         float aspect = static_cast<float>(m_dx.width) / static_cast<float>(m_dx.height ? m_dx.height : 1u);
-        XMMATRIX proj = XMMatrixPerspectiveFovLH(camComp.FOV, aspect, camComp.nearClip, camComp.farClip);
+        DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(camComp.FOV, aspect, camComp.nearClip, camComp.farClip);
 
         // Update CBs used by SkyboxVS
         UpdateWorldMatrix(world);
-        UpdateViewMatrix(viewNoTrans);
+        UpdateViewMatrix(viewRotOnly);
         UpdateProjectionMatrix(proj);
 
-        // Bind skybox shaders (assume ShaderID 2 reserved for skybox)
+        // Bind skybox shaders (shaderID 2 reserved for skybox)
         shaderMan.Bind(2, ctx);
 
         // Bind sampler and cubemap SRV
@@ -437,15 +435,10 @@ namespace Engine
         ID3D11ShaderResourceView* srv = m_skyboxSRV.Get();
         ctx->PSSetShaderResources(0, 1, &srv);
 
-        // Set custom states for skybox
-        if (m_depthStencilState) ctx->OMSetDepthStencilState(m_skyboxDepthState.Get(), 0);
-        if (m_rasterState)       ctx->RSSetState(m_skyboxRasterState.Get());
-
-        // Draw cube mesh (ID 101 per spec)
+        // Draw cube mesh (ID 101)
         Engine::MeshBuffers cube{};
         if (meshMan.GetMesh(101, cube))
         {
-            // Use skybox VS input layout if different (same POSITION only) – still use layout from shaderID 2
             ID3D11InputLayout* layout = shaderMan.GetInputLayout(2);
             SubmitMesh(cube, layout);
             DrawIndexed(cube.indexCount);

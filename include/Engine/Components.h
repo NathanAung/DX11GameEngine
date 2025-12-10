@@ -43,7 +43,7 @@ namespace Engine
     // Camera data
     struct CameraComponent
     {
-        float FOV = DirectX::XM_PIDIV4;
+        float FOV = DirectX::XM_PIDIV4; // 45 degrees in radians
         float nearClip = 0.1f;
         float farClip = 5000.0f;
         bool invertY = true;
