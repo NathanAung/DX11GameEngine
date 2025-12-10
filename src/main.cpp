@@ -47,11 +47,14 @@ void Render();
 static void LoadContent()
 {
     // Create resources with renderer device
-    // const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice()); // replaced by model loading
     const int shaderID   = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
 
+    // Ensure skybox cube mesh (ID 101) always exists for DrawSkybox
+    // Note: keep this unconditional to guarantee Mesh 101 availability
+    const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice()); // temporary ID 101
+
     // Compile & load skybox shaders (assign temporary ID 2 inside ShaderManager implementation)
-	const int skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice());
+    const int skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice());
 
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Main Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
@@ -101,12 +104,14 @@ static void LoadContent()
         int firstMeshID = meshIDs[0];
         mr.meshID = firstMeshID;
     }
-    else
-    {
-        // fallback to temp cube if model failed to load
-        const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice());
-        mr.meshID = 101;    // per spec, temporary ID
+    else {
+		throw std::runtime_error("Failed to load model meshes.");
     }
+    //else
+    //{
+    //    // fallback to temp cube if model failed to load
+    //    mr.meshID = 101;    // per spec, temporary ID
+    //}
     mr.materialID = shaderID;  // map materialID -> shaderID(1) (temporary ID)
 
     // example texture loading via texture manager and keep SRV

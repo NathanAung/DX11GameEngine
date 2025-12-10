@@ -333,9 +333,9 @@ namespace Engine
         hr = m_dx.device->CreateDepthStencilState(&skyDsDesc, m_skyboxDepthState.GetAddressOf());
         if (FAILED(hr)) return false;
 
-        // Skybox Raster state: cull front (render inside of cube)
+        // Skybox Raster state: disable culling to avoid winding issues
         D3D11_RASTERIZER_DESC skyRsDesc = rsDesc;
-        skyRsDesc.CullMode = D3D11_CULL_FRONT;
+        skyRsDesc.CullMode = D3D11_CULL_NONE;
         hr = m_dx.device->CreateRasterizerState(&skyRsDesc, m_skyboxRasterState.GetAddressOf());
         if (FAILED(hr)) return false;
 
@@ -449,6 +449,9 @@ namespace Engine
             ID3D11InputLayout* layout = shaderMan.GetInputLayout(2);
             SubmitMesh(cube, layout);
             DrawIndexed(cube.indexCount);
+        }
+        else {
+			throw std::runtime_error("Skybox cube mesh (ID 101) not found in MeshManager.");
         }
 
         // Restore default states (so subsequent draws aren’t affected)
