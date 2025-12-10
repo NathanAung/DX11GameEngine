@@ -1,80 +1,114 @@
 #include "Engine/ShaderManager.h"
-#include "Engine/MeshManager.h" // For Vertex layout
 #include <d3dcompiler.h>
+#include <stdexcept>
 
 using Microsoft::WRL::ComPtr;
 
 namespace Engine
 {
+    // Helper compile function (already declared in header)
     ComPtr<ID3DBlob> ShaderManager::Compile(const std::wstring& path, const std::string& entry, const std::string& target)
     {
-        UINT flags = D3DCOMPILE_ENABLE_STRICTNESS | D3D10_SHADER_PACK_MATRIX_ROW_MAJOR;
+        UINT flags = D3DCOMPILE_ENABLE_STRICTNESS;
     #if defined(_DEBUG)
-        flags |= D3DCOMPILE_DEBUG;
+        flags |= D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
     #endif
-        ComPtr<ID3DBlob> bytecode, errors;
+
+        ComPtr<ID3DBlob> bytecode;
+        ComPtr<ID3DBlob> errors;
         HRESULT hr = D3DCompileFromFile(
             path.c_str(),
-            nullptr,
-            D3D_COMPILE_STANDARD_FILE_INCLUDE,
-            entry.c_str(),
-            target.c_str(),
-            flags,
-            0,
+            nullptr, nullptr,
+            entry.c_str(), target.c_str(),
+            flags, 0,
             bytecode.GetAddressOf(),
             errors.GetAddressOf());
 
         if (FAILED(hr))
         {
-            if (errors) OutputDebugStringA((const char*)errors->GetBufferPointer());
-            throw std::runtime_error("Failed to compile shader");
+            const char* msg = errors ? (const char*)errors->GetBufferPointer() : "Unknown shader compile error";
+            throw std::runtime_error(msg);
         }
         return bytecode;
     }
 
-
     int ShaderManager::LoadBasicShaders(ID3D11Device* device)
     {
+        // Compile shaders
+        ComPtr<ID3DBlob> vsBytecode = Compile(L"shaders/BasicVS.hlsl", "main", "vs_5_0");
+        ComPtr<ID3DBlob> psBytecode = Compile(L"shaders/BasicPS.hlsl", "main", "ps_5_0");
+
+        // Create shader objects
         ShaderData sd{};
+        HRESULT hr = device->CreateVertexShader(vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), nullptr, sd.vs.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreateVertexShader failed (Basic)");
+        hr = device->CreatePixelShader(psBytecode->GetBufferPointer(), psBytecode->GetBufferSize(), nullptr, sd.ps.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreatePixelShader failed (Basic)");
 
-        auto vsByte = Compile(L"shaders/BasicVS.hlsl", "main", "vs_5_0");
-        auto psByte = Compile(L"shaders/BasicPS.hlsl", "main", "ps_5_0");
-
-        if (FAILED(device->CreateVertexShader(vsByte->GetBufferPointer(), vsByte->GetBufferSize(), nullptr, sd.vs.GetAddressOf())))
-            return -1;
-        if (FAILED(device->CreatePixelShader(psByte->GetBufferPointer(), psByte->GetBufferSize(), nullptr, sd.ps.GetAddressOf())))
-            return -1;
-
-        // Input layout (matches Engine::Vertex: POSITION, NORMAL, TEXCOORD)
-        // describes how vertex data, stored in memory, is organized and interpreted by the Input-Assembler (IA) stage of the graphics pipeline
+        // Input layout must match Engine::Vertex (Position, Normal, TexCoord) with stride 32
         D3D11_INPUT_ELEMENT_DESC layout[] =
         {
-            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Engine::Vertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(Engine::Vertex, normal),   D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, offsetof(Engine::Vertex, texCoord), D3D11_INPUT_PER_VERTEX_DATA, 0 }
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,                         D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float)*3,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float)*6,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
         };
-        if (FAILED(device->CreateInputLayout(layout, _countof(layout), vsByte->GetBufferPointer(), vsByte->GetBufferSize(), sd.inputLayout.GetAddressOf())))
-            return -1;
 
-		m_shaders.emplace(1, std::move(sd));    // store as shader ID 1 (temporary)
-		return 1;   // return shader ID 1 (temporary)
+        hr = device->CreateInputLayout(
+            layout, _countof(layout),
+            vsBytecode->GetBufferPointer(),
+            vsBytecode->GetBufferSize(),
+            sd.inputLayout.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed (Basic)");
+
+        // Store under shaderID 1
+        m_shaders[1] = std::move(sd);
+        return 1;
     }
 
+    int ShaderManager::LoadSkyboxShaders(ID3D11Device* device)
+    {
+        // Compile Skybox VS/PS
+        ComPtr<ID3DBlob> vsBytecode = Compile(L"shaders/SkyboxVS.hlsl", "main", "vs_5_0");
+        ComPtr<ID3DBlob> psBytecode = Compile(L"shaders/SkyboxPS.hlsl", "main", "ps_5_0");
+
+        // Create shader objects
+        ShaderData sd{};
+        HRESULT hr = device->CreateVertexShader(vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), nullptr, sd.vs.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreateVertexShader failed (Skybox)");
+        hr = device->CreatePixelShader(psBytecode->GetBufferPointer(), psBytecode->GetBufferSize(), nullptr, sd.ps.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreatePixelShader failed (Skybox)");
+
+        // IMPORTANT: Use the exact same input layout as LoadBasicShaders
+        // Reason: We render the skybox with the standard cube mesh (Engine::Vertex: POSITION, NORMAL, TEXCOORD)
+        D3D11_INPUT_ELEMENT_DESC layout[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,                         D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float)*3,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float)*6,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        };
+
+        hr = device->CreateInputLayout(
+            layout, _countof(layout),
+            vsBytecode->GetBufferPointer(),
+            vsBytecode->GetBufferSize(),
+            sd.inputLayout.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed (Skybox)");
+
+        // Store under shaderID 2
+        m_shaders[2] = std::move(sd);
+        return 2;
+    }
 
     void ShaderManager::Bind(int shaderID, ID3D11DeviceContext* context) const
     {
-		// iterator to shader map
         auto it = m_shaders.find(shaderID);
         if (it == m_shaders.end()) return;
 
-		// Bind shaders and input layout
-		// second is used becase map value is pair<key, value>
         const ShaderData& sd = it->second;
-        context->VSSetShader(sd.vs.Get(), nullptr, 0);
-        context->PSSetShader(sd.ps.Get(), nullptr, 0);
-        context->IASetInputLayout(sd.inputLayout.Get());
+        if (sd.vs) context->VSSetShader(sd.vs.Get(), nullptr, 0);
+        if (sd.ps) context->PSSetShader(sd.ps.Get(), nullptr, 0);
+        if (sd.inputLayout) context->IASetInputLayout(sd.inputLayout.Get());
     }
-
 
     ID3D11InputLayout* ShaderManager::GetInputLayout(int shaderID) const
     {

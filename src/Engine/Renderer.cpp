@@ -1,6 +1,7 @@
 #include "Engine/Renderer.h"
 #include "Engine/ShaderManager.h"
 #include "Engine/MeshManager.h"
+#include "Engine/Components.h" // for CameraComponent & TransformComponent
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -27,13 +28,16 @@ namespace Engine
         return true;
     }
 
-
     void Renderer::Shutdown()
     {
         // Reset all ComPtrs (unload and cleanup combined)
         m_samplerState.Reset();
         m_depthStencilState.Reset();
         m_rasterState.Reset();
+        m_skyboxDepthState.Reset();
+        m_skyboxRasterState.Reset();
+        m_skyboxSRV.Reset();
+
         m_cbLight.Reset();
         m_cbMaterial.Reset();
 
@@ -323,6 +327,18 @@ namespace Engine
         hr = m_dx.device->CreateDepthStencilState(&dsDesc, m_depthStencilState.GetAddressOf());
         if (FAILED(hr)) return false;
 
+        // Skybox Depth state: less-equal for z=w trick
+        D3D11_DEPTH_STENCIL_DESC skyDsDesc = dsDesc;
+        skyDsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
+        hr = m_dx.device->CreateDepthStencilState(&skyDsDesc, m_skyboxDepthState.GetAddressOf());
+        if (FAILED(hr)) return false;
+
+        // Skybox Raster state: cull front (render inside of cube)
+        D3D11_RASTERIZER_DESC skyRsDesc = rsDesc;
+        skyRsDesc.CullMode = D3D11_CULL_FRONT;
+        hr = m_dx.device->CreateRasterizerState(&skyRsDesc, m_skyboxRasterState.GetAddressOf());
+        if (FAILED(hr)) return false;
+
         // Constant buffers: Projection(b0), View(b1), World(b2)
         if (!CreateMatrixCB(m_cbProjection.GetAddressOf())) return false;
         if (!CreateMatrixCB(m_cbView.GetAddressOf())) return false;
@@ -380,5 +396,63 @@ namespace Engine
         }
 
         return true;
+    }
+
+    void Renderer::DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans)
+    {
+        if (!m_skyboxSRV) return;
+
+        auto* ctx = m_dx.context.Get();
+
+        // States for skybox
+        if (m_skyboxDepthState) ctx->OMSetDepthStencilState(m_skyboxDepthState.Get(), 0);
+        if (m_skyboxRasterState) ctx->RSSetState(m_skyboxRasterState.Get());
+
+        // Build matrices
+        XMVECTOR qn = XMLoadFloat4(&camTrans.rotation);
+        qn = XMQuaternionNormalize(qn);
+        XMMATRIX camR = XMMatrixRotationQuaternion(qn);
+
+        // Skybox world: identity (or scale slightly > 1 if needed)
+        XMMATRIX world = XMMatrixIdentity();
+
+        // View without translation (rotation only)
+        XMMATRIX viewNoTrans = XMMatrixInverse(nullptr, camR);
+
+        // Projection (recomputed from CameraComponent)
+        float aspect = static_cast<float>(m_dx.width) / static_cast<float>(m_dx.height ? m_dx.height : 1u);
+        XMMATRIX proj = XMMatrixPerspectiveFovLH(camComp.FOV, aspect, camComp.nearClip, camComp.farClip);
+
+        // Update CBs used by SkyboxVS
+        UpdateWorldMatrix(world);
+        UpdateViewMatrix(viewNoTrans);
+        UpdateProjectionMatrix(proj);
+
+        // Bind skybox shaders (assume ShaderID 2 reserved for skybox)
+        shaderMan.Bind(2, ctx);
+
+        // Bind sampler and cubemap SRV
+        ID3D11SamplerState* sampler = GetSamplerState();
+        if (sampler) ctx->PSSetSamplers(0, 1, &sampler);
+        ID3D11ShaderResourceView* srv = m_skyboxSRV.Get();
+        ctx->PSSetShaderResources(0, 1, &srv);
+
+        // Set custom states for skybox
+        if (m_depthStencilState) ctx->OMSetDepthStencilState(m_skyboxDepthState.Get(), 0);
+        if (m_rasterState)       ctx->RSSetState(m_skyboxRasterState.Get());
+
+        // Draw cube mesh (ID 101 per spec)
+        Engine::MeshBuffers cube{};
+        if (meshMan.GetMesh(101, cube))
+        {
+            // Use skybox VS input layout if different (same POSITION only) – still use layout from shaderID 2
+            ID3D11InputLayout* layout = shaderMan.GetInputLayout(2);
+            SubmitMesh(cube, layout);
+            DrawIndexed(cube.indexCount);
+        }
+
+        // Restore default states (so subsequent draws aren’t affected)
+        if (m_depthStencilState) ctx->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
+        if (m_rasterState)       ctx->RSSetState(m_rasterState.Get());
     }
 }

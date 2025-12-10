@@ -50,6 +50,9 @@ static void LoadContent()
     // const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice()); // replaced by model loading
     const int shaderID   = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
 
+    // Compile & load skybox shaders (assign temporary ID 2 inside ShaderManager implementation)
+	const int skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice());
+
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Main Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
 
@@ -109,6 +112,26 @@ static void LoadContent()
     // example texture loading via texture manager and keep SRV
     ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture.png");
     mr.texture = tex; // assign texture to component
+
+    // Load skybox cubemap: order +X, -X, +Y, -Y, +Z, -Z
+    {
+        std::vector<std::string> faces{
+            "assets/Textures/Skybox/right.png",  // +X
+            "assets/Textures/Skybox/left.png",   // -X
+            "assets/Textures/Skybox/top.png",    // +Y
+            "assets/Textures/Skybox/bottom.png", // -Y
+            "assets/Textures/Skybox/front.png",  // +Z
+            "assets/Textures/Skybox/back.png"    // -Z
+        };
+        if (ID3D11ShaderResourceView* skySRV = g_textureManager.LoadCubemap(g_renderer.GetDevice(), faces))
+        {
+            g_renderer.SetSkybox(skySRV);
+			std::printf("Skybox cubemap loaded successfully.\n");
+        }
+        else {
+			throw std::runtime_error("Failed to load skybox cubemap textures.");
+        }
+    }
 
     // PBR value testing
     mr.roughness = 0.1f; // shiny
@@ -256,6 +279,16 @@ void Render()
     g_renderer.BeginFrame();
 
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer);
+
+    // Draw skybox last: z=w ensures it renders only where nothing else drew
+    if (g_scene.m_activeRenderCamera != entt::null &&
+        g_scene.registry.valid(g_scene.m_activeRenderCamera) &&
+        g_scene.registry.all_of<Engine::TransformComponent, Engine::CameraComponent>(g_scene.m_activeRenderCamera))
+    {
+        const auto& camTrans = g_scene.registry.get<Engine::TransformComponent>(g_scene.m_activeRenderCamera);
+        const auto& camComp  = g_scene.registry.get<Engine::CameraComponent>(g_scene.m_activeRenderCamera);
+        g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans);
+    }
 
     g_renderer.Present(g_vSync);
 }

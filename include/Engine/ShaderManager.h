@@ -12,8 +12,11 @@ namespace Engine
     class ShaderManager
     {
     public:
-		// Compiles & creates VS/PS/InputLayout for BasicVS/PS. Returns shaderID 1. (temporary ID)
+        // Compiles & creates VS/PS/InputLayout for BasicVS/PS. Returns shaderID 1. (temporary ID)
         int LoadBasicShaders(ID3D11Device* device);
+
+        // Compiles SkyboxVS/PS and creates a matching Input Layout. Returns shaderID 2.
+        int LoadSkyboxShaders(ID3D11Device* device);
 
         // Binds shaders & input layout for a shader id
         void Bind(int shaderID, ID3D11DeviceContext* context) const;

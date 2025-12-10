@@ -11,6 +11,9 @@ namespace Engine
 {
 struct MeshBuffers;
 class ShaderManager;
+class MeshManager;
+struct CameraComponent;
+struct TransformComponent;
 
 // Encapsulates DirectX 11 device, context, swap chain, and views
 struct DX11Context
@@ -86,6 +89,10 @@ public:
     // Issues the draw call
     void DrawIndexed(UINT indexCount);
 
+    // Skybox
+    void SetSkybox(ID3D11ShaderResourceView* srv) { m_skyboxSRV = srv; }
+    void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans);
+
     // Resource Accessors (for Systems to use if needed)
     ID3D11Device* GetDevice() const { return m_dx.device.Get(); }
     ID3D11DeviceContext* GetContext() const { return m_dx.context.Get(); }
@@ -112,6 +119,11 @@ private:
     Microsoft::WRL::ComPtr<ID3D11SamplerState> m_samplerState;
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbLight;    // light cbuffer (PS b3)
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbMaterial; // material cbuffer (PS b4)
+
+    // skybox state
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_skyboxDepthState;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState>   m_skyboxRasterState;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_skyboxSRV;
 
     // Helper for initial resource creation (Rasterizer, Depth/Stencil, CBs)
     bool CreateInitialResources();
