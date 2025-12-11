@@ -17,7 +17,7 @@ SamplerState g_Sampler : register(s0);
 // - Diffuse: light scattered equally in all directions; depends on albedo and angle between light and normal
 // - Specular: light reflected in a specific direction based on view and light angles; depends on Fresnel, Distribution, and Geometry terms
 // - Light Radiance: color and intensity of the light source; determines how much light is emitted
-// - Angle of Incidence: cosine of angle between light direction and surface normal; affects brightness based on orientation
+// - Angle of Incidence (NdotL): cosine of angle between light direction and surface normal; affects brightness based on orientation
 
 
 struct PSInput
@@ -135,46 +135,59 @@ float ComputeAttenuation(float distance, float range)
 
 float4 main(PSInput input) : SV_Target
 {
-    // Sample base color (albedo)
+    // step 1: Sample base color (albedo)
     float4 albedoTex = g_Texture.Sample(g_Sampler, input.texCoord);
     float3 albedo = albedoTex.rgb;
 
-    // Setup base vectors
+    // step 2: compute base vectors
     float3 N = normalize(input.normal);                     // normal
-    float3 V = normalize(g_CameraPos - input.worldPos);     // view direction
+    float3 V = normalize(g_CameraPos - input.worldPos);     // view (camera) direction
 
-    // Base reflectivity F0: ~0.04 for dielectrics, albedo for metals
+    // step 3: compute base reflectivity F0: ~0.04 for dielectrics, albedo for metals
+    // For non-metals, use constant 0.04; for metals, use albedo color
     float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, saturate(g_Metallic));
 
-    // Accumulate lighting from all active lights
-    float3 Lo = float3(0.0, 0.0, 0.0);
+    // step 4: accumulate lighting from all active lights
+    float3 Lo = float3(0.0, 0.0, 0.0); // outgoing light
 
     [loop]
     for (uint i = 0; i < g_LightCount; ++i)
     {
         LightData light = g_Lights[i];
 
-        // Compute L and attenuation depending on light type
+        // Compute direction towards light (L) and attenuation depending on light type
         float3 L = float3(0, 0, 0);
         float attenuation = 1.0;
 
         if (light.type == 0) // Directional
         {
+            // negative because surface to light
             L = normalize(-light.direction);
             attenuation = 1.0;
         }
+        // Point or Spot
         else
         {
+            // vector from surface point to light position
             float3 toLight = light.position - input.worldPos;
+            // distance to light
             float dist = length(toLight);
+            
+            // normalize to get light direction
+            // if very close to light, set L to zero vector to avoid NaNs
+            // 1e-4 is arbitrary small threshold
             L = (dist > 1e-4) ? (toLight / dist) : float3(0, 0, 0);
+            
+            // compute attenuation based on distance and range
             attenuation = ComputeAttenuation(dist, light.range);
 
             if (light.type == 2) // Spot
             {
                 // test cone: compare angle between spotlight direction and L
+                // dot product gives cos of angle between vectors
                 float theta = dot(normalize(-light.direction), L);
                 // inside cone if angle less than spotAngle (use cos for comparison)
+                // if outside cone, set attenuation to zero, effectively turning off light contribution
                 if (theta <= cos(light.spotAngle))
                 {
                     attenuation = 0.0;
@@ -187,29 +200,40 @@ float4 main(PSInput input) : SV_Target
         float3 radiance = light.color * light.intensity * attenuation;
 
         // Cook-Torrance BRDF terms per-light
+        
+        // half-vector, calculated as the normalized sum of view and light directions
         float3 H = normalize(V + L);
+        // Distribution term, describes microfacet orientation
         float D = DistributionGGX(N, H, g_Roughness);
+        // Geometry term, accounts for shadowing/masking
         float G = GeometrySmith(N, V, L, g_Roughness);
+        // cosine of angle between normal and view direction, for energy conservation
         float NdotV = saturate(dot(N, V));
+        // cosine of angle between normal and light direction, for energy conservation
         float NdotL = saturate(dot(N, L));
+        // Fresnel term, describes reflectance at different angles
         float3 F = FresnelSchlick(saturate(dot(H, V)), F0);
 
+        // numerator of Cook-Torrance BRDF is the product of D, G, and F
         float3 numerator = D * G * F;
+        // denominator is 4 * NdotV * NdotL, clamped to avoid division by zero
         float denom = max(4.0 * NdotV * NdotL, 1e-4);
+        // final specular term is numerator divided by denominator
         float3 specular = numerator / denom;
 
         // Energy conservation; ensures that the surface does not reflect more light than it receives
-        float3 kS = F;
-        float3 kD = 1.0 - kS;
-        kD *= (1.0 - saturate(g_Metallic)); // metals have no diffuse
+        float3 kS = F;                          // specular reflection component
+        float3 kD = 1.0 - kS;                   // diffuse reflection component
+        kD *= (1.0 - saturate(g_Metallic));     // metals have no diffuse
 
+        // Lambertian diffuse term, scaled by albedo and PI 
         float3 diffuse = (kD * albedo) / PI;
 
         // Accumulate contribution of this light
         Lo += (diffuse + specular) * radiance * NdotL;
     }
 
-    // Add a small ambient term to avoid pure black in unlit areas
+    // step 5: add a small ambient term to avoid pure black in unlit areas
     float3 ambient = 0.03 * albedo;
     float3 color = ambient + Lo;
 
