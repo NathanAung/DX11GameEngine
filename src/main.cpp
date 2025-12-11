@@ -67,14 +67,14 @@ static void LoadContent()
         "Red Point Light",
         XMFLOAT3{ 0.0f, 0.0f, 5.0f },       // position
 		XMFLOAT3{ 1.0f, 0.2f, 0.2f },       // color (red)
-        800.0f,                             // intensity
-        1000.0f                             // range
+        8.0f,                             // intensity
+        10.0f                             // range
     );
 
 	// Create a sample spot light (blue) aimed at the model from above
     {
 		// calculate direction vector from position to target
-        XMFLOAT3 spotPos{ 0.0f, 30.0f, 5.0f };
+        XMFLOAT3 spotPos{ 0.0f, 5.0f, 5.0f };
         XMFLOAT3 target{ 0.0f, -1.0f, 0.0f };
         XMVECTOR dir = XMVector3Normalize(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&spotPos)));
         XMFLOAT3 dirF{};
@@ -85,8 +85,8 @@ static void LoadContent()
             spotPos,
             dirF,
 			XMFLOAT3{ 0.2f, 0.4f, 1.0f },       // color (blue)
-            400.0f,                             // intensity
-            1000.0f,                            // range
+            100.0f,                             // intensity
+            10.0f,                            // range
             XM_PIDIV4                           // 45 deg cone
         );
     }

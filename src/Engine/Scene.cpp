@@ -29,6 +29,7 @@ namespace Engine
 		// Position at z = 5 looking toward -Z in LH space
         auto& tf = registry.get<TransformComponent>(e);
         tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, 5.0f };
+		tf.scale = DirectX::XMFLOAT3{ 0.1f, 0.1f, 0.1f };   // temporary scale down since model is huge
 
         return e;
     }
@@ -40,7 +41,7 @@ namespace Engine
 
         // Position at z = -5 looking toward +Z in LH space
         auto& tf = registry.get<TransformComponent>(e);
-        tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, -100.0f };
+        tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, -10.0f };
         tf.rotation = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
         tf.scale    = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };
 
@@ -70,7 +71,7 @@ namespace Engine
         // White light, intensity 5.0
         LightComponent lc{};
         lc.color = XMFLOAT3(1.0f, 1.0f, 1.0f);
-        lc.intensity = 2.0f;
+        lc.intensity = 5.0f;
         lc.type = LightType::Directional;
         registry.emplace<LightComponent>(e, lc);
 

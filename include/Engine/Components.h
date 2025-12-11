@@ -67,7 +67,7 @@ namespace Engine
     struct EditorCamControlComponent
     {
         CameraControlMode mode = CameraControlMode::EditorCam;
-        float moveSpeed = 50.0f;
+        float moveSpeed = 10.0f;
         float lookSensitivity = 0.0025f;
         float sprintMultiplier = 2.0f;
         float yaw = 0.0f;

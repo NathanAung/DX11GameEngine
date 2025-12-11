@@ -1,169 +1,149 @@
-cmake_minimum_required(VERSION 3.20)
+ï»¿cmake_minimum_required(VERSION 3.20)
 
 project(DX11GameEngine
-  VERSION 0.1.0
-  LANGUAGES CXX
+    VERSION 0.1.0
+    LANGUAGES CXX
 )
 
-# Set C++ standard
+# --------------------------------------------------------------
+# Compiler and project settings
+# --------------------------------------------------------------
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (MSVC)
-  # Make __cplusplus report the real standard and use conforming mode
-  add_compile_options(/permissive- /Zc:__cplusplus)
+    add_compile_options(/permissive- /W4 /EHsc)
+    add_compile_definitions(_CRT_SECURE_NO_WARNINGS)
+    add_compile_definitions(_HAS_CXX17=1)
 
-  # Suppress warnings from external headers
-  add_compile_options(/external:W0 /external:anglebrackets)
-  # Tell CMake to pass external include dirs as /external:I
-  set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "/external:I")
-
-  # Help IntelliSense recognize C++17 library features (string_view, etc.)
-  add_compile_definitions(_HAS_CXX17=1)
+    # Better IntelliSense via external includes
+    add_compile_options(/external:W0 /external:anglebrackets)
+    set(CMAKE_INCLUDE_SYSTEM_FLAG_CXX "/external:I")
 endif()
 
-include(cmake/BuildOptions.cmake)
-
-# Define where ALL executables and DLLs go for ALL configurations (Debug/Release)
+# Output directory (bin/Debug, bin/Release)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-# Prefer vcpkg if available: find CONFIG packages.
-# SDL2 is required at this step.
-set(ENGINE_ENABLE_VCPKG ON CACHE BOOL "Use vcpkg-config packages when available")
+# --------------------------------------------------------------
+# Source files
+# --------------------------------------------------------------
 
-if(ENGINE_ENABLE_VCPKG)
-  find_package(SDL2 CONFIG QUIET)
-  # Header-only libraries (optional via vcpkg)
-  find_package(EnTT CONFIG QUIET)
-  find_package(RapidJSON CONFIG QUIET)
-  find_package(imgui CONFIG QUIET)     # integrate rendering later
-  find_package(assimp CONFIG QUIET)    # Used in later steps
-endif()
-
-# Fallback for SDL2 if not found via vcpkg:
-if(NOT SDL2_FOUND)
-  message(STATUS "SDL2 CONFIG not found. You can install 'sdl2:x64-windows' via vcpkg.")
-  # As a minimum, allow an environment or cache variable SDL2_DIR to point to a prebuilt SDL2.
-  # Expect SDL2_DIR to contain lib/cmake/SDL2 or SDL2Config.cmake.
-  if(DEFINED ENV{SDL2_DIR})
-    list(APPEND CMAKE_PREFIX_PATH "$ENV{SDL2_DIR}")
-    find_package(SDL2 CONFIG REQUIRED)
-  elseif(DEFINED SDL2_DIR)
-    list(APPEND CMAKE_PREFIX_PATH "${SDL2_DIR}")
-    find_package(SDL2 CONFIG REQUIRED)
-  else()
-    message(FATAL_ERROR "SDL2 not found. Set SDL2_DIR or install via vcpkg and set the vcpkg toolchain.")
-  endif()
-endif()
-
-# Add source files
 set(ENGINE_SOURCE_FILES
-  src/main.cpp
-  src/Engine/Renderer.cpp
-  src/Engine/InputManager.cpp
-  src/Engine/Scene.cpp
-  src/Engine/MeshManager.cpp
-  src/Engine/ShaderManager.cpp
-  src/Engine/TextureManager.cpp
-  src/Engine/Systems.cpp
+    src/main.cpp
+    src/Engine/Renderer.cpp
+    src/Engine/InputManager.cpp
+    src/Engine/Scene.cpp
+    src/Engine/MeshManager.cpp
+    src/Engine/ShaderManager.cpp
+    src/Engine/TextureManager.cpp
+    src/Engine/Systems.cpp
 )
 
 set(ENGINE_HEADER_FILES
-  include/Engine/Core.h
-  include/Engine/Renderer.h
-  include/Engine/InputManager.h
-  include/Engine/Components.h
-  include/Engine/Scene.h
-  include/Engine/MeshManager.h
-  include/Engine/ShaderManager.h
-  include/Engine/TextureManager.h
-  include/Engine/Systems.h
+    include/Engine/Core.h
+    include/Engine/Renderer.h
+    include/Engine/InputManager.h
+    include/Engine/Components.h
+    include/Engine/Scene.h
+    include/Engine/MeshManager.h
+    include/Engine/ShaderManager.h
+    include/Engine/TextureManager.h
+    include/Engine/Systems.h
 )
 
-# Create executable target
-add_executable(DX11GameEngine ${ENGINE_SOURCE_FILES} ${ENGINE_HEADER_FILES} "include/Engine/Core.h")
-
-# Add Precompiled Headers for the executable target
-target_precompile_headers(DX11GameEngine 
-    PRIVATE
-        "include/Engine/Core.h"
+add_executable(DX11GameEngine
+    ${ENGINE_SOURCE_FILES}
+    ${ENGINE_HEADER_FILES}
 )
 
-# Language, warnings, and OS-specific definitions
-target_compile_features(DX11GameEngine PRIVATE cxx_std_14)
-if(MSVC)
-  target_compile_options(DX11GameEngine PRIVATE /W4 /permissive- /EHsc)
-  target_compile_definitions(DX11GameEngine PRIVATE _CRT_SECURE_NO_WARNINGS)
-endif()
+# Precompiled header (optional)
+target_precompile_headers(DX11GameEngine PRIVATE include/Engine/Core.h)
 
-# Mark third-party include dirs as SYSTEM so /external:* applies
-target_include_directories(DX11GameEngine
-  PRIVATE ${CMAKE_SOURCE_DIR}/include
-  SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/external/entt
-    ${CMAKE_SOURCE_DIR}/external/SDL2/include
-)
+# --------------------------------------------------------------
+# vcpkg manifest mode packages (auto-installed)
+# --------------------------------------------------------------
 
-# Link SDL2
-# SDL2::SDL2main is needed if its WinMain entry is used; we will use standard main(), but keep linkage ready.
-# Some SDL2 packages expose SDL2::SDL2main; some only SDL2::SDL2. Link if available.
-# Guard SDL2 targets (optional safety)
-if(TARGET SDL2::SDL2main)
-  target_link_libraries(DX11GameEngine PRIVATE SDL2::SDL2main)
-endif()
-if(TARGET SDL2::SDL2)
-  target_link_libraries(DX11GameEngine PRIVATE SDL2::SDL2)
-endif()
+# SDL2
+find_package(SDL2 CONFIG REQUIRED)
+target_link_libraries(DX11GameEngine PRIVATE SDL2::SDL2 SDL2::SDL2main)
 
-# Find Assimp
+# Assimp
 find_package(assimp CONFIG REQUIRED)
-
-# Include dirs (only if target doesn’t propagate)
-# target_include_directories(DX11GameEngine PRIVATE ${ASSIMP_INCLUDE_DIRS})
-
-# Link Assimp
 target_link_libraries(DX11GameEngine PRIVATE assimp::assimp)
 
-# Optional: lock MSVC runtime to DLL form
-if(MSVC)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+# EnTT
+find_package(EnTT CONFIG REQUIRED)
+target_link_libraries(DX11GameEngine PRIVATE EnTT::EnTT)
+
+# RapidJSON (header-only)
+find_package(RapidJSON CONFIG REQUIRED)
+
+# imgui (DX11 backend)
+find_package(imgui CONFIG REQUIRED)
+target_link_libraries(DX11GameEngine PRIVATE imgui::imgui)
+
+# Jolt Physics
+find_package(Jolt CONFIG REQUIRED)
+target_link_libraries(DX11GameEngine PRIVATE Jolt::Jolt)
+
+# --------------------------------------------------------------
+# DirectX system libraries
+# --------------------------------------------------------------
+
+if (WIN32)
+    target_link_libraries(DX11GameEngine PRIVATE
+        d3d11
+        dxgi
+        d3dcompiler
+        dxguid
+    )
 endif()
 
-# Windows/DirectX system libs
-if(WIN32)
-  target_link_libraries(DX11GameEngine PRIVATE
-    d3d11
-    dxgi
-    d3dcompiler
-    dxguid
-  )
-endif()
+# --------------------------------------------------------------
+# Include directories
+# --------------------------------------------------------------
 
-# Organize in IDE
-source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${ENGINE_SOURCE_FILES} ${ENGINE_HEADER_FILES})
+target_include_directories(DX11GameEngine
+    PRIVATE ${CMAKE_SOURCE_DIR}/include
+)
 
-# Print summary
-message(STATUS "DX11GameEngine configured.")
-message(STATUS "  SDL2:         ${SDL2_DIR}")
-message(STATUS "  Using vcpkg:  ${ENGINE_ENABLE_VCPKG}")
+# --------------------------------------------------------------
+# Visual Studio settings
+# --------------------------------------------------------------
 
-# Make this target the startup project in VS and set working directory
-set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT DX11GameEngine)
-set_property(TARGET DX11GameEngine PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+             PROPERTY VS_STARTUP_PROJECT DX11GameEngine)
 
-# Copy shaders next to the executable
+set_property(TARGET DX11GameEngine
+             PROPERTY VS_DEBUGGER_WORKING_DIRECTORY
+             "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+
+# --------------------------------------------------------------
+# Copy shaders & assets to build/bin
+# --------------------------------------------------------------
+
 add_custom_target(CopyShaders ALL
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-          ${CMAKE_SOURCE_DIR}/shaders
-          ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/shaders
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders
 )
-add_dependencies(DX11GameEngine CopyShaders)
 
-# Copy assets next to the executable
 add_custom_target(CopyAssets ALL
-  COMMAND ${CMAKE_COMMAND} -E copy_directory
-          ${CMAKE_SOURCE_DIR}/assets
-          ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/assets
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets
 )
-add_dependencies(DX11GameEngine CopyAssets)
+
+add_dependencies(DX11GameEngine CopyShaders CopyAssets)
+
+# --------------------------------------------------------------
+# IDE File Grouping
+# --------------------------------------------------------------
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}
+    FILES ${ENGINE_SOURCE_FILES} ${ENGINE_HEADER_FILES}
+)
+
+message(STATUS "DX11GameEngine configured (manifest mode active).")
