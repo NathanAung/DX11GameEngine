@@ -39,6 +39,9 @@ Engine::TextureManager g_textureManager; // global texture manager instance
 // Renderer
 Engine::Renderer g_renderer;
 
+// New: Physics
+Engine::PhysicsManager g_physicsManager;
+
 // Forward declarations
 static void LoadContent();
 void Update(float deltaTime);
@@ -188,6 +191,19 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    // Initialize physics (Jolt)
+    if (!g_physicsManager.Initialize())
+    {
+        std::fprintf(stderr, "PhysicsManager initialization failed\n");
+        g_renderer.Shutdown();
+        if (g_SDLWindow) {
+            SDL_DestroyWindow(g_SDLWindow);
+            g_SDLWindow = nullptr;
+        }
+        SDL_Quit();
+        return -1;
+    }
+
     g_input.SetMouseCaptured(true);
 
     try {
@@ -196,6 +212,7 @@ int main(int argc, char** argv)
     catch (const std::exception& e)
     {
         std::fprintf(stderr, "Content load failed: %s\n", e.what());
+        g_physicsManager.Shutdown();
         g_renderer.Shutdown();
         if (g_SDLWindow) {
             SDL_DestroyWindow(g_SDLWindow);
@@ -258,6 +275,7 @@ int main(int argc, char** argv)
     }
 
     // Shutdown and cleanup
+    g_physicsManager.Shutdown();
     g_renderer.Shutdown();
     if (g_SDLWindow) {
         SDL_DestroyWindow(g_SDLWindow);
@@ -268,6 +286,9 @@ int main(int argc, char** argv)
 }
 
 void Update(float deltaTime) {
+    // Physics step first to drive transforms later (to be implemented in Part 4)
+    g_physicsManager.Update(deltaTime);
+
     Engine::CameraInputSystem(g_scene, g_input, deltaTime);
     Engine::CameraMatrixSystem(g_scene, g_renderer);
     Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
