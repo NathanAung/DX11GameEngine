@@ -2,7 +2,9 @@
 #include "Engine/Components.h"
 #include "Engine/Renderer.h"
 #include "Engine/MeshManager.h"
+#include "Engine/PhysicsManager.h"
 #include <DirectXMath.h>
+#include <Jolt/Physics/Body/BodyInterface.h>
 
 using namespace DirectX;
 
@@ -261,6 +263,53 @@ namespace Engine
                 // ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
                 // context->PSSetShaderResources(0, 1, nullSRV);
             }
+        }
+    }
+
+    // Helpers: convert Jolt types to DirectX
+    static inline XMFLOAT3 FromJolt(const JPH::Vec3& v) {
+        return XMFLOAT3(v.GetX(), v.GetY(), v.GetZ());
+    }
+
+    static inline XMFLOAT4 FromJolt(const JPH::Quat& q) {
+        return XMFLOAT4(q.GetX(), q.GetY(), q.GetZ(), q.GetW());
+    }
+
+    void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt)
+    {
+        // Phase 1: Initialization (Create Bodies)
+        auto physView = scene.registry.view<TransformComponent, RigidBodyComponent>();
+        for (auto ent : physView)
+        {
+            auto& tc = physView.get<TransformComponent>(ent);
+            auto& rb = physView.get<RigidBodyComponent>(ent);
+
+            if (rb.bodyID.IsInvalid()) {
+                JPH::BodyID id = physicsManager.CreateRigidBody(tc, rb, meshManager);
+                rb.bodyID = id;
+                rb.bodyCreated = !id.IsInvalid();
+            }
+        }
+
+        // Phase 2: Simulation
+        physicsManager.Update(dt);
+
+        // Phase 3: Synchronization (Jolt -> ECS)
+        JPH::BodyInterface& bi = physicsManager.GetBodyInterface();
+        for (auto ent : physView)
+        {
+            auto& tc = physView.get<TransformComponent>(ent);
+            auto& rb = physView.get<RigidBodyComponent>(ent);
+
+            // Skip statics and invalid bodies
+            if (rb.motionType == RBMotion::Static) continue;
+            if (rb.bodyID.IsInvalid()) continue;
+
+            const JPH::Vec3 pos = bi.GetPosition(rb.bodyID);
+            const JPH::Quat rot = bi.GetRotation(rb.bodyID);
+
+            tc.position = FromJolt(pos);
+            tc.rotation = FromJolt(rot);
         }
     }
 }

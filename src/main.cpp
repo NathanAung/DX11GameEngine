@@ -144,6 +144,68 @@ static void LoadContent()
     // PBR value testing
     mr.roughness = 0.1f; // shiny
     mr.metallic  = 0.2f; // metallic (with yellow-ish albedo you'd get gold-like)
+
+    // Physics objects
+    // Ground (static box)
+    {
+        entt::entity ground = g_scene.CreateEntity("Ground");
+        auto& tc = g_scene.registry.get<Engine::TransformComponent>(ground);
+        tc.position = XMFLOAT3(0.0f, -10.0f, 0.0f);
+        tc.scale = XMFLOAT3(10.0f, 0.1f, 10.0f); // visual scaling to match collider
+
+        Engine::RigidBodyComponent rb{};
+        rb.shape = Engine::RBShape::Box;
+        rb.motionType = Engine::RBMotion::Static;
+        rb.halfExtent = XMFLOAT3(5.0f, 0.05f, 5.0f);
+        g_scene.registry.emplace<Engine::RigidBodyComponent>(ground, rb);
+
+        Engine::MeshRendererComponent rend{};
+        rend.meshID = 101;               // cube mesh
+        rend.materialID = shaderID;
+        rend.roughness = 1.0f;
+        rend.metallic = 1.0f;
+        g_scene.registry.emplace<Engine::MeshRendererComponent>(ground, rend);
+    }
+
+    // Falling Box (dynamic)
+    {
+        entt::entity box = g_scene.CreateEntity("Physics Box");
+        auto& tc = g_scene.registry.get<Engine::TransformComponent>(box);
+        tc.position = XMFLOAT3(1.0f, 10.0f, 3.0f);
+        tc.scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
+
+        Engine::RigidBodyComponent rb{};
+        rb.shape = Engine::RBShape::Box;
+        rb.motionType = Engine::RBMotion::Dynamic;
+        rb.mass = 1.0f;
+        rb.halfExtent = XMFLOAT3(0.5f, 0.5f, 0.5f);
+        g_scene.registry.emplace<Engine::RigidBodyComponent>(box, rb);
+
+        Engine::MeshRendererComponent rend{};
+        rend.meshID = 101;
+        rend.materialID = shaderID;
+        g_scene.registry.emplace<Engine::MeshRendererComponent>(box, rend);
+    }
+
+    // Falling Sphere (dynamic) - visual placeholder cube
+    {
+        entt::entity sphere = g_scene.CreateEntity("Physics Sphere");
+        auto& tc = g_scene.registry.get<Engine::TransformComponent>(sphere);
+        tc.position = XMFLOAT3(0.5f, 20.0f, 3.0f);
+        tc.scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
+
+        Engine::RigidBodyComponent rb{};
+        rb.shape = Engine::RBShape::Sphere;
+        rb.motionType = Engine::RBMotion::Dynamic;
+        rb.mass = 1.0f;
+        rb.radius = 0.5f;
+        g_scene.registry.emplace<Engine::RigidBodyComponent>(sphere, rb);
+
+        Engine::MeshRendererComponent rend{};
+        rend.meshID = 101;               // placeholder
+        rend.materialID = shaderID;
+        g_scene.registry.emplace<Engine::MeshRendererComponent>(sphere, rend);
+    }
 }
 
 // Main entry point
@@ -286,8 +348,8 @@ int main(int argc, char** argv)
 }
 
 void Update(float deltaTime) {
-    // Physics step first to drive transforms later (to be implemented in Part 4)
-    g_physicsManager.Update(deltaTime);
+    // Physics step and sync
+    Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime);
 
     Engine::CameraInputSystem(g_scene, g_input, deltaTime);
     Engine::CameraMatrixSystem(g_scene, g_renderer);

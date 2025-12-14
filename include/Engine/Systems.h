@@ -6,6 +6,7 @@
 #include "Engine/ShaderManager.h"
 #include "Engine/InputManager.h"
 #include "Engine/Renderer.h"
+#include "Engine/PhysicsManager.h"
 
 // Systems for the engine, including various update and rendering systems
 
@@ -25,4 +26,7 @@ namespace Engine
 
     // build view/projection matrices for active camera and upload via renderer
     void CameraMatrixSystem(Engine::Scene& scene, Engine::Renderer& renderer);
+
+    // physics update system: initialize bodies, step simulation, sync back transforms
+    void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt);
 }

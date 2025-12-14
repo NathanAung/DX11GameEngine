@@ -408,8 +408,8 @@ namespace Engine
         if (m_skyboxDepthState) ctx->OMSetDepthStencilState(m_skyboxDepthState.Get(), 0);
         if (m_skyboxRasterState) ctx->RSSetState(m_skyboxRasterState.Get());
 
-        // Skybox world: identity (no scaling here; cube size handled in mesh)
-        DirectX::XMMATRIX world = DirectX::XMMatrixIdentity();
+		// Skybox world: identity (scaled to ensure it's not clipped by near plane)
+        DirectX::XMMATRIX world = DirectX::XMMatrixScaling(50.0f, 50.0f, 50.0f);
 
         // Build view rotation only (strip translation)
         // Use Transpose(R) == Inverse(R) for pure rotation for numerical stability

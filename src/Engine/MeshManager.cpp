@@ -8,8 +8,7 @@ namespace Engine
 {
     int MeshManager::InitializeCube(ID3D11Device* device)
     {
-        // Increase cube size for skybox stability (avoid near-plane clipping before VS z=w trick)
-        const float s = 2.0f;
+        const float s = 0.5f;
         std::vector<Vertex> vertices =
         {
             {{-s,-s,-s},{0,0,-1},{0,0}}, {{-s,+s,-s},{0,0,-1},{0,0}}, {{+s,+s,-s},{0,0,-1},{0,0}}, {{+s,-s,-s},{0,0,-1},{0,0}}, // back
