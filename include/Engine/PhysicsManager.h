@@ -12,8 +12,10 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
+#include <Jolt/Physics/Body/MotionType.h>
 
 namespace Layers {
     // Object layers
@@ -89,6 +91,10 @@ public:
 
 namespace Engine {
 
+// Forward declarations to avoid including full components header here
+struct TransformComponent;
+struct RigidBodyComponent;
+
 class PhysicsManager {
 public:
     bool Initialize();
@@ -98,13 +104,17 @@ public:
     JPH::PhysicsSystem* GetSystem() const { return m_physicsSystem; }
     JPH::BodyInterface& GetBodyInterface();
 
+    // ECS bridge: create/remove bodies from components
+    JPH::BodyID CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc);
+    void RemoveRigidBody(JPH::BodyID bodyID);
+
 private:
-    JPH::TempAllocatorImpl*               m_tempAllocator     = nullptr;
-    JPH::JobSystemThreadPool*             m_jobSystem         = nullptr;
-    JPH::PhysicsSystem*                   m_physicsSystem     = nullptr;
-    BPLayerInterfaceImpl*                 m_bpLayerInterface  = nullptr;
-    ObjectVsBroadPhaseLayerFilterImpl*    m_objVsBpLayerFilter= nullptr;
-    ObjectLayerPairFilterImpl*            m_objLayerPairFilter= nullptr;
+    JPH::TempAllocatorImpl* m_tempAllocator = nullptr;
+    JPH::JobSystemThreadPool* m_jobSystem = nullptr;
+    JPH::PhysicsSystem* m_physicsSystem = nullptr;
+    BPLayerInterfaceImpl* m_bpLayerInterface = nullptr;
+    ObjectVsBroadPhaseLayerFilterImpl* m_objVsBpLayerFilter = nullptr;
+    ObjectLayerPairFilterImpl* m_objLayerPairFilter = nullptr;
 };
 
 }

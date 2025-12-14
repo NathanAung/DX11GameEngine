@@ -5,7 +5,7 @@
 #include "Engine/MeshManager.h"
 #include "Engine/ShaderManager.h"
 #include "Engine/Systems.h"
-#include "Engine/TextureManager.h" // Texture manager include
+#include "Engine/TextureManager.h"
 
 // Common Usings
 using namespace DirectX;

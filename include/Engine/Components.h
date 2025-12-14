@@ -3,6 +3,7 @@
 #include <string>
 #include <DirectXMath.h>
 #include <d3d11.h> // Added for ID3D11ShaderResourceView*
+#include <Jolt/Physics/Body/BodyID.h> // Jolt BodyID
 
 // Components class is used to define various components for ECS architecture
 
@@ -90,6 +91,29 @@ namespace Engine
         float intensity = 1.0f;                         // multiplier
         LightType type = LightType::Directional;
         float range = 10.0f;                            // attenuation range for Point/Spot
-		float spotAngle = DirectX::XM_PIDIV4;           // radians, cone angle for Spot
+        float spotAngle = DirectX::XM_PIDIV4;           // radians, cone angle for Spot
+    };
+
+    // Physics: Rigid Body definitions
+    enum class RBShape { Box, Sphere, Capsule };
+    enum class RBMotion { Static, Dynamic };
+
+    struct RigidBodyComponent
+    {
+        // Config
+        RBShape  shape      = RBShape::Box;
+        RBMotion motionType = RBMotion::Static;
+        float    mass       = 1.0f;
+        float    friction   = 0.5f;
+        float    restitution= 0.0f; // bounciness
+
+        // Shape dimensions
+        DirectX::XMFLOAT3 halfExtent{ 0.5f, 0.5f, 0.5f };   // Box
+        float radius = 0.5f;                                // Sphere/Capsule
+        float height = 1.0f;                                // Capsule total height
+
+        // Runtime (managed by physics system)
+        JPH::BodyID bodyID;         // default invalid BodyID
+        bool bodyCreated = false;   // whether registered in Jolt world
     };
 }

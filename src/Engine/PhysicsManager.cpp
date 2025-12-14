@@ -1,5 +1,7 @@
 #include "Engine/PhysicsManager.h"
 #include <thread>
+#include <DirectXMath.h>
+#include "Engine/Components.h"
 
 using namespace JPH;
 
@@ -28,9 +30,9 @@ bool PhysicsManager::Initialize() {
     m_physicsSystem = new PhysicsSystem();
 
     // World limits / capacity (tune later as needed)
-    const uint32_t maxBodies         = 1024;
-    const uint32_t numBodyMutexes    = 1024;
-    const uint32_t maxBodyPairs      = 1024;
+    const uint32_t maxBodies = 1024;
+    const uint32_t numBodyMutexes = 1024;
+    const uint32_t maxBodyPairs = 1024;
     const uint32_t maxContactConstraints = 1024;
 
     // No activation listener for now
@@ -84,6 +86,98 @@ void PhysicsManager::Update(float deltaTime) {
 
 JPH::BodyInterface& PhysicsManager::GetBodyInterface() {
     return m_physicsSystem->GetBodyInterface();
+}
+
+// Helpers to convert DirectX types to Jolt types (local to this TU)
+static inline Vec3 ToJolt(const DirectX::XMFLOAT3& v) {
+    return Vec3(v.x, v.y, v.z);
+}
+static inline Quat ToJolt(const DirectX::XMFLOAT4& q) {
+    return Quat(q.x, q.y, q.z, q.w);
+}
+
+JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc) {
+    if (!m_physicsSystem) return JPH::BodyID(); // invalid
+
+    // Build shape from component
+    RefConst<Shape> shapeRef;
+    {
+        // Switch on shape type, create settings, then call Create()
+        switch (rbc.shape) {
+        case RBShape::Box: {
+            // Jolt expects half extents vector
+            BoxShapeSettings boxSettings(ToJolt(rbc.halfExtent));
+            auto res = boxSettings.Create();
+            if (res.HasError())
+                return JPH::BodyID();
+            shapeRef = res.Get();
+            break;
+        }
+        case RBShape::Sphere: {
+            SphereShapeSettings sphereSettings(rbc.radius);
+            auto res = sphereSettings.Create();
+            if (res.HasError())
+                return JPH::BodyID();
+            shapeRef = res.Get();
+            break;
+        }
+        case RBShape::Capsule: {
+            // Capsule shape: half-height along Y, plus hemispheres with radius
+            // rbc.height is total length; Jolt requires half-height (straight section)
+            float halfHeight = rbc.height * 0.5f;
+            CapsuleShapeSettings capsuleSettings(halfHeight, rbc.radius);
+            auto res = capsuleSettings.Create();
+            if (res.HasError())
+                return JPH::BodyID();
+            shapeRef = res.Get();
+            break;
+        }
+        default:
+            return JPH::BodyID();
+        }
+    }
+
+    // Body creation settings
+    BodyCreationSettings creation(
+        shapeRef,
+        ToJolt(tc.position),
+        ToJolt(tc.rotation),
+        rbc.motionType == RBMotion::Static ? EMotionType::Static : EMotionType::Dynamic,
+        rbc.motionType == RBMotion::Static ? Layers::NON_MOVING : Layers::MOVING
+    );
+
+    // Physical properties
+    creation.mFriction = rbc.friction;
+    creation.mRestitution = rbc.restitution;
+
+    // Mass properties (only relevant for dynamic bodies)
+    if (rbc.motionType == RBMotion::Dynamic) {
+        // Let Jolt compute mass properties from the shape, then override mass
+        // Compute default mass properties:
+        // Set mOverrideMassProperties if needed to strictly enforce mass
+        creation.mOverrideMassProperties = EOverrideMassProperties::CalculateInertia;
+        creation.mMassPropertiesOverride.mMass = rbc.mass;
+
+		// inertia tensor here cam also be set here if needed; for now let Jolt compute it
+    }
+
+    BodyInterface& bi = m_physicsSystem->GetBodyInterface();
+
+    Body* body = bi.CreateBody(creation);
+    if (!body)
+        return JPH::BodyID();
+
+    // Add to world and activate
+    bi.AddBody(body->GetID(), EActivation::Activate);
+
+    return body->GetID();
+}
+
+void PhysicsManager::RemoveRigidBody(JPH::BodyID bodyID) {
+    if (!m_physicsSystem || bodyID.IsInvalid()) return;
+    BodyInterface& bi = m_physicsSystem->GetBodyInterface();
+    bi.RemoveBody(bodyID);
+    bi.DestroyBody(bodyID);
 }
 
 }
