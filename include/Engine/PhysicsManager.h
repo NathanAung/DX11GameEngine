@@ -91,9 +91,10 @@ public:
 
 namespace Engine {
 
-// Forward declarations to avoid including full components header here
+// Forward declarations
 struct TransformComponent;
 struct RigidBodyComponent;
+class MeshManager;
 
 class PhysicsManager {
 public:
@@ -105,7 +106,7 @@ public:
     JPH::BodyInterface& GetBodyInterface();
 
     // ECS bridge: create/remove bodies from components
-    JPH::BodyID CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc);
+    JPH::BodyID CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc, const MeshManager& meshManager);
     void RemoveRigidBody(JPH::BodyID bodyID);
 
 private:

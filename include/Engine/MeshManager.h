@@ -45,6 +45,10 @@ namespace Engine
         // Retrieves buffers for a mesh ID
         bool GetMesh(int meshID, MeshBuffers& out) const;
 
+        // Accessors for physics
+        const std::vector<DirectX::XMFLOAT3>& GetMeshPositions(int meshID) const;
+        const std::vector<uint32_t>& GetMeshIndices(int meshID) const;
+
     private:
         // Internal structure to hold mesh data
         struct MeshData
@@ -54,6 +58,10 @@ namespace Engine
             UINT indexCount = 0;
             UINT stride     = 0;
             DXGI_FORMAT idxFmt = DXGI_FORMAT_R16_UINT;
+
+            // CPU-side cached data for physics
+            std::vector<DirectX::XMFLOAT3> positions;  // vertex positions
+            std::vector<uint32_t> indices;             // triangle indices
         };
 
         // Create buffers and store MeshData; returns assigned mesh ID

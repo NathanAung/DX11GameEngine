@@ -95,7 +95,7 @@ namespace Engine
     };
 
     // Physics: Rigid Body definitions
-    enum class RBShape { Box, Sphere, Capsule };
+    enum class RBShape { Box, Sphere, Capsule, Mesh };
     enum class RBMotion { Static, Dynamic };
 
     struct RigidBodyComponent
@@ -111,6 +111,9 @@ namespace Engine
         DirectX::XMFLOAT3 halfExtent{ 0.5f, 0.5f, 0.5f };   // Box
         float radius = 0.5f;                                // Sphere/Capsule
         float height = 1.0f;                                // Capsule total height
+
+        // Mesh collider binding (used when shape == Mesh)
+        int meshID = 0;
 
         // Runtime (managed by physics system)
         JPH::BodyID bodyID;         // default invalid BodyID

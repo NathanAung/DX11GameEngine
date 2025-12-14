@@ -59,6 +59,13 @@ namespace Engine
         md.stride = sizeof(Vertex);
         md.idxFmt = DXGI_FORMAT_R16_UINT;
 
+        // Cache CPU-side positions and indices for physics
+        md.positions.reserve(vertices.size());
+        for (const auto& v : vertices) md.positions.push_back(v.position);
+
+        md.indices.reserve(indices16.size());
+        for (auto idx : indices16) md.indices.push_back(static_cast<uint32_t>(idx));
+
         m_meshes.emplace(101, std::move(md));   // store as mesh ID 101 (temporary)
         return 101; // temporary mesh ID
     }
@@ -125,6 +132,12 @@ namespace Engine
         md.indexCount = static_cast<UINT>(indices.size());
         md.stride = sizeof(Vertex);
         md.idxFmt = idxFmt;
+
+        // CPU-side caches for physics
+        md.positions.reserve(vertices.size());
+        for (const auto& v : vertices) md.positions.push_back(v.position);
+
+        md.indices = indices;
 
         const int id = m_nextMeshID++;
         m_meshes.emplace(id, std::move(md));
@@ -256,5 +269,23 @@ namespace Engine
         out.stride       = md.stride;
         out.indexFormat  = md.idxFmt;
         return true;
+    }
+
+
+    const std::vector<XMFLOAT3>& MeshManager::GetMeshPositions(int meshID) const
+    {
+        static const std::vector<XMFLOAT3> empty;
+        auto it = m_meshes.find(meshID);
+        if (it == m_meshes.end()) return empty;
+        return it->second.positions;
+    }
+
+
+    const std::vector<uint32_t>& MeshManager::GetMeshIndices(int meshID) const
+    {
+        static const std::vector<uint32_t> empty;
+        auto it = m_meshes.find(meshID);
+        if (it == m_meshes.end()) return empty;
+        return it->second.indices;
     }
 }

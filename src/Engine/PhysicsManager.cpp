@@ -2,6 +2,11 @@
 #include <thread>
 #include <DirectXMath.h>
 #include "Engine/Components.h"
+#include "Engine/MeshManager.h"
+
+// Jolt shapes for meshes
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 
 using namespace JPH;
 
@@ -60,6 +65,7 @@ bool PhysicsManager::Initialize() {
     return true;
 }
 
+
 void PhysicsManager::Shutdown() {
     // Destroy physics system and helpers in reverse order
     if (m_physicsSystem)      { delete m_physicsSystem;      m_physicsSystem = nullptr; }
@@ -76,6 +82,7 @@ void PhysicsManager::Shutdown() {
     }
 }
 
+
 void PhysicsManager::Update(float deltaTime) {
     if (!m_physicsSystem) return;
 
@@ -84,60 +91,107 @@ void PhysicsManager::Update(float deltaTime) {
     m_physicsSystem->Update(deltaTime, collisionSteps, m_tempAllocator, m_jobSystem);
 }
 
+
 JPH::BodyInterface& PhysicsManager::GetBodyInterface() {
     return m_physicsSystem->GetBodyInterface();
 }
 
-// Helpers to convert DirectX types to Jolt types (local to this TU)
-static inline Vec3 ToJolt(const DirectX::XMFLOAT3& v) {
-    return Vec3(v.x, v.y, v.z);
-}
-static inline Quat ToJolt(const DirectX::XMFLOAT4& q) {
-    return Quat(q.x, q.y, q.z, q.w);
-}
 
-JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc) {
+// Helpers to convert DirectX types to Jolt types (local to this TU)
+static inline Vec3 ToJolt(const DirectX::XMFLOAT3& v) { return Vec3(v.x, v.y, v.z); }
+
+static inline Quat ToJolt(const DirectX::XMFLOAT4& q) { return Quat(q.x, q.y, q.z, q.w); }
+
+
+JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc, const MeshManager& meshManager) {
     if (!m_physicsSystem) return JPH::BodyID(); // invalid
 
     // Build shape from component
     RefConst<Shape> shapeRef;
-    {
-        // Switch on shape type, create settings, then call Create()
-        switch (rbc.shape) {
-        case RBShape::Box: {
-            // Jolt expects half extents vector
-            BoxShapeSettings boxSettings(ToJolt(rbc.halfExtent));
-            auto res = boxSettings.Create();
-            if (res.HasError())
-                return JPH::BodyID();
+
+    // Switch on shape type, create settings, then call Create()
+    switch (rbc.shape) {
+    case RBShape::Box: {
+        // Jolt expects half extents vector
+        BoxShapeSettings boxSettings(ToJolt(rbc.halfExtent));
+        auto res = boxSettings.Create();
+        if (res.HasError()) return JPH::BodyID();
+        shapeRef = res.Get();
+        break;
+    }
+    case RBShape::Sphere: {
+        SphereShapeSettings sphereSettings(rbc.radius);
+        auto res = sphereSettings.Create();
+        if (res.HasError()) return JPH::BodyID();
+        shapeRef = res.Get();
+        break;
+    }
+    case RBShape::Capsule: {
+        // Capsule shape: half-height along Y, plus hemispheres with radius
+        // rbc.height is total length; Jolt requires half-height (straight section)
+        float halfHeight = rbc.height * 0.5f;
+        CapsuleShapeSettings capsuleSettings(halfHeight, rbc.radius);
+        auto res = capsuleSettings.Create();
+        if (res.HasError()) return JPH::BodyID();
+        shapeRef = res.Get();
+        break;
+    }
+    case RBShape::Mesh: {
+        const auto& positions = meshManager.GetMeshPositions(rbc.meshID);
+        if (positions.empty()) return JPH::BodyID();
+
+        // Build both: VertexList for MeshShapeSettings and Array<Vec3> for ConvexHullShapeSettings
+        VertexList vertex_list;
+        vertex_list.reserve(positions.size());
+
+        JPH::Array<JPH::Vec3> hull_vertices;
+        hull_vertices.reserve(positions.size());
+
+        for (const auto& p : positions) {
+            vertex_list.push_back(JPH::Float3(p.x, p.y, p.z)); // VertexList element type
+            hull_vertices.push_back(JPH::Vec3(p.x, p.y, p.z)); // ConvexHull needs Vec3
+        }
+
+        const auto& indices = meshManager.GetMeshIndices(rbc.meshID);
+
+        if (rbc.motionType == RBMotion::Static) {
+            if (indices.empty() || (indices.size() % 3) != 0) {
+                // Convex hull path must use Array<Vec3>
+                JPH::ConvexHullShapeSettings hull(hull_vertices);
+                auto res = hull.Create();
+                if (res.HasError()) return JPH::BodyID();
+                shapeRef = res.Get();
+            } else {
+                // Indexed triangles for concave static mesh
+                IndexedTriangleList tri_list;
+                tri_list.reserve(indices.size() / 3);
+                for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+                    tri_list.push_back(JPH::IndexedTriangle(
+                        static_cast<JPH::uint32>(indices[i]),
+                        static_cast<JPH::uint32>(indices[i + 1]),
+                        static_cast<JPH::uint32>(indices[i + 2]),
+                        0 // material index
+                    ));
+                }
+
+                JPH::MeshShapeSettings meshSettings(vertex_list, tri_list);
+                auto res = meshSettings.Create();
+                if (res.HasError()) return JPH::BodyID();
+                shapeRef = res.Get();
+            }
+        } else {
+            // Dynamic bodies: convex hull using Array<Vec3>
+            JPH::ConvexHullShapeSettings hull(hull_vertices);
+            auto res = hull.Create();
+            if (res.HasError()) return JPH::BodyID();
             shapeRef = res.Get();
-            break;
         }
-        case RBShape::Sphere: {
-            SphereShapeSettings sphereSettings(rbc.radius);
-            auto res = sphereSettings.Create();
-            if (res.HasError())
-                return JPH::BodyID();
-            shapeRef = res.Get();
-            break;
-        }
-        case RBShape::Capsule: {
-            // Capsule shape: half-height along Y, plus hemispheres with radius
-            // rbc.height is total length; Jolt requires half-height (straight section)
-            float halfHeight = rbc.height * 0.5f;
-            CapsuleShapeSettings capsuleSettings(halfHeight, rbc.radius);
-            auto res = capsuleSettings.Create();
-            if (res.HasError())
-                return JPH::BodyID();
-            shapeRef = res.Get();
-            break;
-        }
-        default:
-            return JPH::BodyID();
-        }
+        break;
+    }
+    default:
+        return JPH::BodyID();
     }
 
-    // Body creation settings
     BodyCreationSettings creation(
         shapeRef,
         ToJolt(tc.position),
@@ -172,6 +226,7 @@ JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const 
 
     return body->GetID();
 }
+
 
 void PhysicsManager::RemoveRigidBody(JPH::BodyID bodyID) {
     if (!m_physicsSystem || bodyID.IsInvalid()) return;
