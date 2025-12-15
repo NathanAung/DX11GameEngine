@@ -68,10 +68,10 @@ static void LoadContent()
     // Create a sample point light (red) near the model
     g_scene.CreatePointLight(
         "Red Point Light",
-        XMFLOAT3{ 3.0f, -3.0f, -5.0f },       // position
+        XMFLOAT3{ 3.0f, -3.0f, -5.0f },     // position
 		XMFLOAT3{ 1.0f, 0.2f, 0.2f },       // color (red)
-        30.0f,                             // intensity
-        40.0f                             // range
+        30.0f,                              // intensity
+        40.0f                               // range
     );
 
 	// Create a sample spot light (blue) aimed at the model from above
@@ -89,7 +89,7 @@ static void LoadContent()
             dirF,
 			XMFLOAT3{ 0.2f, 0.4f, 1.0f },       // color (blue)
             100.0f,                             // intensity
-            20.0f,                            // range
+            20.0f,                              // range
             XM_PIDIV4                           // 45 deg cone
         );
     }
@@ -155,7 +155,7 @@ static void LoadContent()
     }
 
 
-    // Physics objects
+	// PHYSICS TEST ENTITIES
     // Ground (static box)
     {
         entt::entity ground = g_scene.CreateEntity("Ground");
@@ -199,7 +199,7 @@ static void LoadContent()
         g_scene.registry.emplace<Engine::MeshRendererComponent>(box, rend);
     }
 
-    // Falling Sphere (dynamic) - visual placeholder cube
+    // Falling Sphere (dynamic)
     {
         entt::entity sphere = g_scene.CreateEntity("Physics Sphere");
         auto& tc = g_scene.registry.get<Engine::TransformComponent>(sphere);
@@ -211,14 +211,38 @@ static void LoadContent()
         rb.motionType = Engine::RBMotion::Dynamic;
         rb.mass = 1.0f;
         rb.radius = 0.5f;
+		rb.restitution = 0.5f; // bouncy
         g_scene.registry.emplace<Engine::RigidBodyComponent>(sphere, rb);
 
         Engine::MeshRendererComponent rend{};
-        rend.meshID = 101;               // placeholder
+        rend.meshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), 0.5f, 32, 32); // radius matches physics
         rend.materialID = shaderID;
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(sphere, rend);
+    }
+
+    // Falling Capsule (dynamic)
+    {
+        entt::entity capsule = g_scene.CreateEntity("Physics Capsule");
+        auto& tc = g_scene.registry.get<Engine::TransformComponent>(capsule);
+        tc.position = XMFLOAT3(2.0f, 10.0f, 2.0f);
+        tc.scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
+
+        Engine::RigidBodyComponent rb{};
+        rb.shape = Engine::RBShape::Capsule;
+        rb.motionType = Engine::RBMotion::Dynamic;
+        rb.mass = 1.0f;
+        rb.radius = 0.5f;
+        rb.height = 1.0f; // cylinder height in PhysicsManager logic
+        g_scene.registry.emplace<Engine::RigidBodyComponent>(capsule, rb);
+
+        Engine::MeshRendererComponent rend{};
+        rend.meshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), 0.5f, 1.0f, 32, 32);
+        rend.materialID = shaderID;
+        rend.roughness = 0.1f;
+        rend.metallic = 0.2f;
+        g_scene.registry.emplace<Engine::MeshRendererComponent>(capsule, rend);
     }
 }
 

@@ -36,8 +36,12 @@ namespace Engine
     class MeshManager
     {
     public:
+        // Procedural primitives
         // Creates a unit cube mesh and stores it as meshID 101. Returns 101. (temporary ID)
         int InitializeCube(ID3D11Device* device);
+        int CreateSphere(ID3D11Device* device, float radius, int slices, int stacks);
+        // Capsule (Y-axis aligned). radius = sphere radius, cylinderHeight = straight section height (no caps).
+        int CreateCapsule(ID3D11Device* device, float radius, float cylinderHeight, int slices, int stacks);
 
         // Loads a model with Assimp and returns mesh IDs for all mesh parts
         std::vector<int> LoadModel(ID3D11Device* device, const std::string& filename);
