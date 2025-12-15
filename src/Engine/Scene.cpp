@@ -28,7 +28,7 @@ namespace Engine
 
 		// Position at z = 5 looking toward -Z in LH space
         auto& tf = registry.get<TransformComponent>(e);
-        tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, 5.0f };
+        tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, 4.0f };
 		tf.scale = DirectX::XMFLOAT3{ 0.1f, 0.1f, 0.1f };   // temporary scale down since model is huge
 
         return e;

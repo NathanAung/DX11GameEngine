@@ -147,9 +147,19 @@ JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const 
         JPH::Array<JPH::Vec3> hull_vertices;
         hull_vertices.reserve(positions.size());
 
+        //for (const auto& p : positions) {
+        //    vertex_list.push_back(JPH::Float3(p.x, p.y, p.z)); // VertexList element type
+        //    hull_vertices.push_back(JPH::Vec3(p.x, p.y, p.z)); // ConvexHull needs Vec3
+        //}
+
         for (const auto& p : positions) {
-            vertex_list.push_back(JPH::Float3(p.x, p.y, p.z)); // VertexList element type
-            hull_vertices.push_back(JPH::Vec3(p.x, p.y, p.z)); // ConvexHull needs Vec3
+            // Apply TransformComponent scale to the physics mesh
+            float sx = p.x * tc.scale.x;
+            float sy = p.y * tc.scale.y;
+            float sz = p.z * tc.scale.z;
+
+            vertex_list.push_back(JPH::Float3(sx, sy, sz));     // VertexList element type
+            hull_vertices.push_back(JPH::Vec3(sx, sy, sz));     // ConvexHull needs Vec3
         }
 
         const auto& indices = meshManager.GetMeshIndices(rbc.meshID);

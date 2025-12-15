@@ -192,7 +192,13 @@ float4 main(PSInput input) : SV_Target
                 {
                     attenuation = 0.0;
                 }
-                // edge smoothening can be added here later
+                // edge smoothening
+                //else
+                //{
+                //    float epsilon = 0.1; // softness of edge
+                //    float spotEffect = saturate((theta - cos(light.spotAngle)) / epsilon);
+                //    attenuation *= spotEffect;
+                //}
             }
         }
 

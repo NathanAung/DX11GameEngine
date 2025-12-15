@@ -9,20 +9,54 @@ namespace Engine
     int MeshManager::InitializeCube(ID3D11Device* device)
     {
         const float s = 0.5f;
+		// 24 vertices (4 per face * 6 faces), with positions, normals, and UVs
         std::vector<Vertex> vertices =
         {
-            {{-s,-s,-s},{0,0,-1},{0,0}}, {{-s,+s,-s},{0,0,-1},{0,0}}, {{+s,+s,-s},{0,0,-1},{0,0}}, {{+s,-s,-s},{0,0,-1},{0,0}}, // back
-            {{-s,-s,+s},{0,0,-1},{0,0}}, {{-s,+s,+s},{0,0,-1},{0,0}}, {{+s,+s,+s},{0,0,-1},{0,0}}, {{+s,-s,+s},{0,0,-1},{0,0}}  // front
+            // +Z (front)
+            {{-s,-s,+s},{0,0,1},{0,1}},
+            {{-s,+s,+s},{0,0,1},{0,0}},
+            {{+s,+s,+s},{0,0,1},{1,0}},
+            {{+s,-s,+s},{0,0,1},{1,1}},
+
+            // -Z (back)
+            {{+s,-s,-s},{0,0,-1},{0,1}},
+            {{+s,+s,-s},{0,0,-1},{0,0}},
+            {{-s,+s,-s},{0,0,-1},{1,0}},
+            {{-s,-s,-s},{0,0,-1},{1,1}},
+
+            // +X (right)
+            {{+s,-s,+s},{1,0,0},{0,1}},
+            {{+s,+s,+s},{1,0,0},{0,0}},
+            {{+s,+s,-s},{1,0,0},{1,0}},
+            {{+s,-s,-s},{1,0,0},{1,1}},
+
+            // -X (left)
+            {{-s,-s,-s},{-1,0,0},{0,1}},
+            {{-s,+s,-s},{-1,0,0},{0,0}},
+            {{-s,+s,+s},{-1,0,0},{1,0}},
+            {{-s,-s,+s},{-1,0,0},{1,1}},
+
+            // +Y (top)
+            {{-s,+s,+s},{0,1,0},{0,1}},
+            {{-s,+s,-s},{0,1,0},{0,0}},
+            {{+s,+s,-s},{0,1,0},{1,0}},
+            {{+s,+s,+s},{0,1,0},{1,1}},
+
+            // -Y (bottom)
+            {{-s,-s,-s},{0,-1,0},{0,1}},
+            {{-s,-s,+s},{0,-1,0},{0,0}},
+            {{+s,-s,+s},{0,-1,0},{1,0}},
+            {{+s,-s,-s},{0,-1,0},{1,1}},
         };
-        std::vector<uint16_t> indices16 =
+		// 36 indices (2 triangles per face * 3 indices per triangle * 6 faces)
+		// clockwise winding
+        std::vector<uint16_t> indices16;
+        for (int i = 0; i < 6; ++i)
         {
-            0, 1, 2, 0, 2, 3,
-            4, 6, 5, 4, 7, 6,
-            4, 5, 1, 4, 1, 0,
-            3, 2, 6, 3, 6, 7,
-            1, 5, 6, 1, 6, 2,
-            4, 0, 3, 4, 3, 7
-        };
+            uint16_t base = i * 4;
+            indices16.push_back(base + 0); indices16.push_back(base + 2); indices16.push_back(base + 1);
+            indices16.push_back(base + 0); indices16.push_back(base + 3); indices16.push_back(base + 2);
+        }
 
         // VB
         D3D11_BUFFER_DESC vbDesc{};

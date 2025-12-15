@@ -68,17 +68,17 @@ static void LoadContent()
     // Create a sample point light (red) near the model
     g_scene.CreatePointLight(
         "Red Point Light",
-        XMFLOAT3{ 0.0f, 0.0f, 5.0f },       // position
+        XMFLOAT3{ 3.0f, -3.0f, -5.0f },       // position
 		XMFLOAT3{ 1.0f, 0.2f, 0.2f },       // color (red)
-        8.0f,                             // intensity
-        10.0f                             // range
+        30.0f,                             // intensity
+        40.0f                             // range
     );
 
 	// Create a sample spot light (blue) aimed at the model from above
     {
 		// calculate direction vector from position to target
-        XMFLOAT3 spotPos{ 0.0f, 5.0f, 5.0f };
-        XMFLOAT3 target{ 0.0f, -1.0f, 0.0f };
+        XMFLOAT3 spotPos{ 0.0f, -2.0f, 0.0f };
+        XMFLOAT3 target{ 0.0f, -100.0f, 0.0f };
         XMVECTOR dir = XMVector3Normalize(XMVectorSubtract(XMLoadFloat3(&target), XMLoadFloat3(&spotPos)));
         XMFLOAT3 dirF{};
         XMStoreFloat3(&dirF, dir);
@@ -89,7 +89,7 @@ static void LoadContent()
             dirF,
 			XMFLOAT3{ 0.2f, 0.4f, 1.0f },       // color (blue)
             100.0f,                             // intensity
-            10.0f,                            // range
+            20.0f,                            // range
             XM_PIDIV4                           // 45 deg cone
         );
     }
@@ -97,29 +97,42 @@ static void LoadContent()
     // Load a model; ensure the asset exists and Assimp DLL is present alongside the exe
     auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");
 
-    // ECS: create the sample entity
-    g_sampleEntity = g_scene.CreateSampleEntity("Rotating 3D Model");
-
-    // Hook the sample entity to resources (now using first mesh from model)
-    auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_sampleEntity);
-    if (!meshIDs.empty())
+    // Create the sample entity
     {
-        int firstMeshID = meshIDs[0];
-        mr.meshID = firstMeshID;
-    }
-    else {
-		throw std::runtime_error("Failed to load model meshes.");
-    }
-    //else
-    //{
-    //    // fallback to temp cube if model failed to load
-    //    mr.meshID = 101;    // per spec, temporary ID
-    //}
-    mr.materialID = shaderID;  // map materialID -> shaderID(1) (temporary ID)
+        g_sampleEntity = g_scene.CreateSampleEntity("Rotating 3D Model");
 
-    // example texture loading via texture manager and keep SRV
-    ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture.png");
-    mr.texture = tex; // assign texture to component
+        // Hook the sample entity to resources (now using first mesh from model)
+        auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_sampleEntity);
+        if (!meshIDs.empty())
+        {
+            int firstMeshID = meshIDs[0];
+            mr.meshID = firstMeshID;
+        }
+        else {
+            throw std::runtime_error("Failed to load model meshes.");
+        }
+        //else
+        //{
+        //    // fallback to temp cube if model failed to load
+        //    mr.meshID = 101;    // per spec, temporary ID
+        //}
+
+        mr.materialID = shaderID;  // map materialID -> shaderID(1) (temporary ID)
+
+        // example texture loading via texture manager and keep SRV
+        ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture.png");
+        mr.texture = tex; // assign texture to component
+        // PBR value testing
+        mr.roughness = 0.1f; // shiny
+        mr.metallic = 0.2f; // metallic (with yellow-ish albedo you'd get gold-like)
+
+        Engine::RigidBodyComponent rb{};
+        rb.shape = Engine::RBShape::Mesh;
+        rb.motionType = Engine::RBMotion::Dynamic;
+        rb.mass = 1.0f;
+        rb.meshID = mr.meshID; // use same mesh for collider
+        g_scene.registry.emplace<Engine::RigidBodyComponent>(g_sampleEntity, rb);
+    }
 
     // Load skybox cubemap: order +X, -X, +Y, -Y, +Z, -Z
     {
@@ -141,29 +154,26 @@ static void LoadContent()
         }
     }
 
-    // PBR value testing
-    mr.roughness = 0.1f; // shiny
-    mr.metallic  = 0.2f; // metallic (with yellow-ish albedo you'd get gold-like)
 
     // Physics objects
     // Ground (static box)
     {
         entt::entity ground = g_scene.CreateEntity("Ground");
         auto& tc = g_scene.registry.get<Engine::TransformComponent>(ground);
-        tc.position = XMFLOAT3(0.0f, -10.0f, 0.0f);
-        tc.scale = XMFLOAT3(10.0f, 0.1f, 10.0f); // visual scaling to match collider
+        tc.position = XMFLOAT3(0.0f, -5.0f, 0.0f);
+        tc.scale = XMFLOAT3(20.0f, 0.1f, 20.0f); // visual scaling to match collider
 
         Engine::RigidBodyComponent rb{};
         rb.shape = Engine::RBShape::Box;
         rb.motionType = Engine::RBMotion::Static;
-        rb.halfExtent = XMFLOAT3(5.0f, 0.05f, 5.0f);
+        rb.halfExtent = XMFLOAT3(10.0f, 0.05f, 10.0f);
         g_scene.registry.emplace<Engine::RigidBodyComponent>(ground, rb);
 
         Engine::MeshRendererComponent rend{};
         rend.meshID = 101;               // cube mesh
         rend.materialID = shaderID;
-        rend.roughness = 1.0f;
-        rend.metallic = 1.0f;
+        rend.roughness = 0.1f;
+        rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(ground, rend);
     }
 
@@ -171,7 +181,7 @@ static void LoadContent()
     {
         entt::entity box = g_scene.CreateEntity("Physics Box");
         auto& tc = g_scene.registry.get<Engine::TransformComponent>(box);
-        tc.position = XMFLOAT3(1.0f, 10.0f, 3.0f);
+        tc.position = XMFLOAT3(1.0f, 10.0f, 2.0f);
         tc.scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 
         Engine::RigidBodyComponent rb{};
@@ -184,6 +194,8 @@ static void LoadContent()
         Engine::MeshRendererComponent rend{};
         rend.meshID = 101;
         rend.materialID = shaderID;
+        rend.roughness = 0.1f;
+        rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(box, rend);
     }
 
@@ -191,7 +203,7 @@ static void LoadContent()
     {
         entt::entity sphere = g_scene.CreateEntity("Physics Sphere");
         auto& tc = g_scene.registry.get<Engine::TransformComponent>(sphere);
-        tc.position = XMFLOAT3(0.5f, 20.0f, 3.0f);
+        tc.position = XMFLOAT3(0.5f, 20.0f, 2.0f);
         tc.scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 
         Engine::RigidBodyComponent rb{};
@@ -204,6 +216,8 @@ static void LoadContent()
         Engine::MeshRendererComponent rend{};
         rend.meshID = 101;               // placeholder
         rend.materialID = shaderID;
+        rend.roughness = 0.1f;
+        rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(sphere, rend);
     }
 }
@@ -353,7 +367,7 @@ void Update(float deltaTime) {
 
     Engine::CameraInputSystem(g_scene, g_input, deltaTime);
     Engine::CameraMatrixSystem(g_scene, g_renderer);
-    Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
+    //Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
 
     // exit on escape key
     if(g_input.IsKeyDown(Engine::Key::Esc))

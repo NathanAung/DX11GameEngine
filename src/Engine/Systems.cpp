@@ -284,6 +284,11 @@ namespace Engine
             auto& tc = physView.get<TransformComponent>(ent);
             auto& rb = physView.get<RigidBodyComponent>(ent);
 
+            // Auto-wire meshID if missing
+            if (rb.shape == RBShape::Mesh && rb.meshID == 0 && scene.registry.all_of<MeshRendererComponent>(ent)) {
+                rb.meshID = scene.registry.get<MeshRendererComponent>(ent).meshID;
+            }
+
             if (rb.bodyID.IsInvalid()) {
                 JPH::BodyID id = physicsManager.CreateRigidBody(tc, rb, meshManager);
                 rb.bodyID = id;

@@ -114,6 +114,7 @@ namespace Engine
                 return nullptr;
             }
 
+			// On first face, record dimensions
             if (i == 0)
             {
                 width = w; height = h; channels = 4;
