@@ -7,6 +7,7 @@
 // Jolt shapes for meshes
 #include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
+#include <Jolt/Physics/Collision/Shape/ScaledShape.h>  // apply runtime scaling
 
 using namespace JPH;
 
@@ -23,7 +24,9 @@ bool PhysicsManager::Initialize() {
     m_tempAllocator = new TempAllocatorImpl(tempSize);
 
     // Job system: use hardware_concurrency - 1 worker threads (minimum 1)
+	// here we are using the maximum number of cpu cores (at least 1 minumum) for physics minus one to leave one core free for the main thread
     const uint32_t workerThreads = std::max(1u, std::thread::hardware_concurrency() > 0 ? std::thread::hardware_concurrency() - 1 : 1u);
+	// create the multi-threaded job system
     m_jobSystem = new JobSystemThreadPool(cMaxPhysicsJobs, cMaxPhysicsBarriers, workerThreads);
 
     // Layer helpers
@@ -67,6 +70,9 @@ bool PhysicsManager::Initialize() {
 
 
 void PhysicsManager::Shutdown() {
+    // Clear cached shapes before tearing down Jolt to avoid leaks / asserts
+    m_meshShapeCache.clear();
+
     // Destroy physics system and helpers in reverse order
     if (m_physicsSystem)      { delete m_physicsSystem;      m_physicsSystem = nullptr; }
     if (m_objLayerPairFilter) { delete m_objLayerPairFilter; m_objLayerPairFilter = nullptr; }
@@ -106,24 +112,23 @@ static inline Quat ToJolt(const DirectX::XMFLOAT4& q) { return Quat(q.x, q.y, q.
 JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc, const MeshManager& meshManager) {
     if (!m_physicsSystem) return JPH::BodyID(); // invalid
 
-    // Build shape from component
-    RefConst<Shape> shapeRef;
+    // Step 1: Create Base Shape (Local Space / Unscaled)
+    JPH::ShapeRefC baseShape;
 
-    // Switch on shape type, create settings, then call Create()
     switch (rbc.shape) {
     case RBShape::Box: {
-        // Jolt expects half extents vector
+        // Use half extents from RigidBodyComponent (no visual scale yet)
         BoxShapeSettings boxSettings(ToJolt(rbc.halfExtent));
         auto res = boxSettings.Create();
         if (res.HasError()) return JPH::BodyID();
-        shapeRef = res.Get();
+        baseShape = res.Get();
         break;
     }
     case RBShape::Sphere: {
         SphereShapeSettings sphereSettings(rbc.radius);
         auto res = sphereSettings.Create();
         if (res.HasError()) return JPH::BodyID();
-        shapeRef = res.Get();
+        baseShape = res.Get();
         break;
     }
     case RBShape::Capsule: {
@@ -133,68 +138,37 @@ JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const 
         CapsuleShapeSettings capsuleSettings(halfHeight, rbc.radius);
         auto res = capsuleSettings.Create();
         if (res.HasError()) return JPH::BodyID();
-        shapeRef = res.Get();
+        baseShape = res.Get();
         break;
     }
     case RBShape::Mesh: {
-        const auto& positions = meshManager.GetMeshPositions(rbc.meshID);
-        if (positions.empty()) return JPH::BodyID();
+		// Check cache first for existing shape
+        auto it = m_meshShapeCache.find(rbc.meshID);
 
-        // Build both: VertexList for MeshShapeSettings and Array<Vec3> for ConvexHullShapeSettings
-        VertexList vertex_list;
-        vertex_list.reserve(positions.size());
-
-        JPH::Array<JPH::Vec3> hull_vertices;
-        hull_vertices.reserve(positions.size());
-
-        //for (const auto& p : positions) {
-        //    vertex_list.push_back(JPH::Float3(p.x, p.y, p.z)); // VertexList element type
-        //    hull_vertices.push_back(JPH::Vec3(p.x, p.y, p.z)); // ConvexHull needs Vec3
-        //}
-
-        for (const auto& p : positions) {
-            // Apply TransformComponent scale to the physics mesh
-            float sx = p.x * tc.scale.x;
-            float sy = p.y * tc.scale.y;
-            float sz = p.z * tc.scale.z;
-
-            vertex_list.push_back(JPH::Float3(sx, sy, sz));     // VertexList element type
-            hull_vertices.push_back(JPH::Vec3(sx, sy, sz));     // ConvexHull needs Vec3
-        }
-
-        const auto& indices = meshManager.GetMeshIndices(rbc.meshID);
-
-        if (rbc.motionType == RBMotion::Static) {
-            if (indices.empty() || (indices.size() % 3) != 0) {
-                // Convex hull path must use Array<Vec3>
-                JPH::ConvexHullShapeSettings hull(hull_vertices);
-                auto res = hull.Create();
-                if (res.HasError()) return JPH::BodyID();
-                shapeRef = res.Get();
-            } else {
-                // Indexed triangles for concave static mesh
-                IndexedTriangleList tri_list;
-                tri_list.reserve(indices.size() / 3);
-                for (size_t i = 0; i + 2 < indices.size(); i += 3) {
-                    tri_list.push_back(JPH::IndexedTriangle(
-                        static_cast<JPH::uint32>(indices[i]),
-                        static_cast<JPH::uint32>(indices[i + 1]),
-                        static_cast<JPH::uint32>(indices[i + 2]),
-                        0 // material index
-                    ));
-                }
-
-                JPH::MeshShapeSettings meshSettings(vertex_list, tri_list);
-                auto res = meshSettings.Create();
-                if (res.HasError()) return JPH::BodyID();
-                shapeRef = res.Get();
-            }
+		// if found in cache, reuse shape
+        if (it != m_meshShapeCache.end()) {
+            baseShape = it->second;
+		// else build convex hull from mesh
         } else {
-            // Dynamic bodies: convex hull using Array<Vec3>
+			// Get mesh positions from MeshManager
+            const auto& positions = meshManager.GetMeshPositions(rbc.meshID);
+            if (positions.empty()) return JPH::BodyID();
+
+            // Build convex hull from raw positions (do not apply tc.scale here yet)
+            JPH::Array<JPH::Vec3> hull_vertices;
+            hull_vertices.reserve(positions.size());
+            for (const auto& p : positions) {
+                hull_vertices.push_back(JPH::Vec3(p.x, p.y, p.z));
+            }
+
+			// Create convex hull shape
             JPH::ConvexHullShapeSettings hull(hull_vertices);
             auto res = hull.Create();
             if (res.HasError()) return JPH::BodyID();
-            shapeRef = res.Get();
+            baseShape = res.Get();
+
+            // store in cache
+            m_meshShapeCache.emplace(rbc.meshID, baseShape);
         }
         break;
     }
@@ -202,8 +176,31 @@ JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const 
         return JPH::BodyID();
     }
 
+    // Step 2: Apply Transform Scale (visual scaling only)
+    const JPH::Vec3 scale = ToJolt(tc.scale);
+    JPH::ShapeRefC finalShape;
+
+	// check if the scale is nearly identical to (1,1,1)
+    const bool isIdentityScale =
+        fabsf(scale.GetX() - 1.0f) < 1e-6f &&
+        fabsf(scale.GetY() - 1.0f) < 1e-6f &&
+        fabsf(scale.GetZ() - 1.0f) < 1e-6f;
+
+	// if identity, use base shape directly
+    if (isIdentityScale) {
+        finalShape = baseShape;
+    // else wrap in ScaledShape
+    } else {
+		// Apply scaling via ScaledShapeSettings
+        JPH::ScaledShapeSettings scaled(baseShape, scale);
+        auto res = scaled.Create();
+        if (res.HasError()) return JPH::BodyID();
+        finalShape = res.Get();
+    }
+
+    // Step 3: Instantiate Body
     BodyCreationSettings creation(
-        shapeRef,
+        finalShape,
         ToJolt(tc.position),
         ToJolt(tc.rotation),
         rbc.motionType == RBMotion::Static ? EMotionType::Static : EMotionType::Dynamic,
@@ -217,8 +214,6 @@ JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const 
     // Mass properties (only relevant for dynamic bodies)
     if (rbc.motionType == RBMotion::Dynamic) {
         // Let Jolt compute mass properties from the shape, then override mass
-        // Compute default mass properties:
-        // Set mOverrideMassProperties if needed to strictly enforce mass
         creation.mOverrideMassProperties = EOverrideMassProperties::CalculateInertia;
         creation.mMassPropertiesOverride.mMass = rbc.mass;
 
@@ -227,6 +222,7 @@ JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const 
 
     BodyInterface& bi = m_physicsSystem->GetBodyInterface();
 
+	// Create body
     Body* body = bi.CreateBody(creation);
     if (!body)
         return JPH::BodyID();

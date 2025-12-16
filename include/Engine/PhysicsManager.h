@@ -13,9 +13,15 @@
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/Shape.h> // JPH::ShapeRefC
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 #include <Jolt/Physics/Body/MotionType.h>
+
+// for cache
+#include <unordered_map>
+
+// PhysicsManager handles Jolt initialization, update, and rigidbody creation/removal
 
 namespace Layers {
     // Object layers
@@ -98,24 +104,35 @@ class MeshManager;
 
 class PhysicsManager {
 public:
+	// Initialize Jolt physics system
     bool Initialize();
+	// Shutdown and cleanup
     void Shutdown();
+	// Update physics simulation
     void Update(float deltaTime);
 
+	// Access physics system for advanced usage
     JPH::PhysicsSystem* GetSystem() const { return m_physicsSystem; }
+	// Access body interface for body manipulation
     JPH::BodyInterface& GetBodyInterface();
 
     // ECS bridge: create/remove bodies from components
+	// Create the base shape first, then apply scaling and create body
     JPH::BodyID CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc, const MeshManager& meshManager);
+    
+	// Remove body by ID
     void RemoveRigidBody(JPH::BodyID bodyID);
 
 private:
-    JPH::TempAllocatorImpl* m_tempAllocator = nullptr;
-    JPH::JobSystemThreadPool* m_jobSystem = nullptr;
-    JPH::PhysicsSystem* m_physicsSystem = nullptr;
-    BPLayerInterfaceImpl* m_bpLayerInterface = nullptr;
-    ObjectVsBroadPhaseLayerFilterImpl* m_objVsBpLayerFilter = nullptr;
-    ObjectLayerPairFilterImpl* m_objLayerPairFilter = nullptr;
+	JPH::TempAllocatorImpl* m_tempAllocator = nullptr;                  // for per-frame temporary allocations
+	JPH::JobSystemThreadPool* m_jobSystem = nullptr;                    // for multithreading
+	JPH::PhysicsSystem* m_physicsSystem = nullptr;                      // main physics system
+	BPLayerInterfaceImpl* m_bpLayerInterface = nullptr;                 // broadphase layer interface
+	ObjectVsBroadPhaseLayerFilterImpl* m_objVsBpLayerFilter = nullptr;  // object vs broadphase layer filter
+	ObjectLayerPairFilterImpl* m_objLayerPairFilter = nullptr;          // object layer pair filter
+
+    // Cache convex hull shapes per meshID to avoid rebuilding each time
+    std::unordered_map<int, JPH::ShapeRefC> m_meshShapeCache;
 };
 
 }

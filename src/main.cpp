@@ -166,7 +166,6 @@ static void LoadContent()
         Engine::RigidBodyComponent rb{};
         rb.shape = Engine::RBShape::Box;
         rb.motionType = Engine::RBMotion::Static;
-        rb.halfExtent = XMFLOAT3(10.0f, 0.05f, 10.0f);
         g_scene.registry.emplace<Engine::RigidBodyComponent>(ground, rb);
 
         Engine::MeshRendererComponent rend{};
@@ -188,7 +187,6 @@ static void LoadContent()
         rb.shape = Engine::RBShape::Box;
         rb.motionType = Engine::RBMotion::Dynamic;
         rb.mass = 1.0f;
-        rb.halfExtent = XMFLOAT3(0.5f, 0.5f, 0.5f);
         g_scene.registry.emplace<Engine::RigidBodyComponent>(box, rb);
 
         Engine::MeshRendererComponent rend{};
