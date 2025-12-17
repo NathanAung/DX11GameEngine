@@ -5,6 +5,8 @@
 #include "Engine/PhysicsManager.h"
 #include <DirectXMath.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <vector>
+#include <algorithm>
 
 using namespace DirectX;
 
@@ -315,6 +317,140 @@ namespace Engine
 
             tc.position = FromJolt(pos);
             tc.rotation = FromJolt(rot);
+        }
+    }
+
+
+    // Wall Smasher helpers and system
+
+	// Spawn a wall of dynamic boxes
+    static void SpawnWall(Engine::Scene& scene, Engine::PhysicsManager& physMan, Engine::MeshManager& meshMan)
+    {
+        // 11 columns (-5..5), 11 rows (0..10)
+        for (int y = 0; y <= 10; ++y)
+        {
+            for (int x = -5; x <= 5; ++x)
+            {
+                entt::entity e = scene.CreateEntity("Wall Block");
+                auto& tc = scene.registry.get<Engine::TransformComponent>(e);
+                tc.position = XMFLOAT3(x * 1.1f, 0.5f + y * 1.1f, 10.0f);
+                tc.scale    = XMFLOAT3(1.0f, 1.0f, 1.0f);
+
+                Engine::MeshRendererComponent mr{};
+                mr.meshID = 101;        // cube mesh
+                mr.materialID = 1;      // basic shader input layout
+                scene.registry.emplace<Engine::MeshRendererComponent>(e, mr);
+
+                Engine::RigidBodyComponent rb{};
+                rb.shape = Engine::RBShape::Box;
+                rb.motionType = Engine::RBMotion::Dynamic;
+                rb.halfExtent = XMFLOAT3(0.5f, 0.5f, 0.5f);
+                auto& rbRef = scene.registry.emplace<Engine::RigidBodyComponent>(e, rb);
+
+                // Immediately create body so it participates in sim right away
+                JPH::BodyID id = physMan.CreateRigidBody(tc, rbRef, meshMan);
+                rbRef.bodyID = id;
+                rbRef.bodyCreated = !id.IsInvalid();
+            }
+        }
+    }
+
+
+	// Clear all dynamic objects from the scene
+    static void ClearDynamicObjects(Engine::Scene& scene, Engine::PhysicsManager& physMan)
+    {
+        std::vector<entt::entity> toDestroy;
+        auto view = scene.registry.view<Engine::RigidBodyComponent>();
+        for (auto e : view)
+        {
+            auto& rb = view.get<Engine::RigidBodyComponent>(e);
+            if (rb.motionType == Engine::RBMotion::Dynamic)
+            {
+                if (!rb.bodyID.IsInvalid())
+                {
+                    physMan.RemoveRigidBody(rb.bodyID);
+                    rb.bodyID = JPH::BodyID(); // invalidate
+                    rb.bodyCreated = false;
+                }
+                toDestroy.push_back(e);
+            }
+        }
+        for (auto e : toDestroy)
+        {
+            if (scene.registry.valid(e))
+                scene.registry.destroy(e);
+        }
+    }
+
+
+    void WallSmasherSystem(Engine::Scene& scene, Engine::PhysicsManager& physMan, Engine::MeshManager& meshMan, const Engine::InputManager& input, Engine::Renderer& renderer, float dt)
+    {
+		// Shoot timer for projectile rate limiting
+        static float s_shootTimer = 0.0f;
+        s_shootTimer -= dt;
+
+        // Reset (R): clear all dynamic objects and respawn wall
+        if (input.IsKeyDown(Engine::Key::R))
+        {
+            ClearDynamicObjects(scene, physMan);
+            SpawnWall(scene, physMan, meshMan);
+        }
+
+        // Camera controls: move active camera on X/Y, lock Z & rotation
+        const entt::entity cam = scene.m_activeRenderCamera;
+        if (cam != entt::null && scene.registry.valid(cam) && scene.registry.all_of<Engine::TransformComponent>(cam))
+        {
+            auto& tc = scene.registry.get<Engine::TransformComponent>(cam);
+
+            // Movement (10 units/sec)
+            if (input.IsKeyDown(Engine::Key::W)) tc.position.y += 10.0f * dt;
+            if (input.IsKeyDown(Engine::Key::S)) tc.position.y -= 10.0f * dt;
+            if (input.IsKeyDown(Engine::Key::A)) tc.position.x -= 10.0f * dt;
+            if (input.IsKeyDown(Engine::Key::D)) tc.position.x += 10.0f * dt;
+
+            // Constraints
+            tc.position.x = std::max(-10.0f, std::min(10.0f, tc.position.x));
+            tc.position.y = std::max(1.0f,   std::min(15.0f, tc.position.y));
+            tc.position.z = -15.0f;
+
+            tc.rotation = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f); // identity (forward +Z)
+
+            // Shooting (Space)
+            if (input.IsKeyDown(Engine::Key::Space) && s_shootTimer <= 0.0f)
+            {
+                entt::entity proj = scene.CreateEntity("Projectile");
+                auto& pt = scene.registry.get<Engine::TransformComponent>(proj);
+                pt.position = XMFLOAT3(tc.position.x, tc.position.y, tc.position.z + 2.0f);
+                pt.scale    = XMFLOAT3(1.0f, 1.0f, 1.0f); // visual scale
+
+                Engine::MeshRendererComponent rend{};
+                rend.meshID = meshMan.CreateSphere(renderer.GetDevice(), 0.5f, 32, 32); // radius matches physics
+                rend.materialID = 1;
+                rend.roughness = 0.1f;
+                rend.metallic = 0.2f;
+                scene.registry.emplace<Engine::MeshRendererComponent>(proj, rend);
+
+                // Physics: heavy dynamic sphere
+                Engine::RigidBodyComponent rb{};
+                rb.shape = Engine::RBShape::Sphere;
+                rb.motionType = Engine::RBMotion::Dynamic;
+                rb.mass = 10.0f;
+                rb.radius = 1.0f;
+                auto& rbRef = scene.registry.emplace<Engine::RigidBodyComponent>(proj, rb);
+
+                JPH::BodyID id = physMan.CreateRigidBody(pt, rbRef, meshMan);
+                rbRef.bodyID = id;
+                rbRef.bodyCreated = !id.IsInvalid();
+
+                // Impulse/velocity forward (+Z)
+                if (!id.IsInvalid())
+                {
+                    JPH::BodyInterface& bi = physMan.GetBodyInterface();
+                    bi.AddLinearVelocity(id, JPH::Vec3(0.0f, 0.0f, 1.0f) * 80.0f);
+                }
+
+                s_shootTimer = 0.5f;
+            }
         }
     }
 }

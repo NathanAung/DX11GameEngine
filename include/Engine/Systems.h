@@ -29,4 +29,7 @@ namespace Engine
 
     // physics update system: initialize bodies, step simulation, sync back transforms
     void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt);
+
+    // Wall Smasher mini-game: spawn wall, clear dynamics, move camera, shoot projectiles
+    void WallSmasherSystem(Engine::Scene& scene, Engine::PhysicsManager& physMan, Engine::MeshManager& meshMan, const Engine::InputManager& input, Engine::Renderer& renderer, float dt);
 }

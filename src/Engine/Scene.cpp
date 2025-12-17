@@ -71,7 +71,7 @@ namespace Engine
         // White light, intensity 5.0
         LightComponent lc{};
         lc.color = XMFLOAT3(1.0f, 1.0f, 1.0f);
-        lc.intensity = 5.0f;
+        lc.intensity = 6.5f;
         lc.type = LightType::Directional;
         registry.emplace<LightComponent>(e, lc);
 
