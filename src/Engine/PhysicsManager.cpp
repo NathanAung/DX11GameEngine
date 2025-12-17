@@ -154,19 +154,63 @@ JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const 
             const auto& positions = meshManager.GetMeshPositions(rbc.meshID);
             if (positions.empty()) return JPH::BodyID();
 
-            // Build convex hull from raw positions (do not apply tc.scale here yet)
+			// Convert the mesh vertices to Jolt format for hull creation
             JPH::Array<JPH::Vec3> hull_vertices;
             hull_vertices.reserve(positions.size());
+
             for (const auto& p : positions) {
                 hull_vertices.push_back(JPH::Vec3(p.x, p.y, p.z));
             }
 
-			// Create convex hull shape
-            JPH::ConvexHullShapeSettings hull(hull_vertices);
-            auto res = hull.Create();
-            if (res.HasError()) return JPH::BodyID();
-            baseShape = res.Get();
+			// static bodies can use concave mesh if available
+            if (rbc.motionType == RBMotion::Static) {
+				// Get full vertex list
+                VertexList vertex_list;
+                vertex_list.reserve(positions.size());
 
+                for (const auto& p : positions) {
+                    vertex_list.push_back(JPH::Float3(p.x, p.y, p.z));
+                }
+
+				// Get mesh indices from MeshManager
+                const auto& indices = meshManager.GetMeshIndices(rbc.meshID);
+
+				// If no indices or not multiple of 3, use convex hull
+                if (indices.empty() || (indices.size() % 3) != 0) {
+                    JPH::ConvexHullShapeSettings hull(hull_vertices);
+                    auto res = hull.Create();
+                    if (res.HasError()) return JPH::BodyID();
+                    baseShape = res.Get();
+                }
+                else {
+                    // Indexed triangles for concave static mesh
+                    IndexedTriangleList tri_list;
+                    tri_list.reserve(indices.size() / 3);
+                    for (size_t i = 0; i + 2 < indices.size(); i += 3) {
+                        tri_list.push_back(JPH::IndexedTriangle(
+                            static_cast<JPH::uint32>(indices[i]),
+                            static_cast<JPH::uint32>(indices[i + 1]),
+                            static_cast<JPH::uint32>(indices[i + 2]),
+                            0 // material index
+                        ));
+                    }
+
+					// Create mesh shape from vertices and triangles
+                    JPH::MeshShapeSettings meshSettings(vertex_list, tri_list);
+                    auto res = meshSettings.Create();
+                    if (res.HasError()) return JPH::BodyID();
+                    baseShape = res.Get();
+                }
+            }
+			// dynamic bodies use convex hull
+            else {
+                // Create convex hull shape
+                JPH::ConvexHullShapeSettings hull(hull_vertices);
+                auto res = hull.Create();
+                if (res.HasError()) return JPH::BodyID();
+                baseShape = res.Get();
+            }
+			
             // store in cache
             m_meshShapeCache.emplace(rbc.meshID, baseShape);
         }
