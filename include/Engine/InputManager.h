@@ -111,7 +111,7 @@ namespace Engine
         }
 
 		// State of tracked keys
-        std::array<bool, static_cast<size_t>(Key::Count)> m_keys{ false, false, false, false, false, false };
+        std::array<bool, static_cast<size_t>(Key::Count)> m_keys{ false, false, false, false, false, false, false };
 		// Accumulated mouse movement delta for the current frame
         MouseDelta m_mouseDelta{};
     };
