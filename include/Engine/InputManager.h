@@ -19,6 +19,7 @@ namespace Engine
         LShift,
         Space,
         Esc,
+        R,
         Count
     };
 
@@ -106,12 +107,13 @@ namespace Engine
             case SDL_SCANCODE_LSHIFT: m_keys[static_cast<size_t>(Key::LShift)] = down; break;
             case SDL_SCANCODE_SPACE:  m_keys[static_cast<size_t>(Key::Space)] = down; break;
 			case SDL_SCANCODE_ESCAPE: m_keys[static_cast<size_t>(Key::Esc)] = down; break;
+            case SDL_SCANCODE_R:      m_keys[static_cast<size_t>(Key::R)] = down; break;
             default: break;
             }
         }
 
 		// State of tracked keys
-        std::array<bool, static_cast<size_t>(Key::Count)> m_keys{ false, false, false, false, false, false };
+        std::array<bool, static_cast<size_t>(Key::Count)> m_keys{ false, false, false, false, false, false, false, false };
 		// Accumulated mouse movement delta for the current frame
         MouseDelta m_mouseDelta{};
     };

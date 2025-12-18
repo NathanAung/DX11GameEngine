@@ -19,8 +19,8 @@ bool PhysicsManager::Initialize() {
     Factory::sInstance = new Factory();
     RegisterTypes();
 
-    // Temp allocator ~10 MB
-    const uint32_t tempSize = 10 * 1024 * 1024;
+    // Temp allocator ~128 MB (more scratch for high contact counts / broadphase)
+    const uint32_t tempSize = 128 * 1024 * 1024;
     m_tempAllocator = new TempAllocatorImpl(tempSize);
 
     // Job system: use hardware_concurrency - 1 worker threads (minimum 1)
@@ -37,11 +37,11 @@ bool PhysicsManager::Initialize() {
     // Physics system and settings
     m_physicsSystem = new PhysicsSystem();
 
-    // World limits / capacity (tune later as needed)
-    const uint32_t maxBodies = 1024;
-    const uint32_t numBodyMutexes = 1024;
-    const uint32_t maxBodyPairs = 1024;
-    const uint32_t maxContactConstraints = 1024;
+    // World limits / capacity (raised for Galton board scale)
+    const uint32_t maxBodies = 10240;
+    const uint32_t numBodyMutexes = 0;            // 0 = let Jolt derive from maxBodies
+    const uint32_t maxBodyPairs = 65536;
+    const uint32_t maxContactConstraints = 65536; // increased to reduce constraint overflow
 
     // No activation listener for now
     BodyActivationListener* activationListener = nullptr;
@@ -93,8 +93,12 @@ void PhysicsManager::Update(float deltaTime) {
     if (!m_physicsSystem) return;
 
     // One step per frame for now; sub-steps/accumulator later if needed
-    const int collisionSteps = 1;
-    m_physicsSystem->Update(deltaTime, collisionSteps, m_tempAllocator, m_jobSystem);
+    /*const int collisionSteps = 1;
+    m_physicsSystem->Update(deltaTime, collisionSteps, m_tempAllocator, m_jobSystem);*/
+
+    float safeDT = std::min(deltaTime, 1.0f / 30.0f);
+    // Increase collision steps to reduce tunneling at higher speeds
+    m_physicsSystem->Update(safeDT, 4, m_tempAllocator, m_jobSystem);
 }
 
 
@@ -254,6 +258,7 @@ JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const 
     // Physical properties
     creation.mFriction = rbc.friction;
     creation.mRestitution = rbc.restitution;
+	creation.mLinearDamping = rbc.linearDamping;
 
     // Mass properties (only relevant for dynamic bodies)
     if (rbc.motionType == RBMotion::Dynamic) {

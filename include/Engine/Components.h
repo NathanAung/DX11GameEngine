@@ -106,6 +106,7 @@ namespace Engine
         float    mass       = 1.0f;
         float    friction   = 0.5f;
         float    restitution= 0.0f; // bounciness
+		float    linearDamping = 0.0f;
 
         // Shape dimensions
         DirectX::XMFLOAT3 halfExtent{ 0.5f, 0.5f, 0.5f };   // Box

@@ -29,4 +29,7 @@ namespace Engine
 
     // physics update system: initialize bodies, step simulation, sync back transforms
     void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt);
+
+    // Galton board simulation: pegs, walls, bins, funnel, and spawn balls on input
+    void GaltonBoardSystem(Engine::Scene& scene, Engine::PhysicsManager& physMan, Engine::MeshManager& meshMan, const Engine::InputManager& input, Engine::Renderer& renderer, float dt);
 }
