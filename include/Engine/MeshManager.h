@@ -30,7 +30,7 @@ namespace Engine
         ID3D11Buffer* indexBuffer  = nullptr;
         UINT          indexCount   = 0;
         UINT          stride       = 0;
-        DXGI_FORMAT   indexFormat  = DXGI_FORMAT_R16_UINT;
+        DXGI_FORMAT   indexFormat  = DXGI_FORMAT_R32_UINT;
     };
 
     class MeshManager

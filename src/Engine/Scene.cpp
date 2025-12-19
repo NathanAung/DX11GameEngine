@@ -28,11 +28,11 @@ namespace Engine
 
 		// Position at z = 5 looking toward -Z in LH space
         auto& tf = registry.get<TransformComponent>(e);
-        tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, 0.0f };
+        tf.position = DirectX::XMFLOAT3{ 0.0f, 20.0f, 0.0f };
 		// rotate 90 degrees around Y to face -Z
-        XMVECTOR qy = XMQuaternionRotationAxis(XMVectorSet(1,0,0,0), XM_PIDIV2);
+        XMVECTOR qy = XMQuaternionRotationAxis(XMVectorSet(0,0,1,0), XM_PIDIV2);
 		XMStoreFloat4(&tf.rotation, qy);
-		tf.scale = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };   // temporary scale down since model is huge
+		tf.scale = DirectX::XMFLOAT3{ 0.1f, 0.1f, 0.1f };   // temporary scale down since model is huge
 
         return e;
     }
@@ -66,7 +66,7 @@ namespace Engine
         // Direction from Transform's rotation (identity then pitch down)
         TransformComponent tc{};
         // pitch down by ~45 degrees around X
-        XMVECTOR qx = XMQuaternionRotationAxis(XMVectorSet(1,0,0,0), XM_PIDIV4);
+        XMVECTOR qx = XMQuaternionRotationAxis(XMVectorSet(-1,0,0,0), XM_PIDIV2);
         XMStoreFloat4(&tc.rotation, qx);
         tc.position = XMFLOAT3(0, 0, 0);
         registry.emplace<TransformComponent>(e, tc);
