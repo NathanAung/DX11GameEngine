@@ -16,7 +16,6 @@ This project is primarily implemented in:
 - C++
 - C
 - HLSL
-- CMake
 
 The core rendering and engine glue is in C++ while some low-level helpers and C APIs are used where appropriate. HLSL is used as the shader language for vertex/fragment shaders.
 
@@ -164,43 +163,68 @@ Planned features and systems for future development:
 
 ---
 
-## How to set up this project
+## How to set up this project (Visual Studio)
 
-Prerequisites (recommended):
-- Windows 10/11 (DirectX 11 runtime)
-- Visual Studio 2019/2022 (or MSVC toolchain) with C++ development tools
-- CMake 3.20+ (or newer)
-- Git
-- (Optional) Assimp, Jolt and SDL2 system packages — the project can also fetch these dependencies via CMake.
+This project uses **CMake + vcpkg (manifest mode)**. All third-party dependencies are downloaded automatically during configuration.
 
-Quick start (Windows example):
+### Prerequisites
 
-1. Clone the repository:
-   git clone https://github.com/NathanAung/DX11GameEngine.git
-   cd DX11GameEngine
+* **Windows 10/11** (DirectX 11 runtime)
+* **Visual Studio 2022**
+* **Workload**: Desktop development with C++
+* **Components**: MSVC, C++ CMake tools for Windows, Git.
 
-2. Create a build directory:
-   mkdir build && cd build
+### 1. Install vcpkg
 
-3. Configure with CMake (MSVC generator, 64-bit):
-   cmake .. -G "Visual Studio 17 2022" -A x64 -DDX11GAMEENGINE_BUILD_DEMO=ON -DUSE_ASSIMP=ON
+If you don’t already have vcpkg installed:
 
-4. Build:
-   - Visual Studio: open the generated solution and build.
-   - Command line with cmake:
-     cmake --build . --config Release
+```bash
+cd C:\
+git clone https://github.com/microsoft/vcpkg.git
+cd vcpkg
+.\bootstrap-vcpkg.bat
+# (Optional but recommended):
+.\vcpkg integrate install
 
-5. Run the demo:
-   - Launch the demo executable from the build output (e.g. bin/Release/...).
+```
 
-Notes:
-- If dependencies are not found, use the CMake options to point to their locations or enable FetchContent to download them automatically.
-- Shaders and assets may be located in a runtime `assets/` directory; ensure the working directory is set to the root of the repo or the asset folder is next to the executable.
+*Ensure this file exists: `C:\vcpkg\scripts\buildsystems\vcpkg.cmake*`
 
+### 2. Clone the repository
+
+```bash
+git clone https://github.com/NathanAung/DX11GameEngine.git
+
+```
+
+### 3. Open the project in Visual Studio
+
+1. Launch Visual Studio.
+2. Select **File → Open → Folder**.
+3. Open the cloned `DX11GameEngine` folder.
+4. Visual Studio will automatically detect the `CMakeLists.txt`.
+
+### 4. Configure CMake (Visual Studio UI)
+
+1. Go to **Project → CMake Settings**.
+2. Select your configuration (e.g., `x64-Debug`).
+3. Set the following CMake variable:
+* **Name**: `CMAKE_TOOLCHAIN_FILE`
+* **Value**: `C:/vcpkg/scripts/buildsystems/vcpkg.cmake`
+4. **Save** the settings.
+5. Visual Studio will now configure CMake, invoke vcpkg, and download all dependencies.
+*⚠️ The first configure may take several minutes.*
+
+### 5. Build and Run
+
+1. In the Visual Studio toolbar, select:
+* **Configuration**: `Debug` or `Release`
+* **Architecture**: `x64`
+* **Startup target**: `DX11GameEngine`
+2. **Build**: Build → Build All.
+3. **Run**: Debug → Start Without Debugging (`Ctrl + F5`).
 ---
 
 ## Demo and Gallery
 
 ---
-- Produce example code snippets for ECS or procedural mesh generation.
-- Add a demo run guide with specific command lines and troubleshooting steps.
