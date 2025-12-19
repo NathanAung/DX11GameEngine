@@ -61,7 +61,7 @@ namespace Engine
             Microsoft::WRL::ComPtr<ID3D11Buffer> ib;
             UINT indexCount = 0;
             UINT stride     = 0;
-            DXGI_FORMAT idxFmt = DXGI_FORMAT_R16_UINT;
+            DXGI_FORMAT idxFmt = DXGI_FORMAT_R32_UINT;  // default to 32-bit indices
 
             // CPU-side cached data for physics
             std::vector<DirectX::XMFLOAT3> positions;  // vertex positions
@@ -72,6 +72,11 @@ namespace Engine
         int CreateMeshBuffers(ID3D11Device* device,
                               const std::vector<Vertex>& vertices,
                               const std::vector<uint32_t>& indices);
+
+		// Create buffers with forced ID (used for cube with fixed ID 101)
+        int CreateMeshBuffersWithID(ID3D11Device* device, int forcedID,
+                                const std::vector<Vertex>& vertices,
+                                const std::vector<uint32_t>& indices);
 
         // Process Assimp node recursively
         void ProcessNode(ID3D11Device* device, aiNode* node, const aiScene* scene, std::vector<int>& outMeshIDs);
