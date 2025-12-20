@@ -1,6 +1,6 @@
 # StepEngine
 ## Introduction
-A small DirectX 11 game engine written in C/C++ with a focus on learning modern game engine architecture, graphics programming, entity-component systems, resource management, and physics integration. The engine provides a lightweight foundation with a forward renderer (basic lights), physics (Jolt), and tooling-ready subsystems with an emphasis on clarity and extensibility. PBR parameters are supported at the material level.
+A small DirectX 11 game engine written in C/C++ with a focus on learning modern game engine architecture, graphics programming, entity-component systems, resource management, and physics integration. The engine provides a lightweight foundation with a forward renderer (basic lights), physics (Jolt), and tooling-ready subsystems with an emphasis on clarity and extensibility. PBR parameters are supported at the material level. This project is still a work in progress.
 
 ---
 
