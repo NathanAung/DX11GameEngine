@@ -1,4 +1,7 @@
 # StepEngine
+
+<img src="https://i.imgur.com/8bdSI8v.jpeg"/>
+
 ## Introduction
 A small DirectX 11 game engine written in C/C++ with a focus on learning modern game engine architecture, graphics programming, entity-component systems, resource management, and physics integration. The engine provides a lightweight foundation with a forward renderer (basic lights), physics (Jolt), and tooling-ready subsystems with an emphasis on clarity and extensibility. PBR parameters are supported at the material level. This project is still a work in progress.
 
@@ -216,5 +219,20 @@ git clone https://github.com/NathanAung/DX11GameEngine.git
 ---
 
 ## Demo and Gallery
+### Lighting Demo (Click to play video)
+### Galton Board Physics Demo (Click to play video)
+### Wall Smasher Game Demo (Click to play video)
+### 3D Model Loading Demo (Click to play video)
+
+### PBR Lighting (directional, point, spot lights)
+<img src="https://i.imgur.com/fT8hAZw.jpeg"/>
+
+### Physics
+<img src="https://i.imgur.com/ezoxyQU.jpeg"/>
+
+### 3D Model Loading
+<img src="https://i.imgur.com/qVgbAAt.jpeg"/>
+
+<img src="https://i.imgur.com/nliMOQQ.jpeg"/>
 
 ---
