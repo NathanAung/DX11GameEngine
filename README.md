@@ -2,242 +2,246 @@
 
 <img src="https://i.imgur.com/8bdSI8v.jpeg"/>
 
-## Introduction
-A small DirectX 11 game engine written in C/C++ with a focus on learning modern game engine architecture, graphics programming, entity-component systems, resource management, and physics integration. The engine provides a lightweight foundation with a forward renderer (basic lights), physics (Jolt), and tooling-ready subsystems with an emphasis on clarity and extensibility. PBR parameters are supported at the material level. This project is still a work in progress.
+## はじめに
+StepEngine はゲームエンジンの設計やグラフィックスプログラミングの学習を目的として開発されている、小規模な DirectX 11 ベースのゲームエンジンです。
+C/C++ により実装されており、ECS（Entity Component System）、リソース管理、物理演算統合など、実践的なエンジン構成要素を段階的に学べる設計になっています。
+現在は基本的なライティング対応、Jolt Physics による物理演算、拡張を前提とした各種サブシステムを備えています。
+マテリアル単位での PBR パラメータ（Metallic / Roughness） にも対応しています。
+
+本プロジェクトは開発途中です。
 
 ---
 
-## License
+## ライセンス
 
-Please view the license before looking at the repository.
+リポジトリを見る前にライセンスをご確認ください。
 
 ---
 
-## Languages used
+## 使用言語
 
-This project is primarily implemented in:
+本プロジェクトは主に以下で実装されています:
 - C++
 - C
 - CMake
 - HLSL
 
-Notes:
-- Core engine and rendering code are in C++17.
-- Some low-level helpers and C APIs are used where appropriate.
-- CMake is used to configure and build the project with vcpkg (manifest mode).
-- HLSL is used for Direct3D 11 vertex/pixel shaders.
+備考:
+- コアエンジンおよびレンダリングコードは C++17 で記述されています。
+- 低レベルのユーティリティや C API は適所で使用されています。
+- CMake と vcpkg（manifest モード）でプロジェクトの構成とビルドを行います。
+- HLSL は Direct3D 11 の頂点/ピクセルシェーダーに使用されます。
 
 ---
 
-## Libraries and tools used
+## 使用ライブラリとツール
 
-The engine depends on several open-source libraries and tools. Exact versions are managed via vcpkg manifest mode and referenced by CMake.
+エンジンは複数のオープンソースライブラリとツールに依存しています。バージョン管理は vcpkg manifest モードと CMake で行われます。
 
-- SDL2 — window creation and input handling on Windows
-- DirectX 11 (D3D11) — GPU rendering backend
-- Jolt Physics — rigid body dynamics and collision detection
-- Assimp — model asset import (.fbx, .obj, etc.)
-- stb_image — image loading
-- EnTT — ECS (entity-component system)
-- RapidJSON — JSON parsing (planned)
-- Dear ImGui (DX11 backend) — editor/UI (planned)
-- CMake — build system
-- Visual Studio / MSVC — development environment on Windows
-- git — version control
-
----
-
-## Systems — Implementation Details
-
-Below is a summary of how major engine subsystems are implemented and interact.
-
-### Window rendering and user input with SDL
-
-- SDL2 creates the main application window and handles the message loop.
-- Platform: currently Windows-only (D3D11 backend). SDL provides consistent keyboard/mouse input capture on Windows.
-- SDL responsibilities:
-  - Creating the OS window and handling window events (resize, minimize, close).
-  - Providing raw input events for keyboard and mouse.
-  - Supplying a high-resolution timer used by the engine’s main loop.
-- Integration notes:
-  - An SDL window is created and the native `HWND` is extracted via `SDL_SysWMinfo`; D3D11 is initialized using the `HWND`.
-  - The main loop polls SDL events each frame and forwards them to the input subsystem (`InputManager`) which maps events to engine-level input (key bindings, mouse delta, scroll).
-  - Window resize events trigger resizing of swap chain buffers and recreation of render targets and viewport state.
-
-### Graphics rendering pipeline, camera and skybox
-
-- Renderer backend: Direct3D 11 (D3D11). The renderer wraps device, device context, swap chain, and render targets into a `Renderer` class.
-- Typical frame flow:
-  1. Update CPU-side scene (transforms, simple animations).
-  2. Upload per-frame constant buffers (camera matrices, lighting).
-  3. Build draw lists.
-  4. Execute draw calls.
-  5. Present via swap chain.
-- Camera:
-  - Uses classic view and projection matrices. The camera exposes world transform, view matrix (look-at), and inverse matrices for shader usage.
-  - Perspective projection and an editor-style camera controller are supported.
-- Skybox:
-  - Implemented as a cube mesh drawn with a specialized skybox shader. The skybox uses a cubemap texture and depth-state configuration so the sky renders behind everything.
-
-### Entity Component System (ECS)
-
-- The engine uses a lightweight component-based architecture with EnTT:
-  - Entities: small integer IDs (or handles) representing objects in the world.
-  - Components: small POD structs (Transform, MeshRenderer, Rigidbody, CameraComponent, LightComponent, etc.) stored in EnTT sparse sets for cache-friendly iteration.
-  - Systems: functions that iterate over entities with specific components and perform work (rendering, physics sync, animation, input).
-- Implementation highlights:
-  - Entity lifecycle: create/destroy APIs, component add/remove support.
-  - Systems are called each frame in a deterministic order (physics → animation → script → render).
-- The ECS favors simplicity and explicitness for easy reading and modification.
-
-### Resource Loading (textures and models)
-
-- Managers:
-  - MeshManager: procedural primitives and Assimp-based model import.
-  - TextureManager: image loading and SRV creation with caching.
-  - ShaderManager: shader compilation/binding and input layouts.
-- Textures:
-  - Loaded via `stb_image` for common formats (PNG, JPG).
-  - Currently uploaded as RGBA8 UNORM textures with a single mip level.
-- Models:
-  - Meshes are imported with Assimp; per-mesh vertex attributes are parsed and converted into engine mesh buffers.
-- Materials:
-  - Material data (basic PBR parameters: metallic and roughness, plus optional texture SRV) are CPU-side and uploaded to GPU via constant buffers at draw time.
-
-### Mesh creation (box, sphere, capsule and model mesh)
-
-- Primitive mesh generators:
-  - Box
-  - Sphere
-  - Capsule
-- Model mesh:
-  - Imported via Assimp. Per-vertex attributes (position, normal, tangent, uv) are stored in mesh buffers.
-- Mesh representation:
-  - Vertex buffers and index buffers are created as D3D11 buffers and managed by the MeshManager.
-  - Each mesh has draw metadata (index count, topology); bounding volumes are used where needed.
-
-### Lighting and materials
-
-- Light types: directional, point, spot (constant buffer supports multiple lights).
-- Material parameters: metallic and roughness; texture SRV bindable to PS t0.
-- PBR note: Current shading uses material parameters and light constants in a forward renderer.
-
-### Physics (Jolt integration, rigidbody creation)
-
-- Jolt Physics is integrated as the physics backend:
-  - The engine creates a Jolt Physics world and advances it each simulation tick.
-  - Rigid bodies:
-    - Created from engine entities with a `RigidBodyComponent` (mass, collision shape, motion type).
-    - Collision shapes: built from primitive shapes (box, sphere, capsule) or mesh-based colliders generated from imported model geometry.
-  - Synchronization:
-    - After stepping the simulation, transforms for dynamic bodies are read back from Jolt and written to ECS components.
-
-### CMake setup
-
-- The project uses CMake to configure builds and vcpkg (manifest mode) to fetch dependencies.
-- Top-level `CMakeLists.txt`:
-  - Defines a single executable target: `DX11GameEngine`.
-  - Uses `find_package()` for SDL2, Assimp, EnTT, RapidJSON, Dear ImGui, and Jolt.
-  - Links Windows system libraries: `d3d11`, `dxgi`, `d3dcompiler`, `dxguid`.
-  - Copies `shaders/` and `assets/` to the build output directory via custom targets.
+- SDL2 — ウィンドウ作成と入力処理（Windows 上）
+- DirectX 11 (D3D11) — GPU レンダリングバックエンド
+- Jolt Physics — 剛体力学と衝突検出
+- Assimp — モデルアセットのインポート（.fbx, .obj 等）
+- stb_image — 画像読み込み
+- EnTT — ECS（Entity Component System）
+- RapidJSON — JSON パーサ（予定）
+- Dear ImGui（DX11 バックエンド）— エディタ / UI（予定）
+- CMake — ビルドシステム
+- Visual Studio / MSVC — Windows 開発環境
+- git — バージョン管理
 
 ---
 
-## To be implemented later
+## システム — 実装の詳細
 
-Planned features and systems for future development:
+以下は主要なエンジンサブシステムの実装と相互作用の概要です。
 
-- Hierarchy system (entity parent/child transforms and propagation)
-- Editor UI (ImGui-based editor for scene editing, material / asset inspectors)
-- Object Picking and Gizmos (selection, transform handles)
-- Audio system (spatial audio, playback)
-- Lua scripting (embed Lua for fast iteration and game logic)
-- Data persistence and export (scene/asset serialization, project export pipeline)
+### SDL を用いたウィンドウ生成と入力処理
+
+- SDL2 がメインアプリケーションウィンドウを作成し、メッセージループを扱います。
+- プラットフォーム: 現状は Windows 専用（D3D11 バックエンド）。SDL により Windows 上で安定したキーボード / マウス入力取得ができます。
+- SDL の役割:
+  - OS ウィンドウの作成とウィンドウイベント（リサイズ、最小化、クローズ）の処理。
+  - キーボードとマウスの生イベントの提供。
+  - エンジンのメインループで使う高精度タイマーの提供。
+- 統合ノート:
+  - SDL ウィンドウを作成し、`SDL_SysWMinfo` 経由でネイティブの `HWND` を取得し、D3D11 をその `HWND` を使って初期化します。
+  - メインループでは毎フレーム SDL イベントをポーリングし、それらを入力サブシステム（`InputManager`）に渡してエンジンレベルの入力（キー割り当て、マウス差分、スクロール等）にマップします。
+  - ウィンドウのリサイズイベントはスワップチェーンのバッファ再構築やレンダーターゲット／ビューポートの再作成を引き起こします。
+
+### グラフィックスレンダリングパイプライン、カメラ、スカイボックス
+
+- レンダラーバックエンド: Direct3D 11 (D3D11)。`Renderer` クラスがデバイス、デバイスコンテキスト、スワップチェーン、レンダーターゲット等をラップしています。
+- 一般的なフレームフロー:
+  1. CPU 側のシーン更新（トランスフォーム、簡易アニメーション）。
+  2. フレーム毎の定数バッファ（カメラ行列、ライト情報）のアップロード。
+  3. 描画リストの構築。
+  4. 描画コールの実行。
+  5. スワップチェーンによる表示。
+- カメラ:
+  - 古典的なビュー行列と射影行列を使用します。カメラはワールド変換、ビュー行列（look-at）、およびシェーダーで使う逆行列を公開します。
+  - 遠近射影（Perspective）とエディタ風のカメラコントローラをサポートします。
+- スカイボックス:
+  - キューブメッシュとして実装され、専用のスカイボックスシェーダーで描画します。スカイボックスはキューブマップテクスチャを使用し、深度ステートを調整して常に背景として描画されるようにします。
+
+### エンティティ・コンポーネント・システム（ECS）
+
+- EnTT を用いた軽量なコンポーネントベースアーキテクチャを採用しています:
+  - エンティティ: ワールド内のオブジェクトを表す小さな整数 ID（ハンドル）。
+  - コンポーネント: `Transform`, `MeshRenderer`, `Rigidbody`, `CameraComponent`, `LightComponent` 等の小さな POD 構造体で、EnTT の疎集合に格納されキャッシュフレンドリーに反復されます。
+  - システム: 特定のコンポーネントを持つエンティティ群を巡回して作業（レンダリング、物理同期、アニメーション、入力処理）を行う関数群。
+- 実装のハイライト:
+  - エンティティのライフサイクル: 作成／破棄 API、コンポーネントの追加／削除をサポート。
+  - システムはフレーム毎に決まった順序（物理 → アニメーション → スクリプト → レンダリング）で呼び出されます。
+- シンプルさと明示性を重視して読みやすく改変しやすい設計です。
+
+### リソースロード（テクスチャとモデル）
+
+- マネージャ:
+  - MeshManager: プリミティブ生成と Assimp ベースのモデルインポートを提供。
+  - TextureManager: 画像読み込みと SRV 作成、キャッシュ機構を持つ。
+  - ShaderManager: シェーダーのコンパイル／バインドと入力レイアウト管理。
+- テクスチャ:
+  - `stb_image` で PNG/JPG 等の一般フォーマットを読み込みます。
+  - 現在は RGBA8 UNORM テクスチャを単一ミップレベルでアップロードします。
+- モデル:
+  - Assimp でメッシュをインポートし、メッシュごとの頂点属性を解析してエンジンのメッシュバッファへ変換します。
+- マテリアル:
+  - マテリアルデータ（基本的な PBR パラメータ: metallic, roughness とオプションのテクスチャ SRV）は CPU 側に保持され、描画時に定数バッファとして GPU に渡されます。
+
+### メッシュ生成（ボックス、球、カプセル、モデルメッシュ）
+
+- プリミティブメッシュジェネレータ:
+  - ボックス
+  - 球
+  - カプセル
+- モデルメッシュ:
+  - Assimp でインポート。頂点属性（位置、法線、タンジェント、UV）をメッシュバッファに格納します。
+- メッシュ表現:
+  - 頂点バッファとインデックスバッファは D3D11 バッファとして作成され、MeshManager によって管理されます。
+  - 各メッシュは描画に必要なメタデータ（インデックス数、トポロジー）を持ち、必要に応じてバウンディングボリュームが利用されます。
+
+### ライティングとマテリアル
+
+- ライトタイプ: ディレクショナル、ポイント、スポット（定数バッファで複数ライトをサポート）。
+- マテリアルパラメータ: metallic と roughness。テクスチャ SRV はピクセルシェーダーのスロットにバインド可能。
+- PBR に関する注記: 現在のシェーディングはマテリアルパラメータとライト定数を使った前方レンダリング（forward renderer）です。
+
+### 物理（Jolt 統合、剛体生成）
+
+- Jolt Physics を物理サブシステムに統合しています:
+  - エンジンは Jolt のワールドを作成し、各シミュレーションティックで進めます。
+  - 剛体:
+    - `RigidBodyComponent` を持つエンティティから剛体を作成（質量、コリジョン形状、運動タイプ等）。
+    - コリジョン形状: プリミティブ（ボックス、球、カプセル）やインポートモデルから生成したメッシュコライダーに対応。
+  - 同期:
+    - シミュレーション後に動的ボディのトランスフォームを Jolt から読み取り、ECS のコンポーネントに反映します。
+
+### CMake 構成
+
+- プロジェクトは CMake と vcpkg（manifest モード）で依存関係を取得・設定します。
+- トップレベルの `CMakeLists.txt`:
+  - 実行可能ターゲット `DX11GameEngine` を定義しています。
+  - `find_package()` を使って SDL2、Assimp、EnTT、RapidJSON、Dear ImGui、Jolt 等を参照します。
+  - Windows 系のシステムライブラリ（`d3d11`, `dxgi`, `d3dcompiler`, `dxguid`）とリンクします。
+  - ビルド出力に `shaders/` や `assets/` をコピーするカスタムターゲットを用意しています。
 
 ---
 
-## How to set up this project (Visual Studio)
+## 今後の実装予定
 
-This project uses **CMake + vcpkg (manifest mode)**. All third-party dependencies are downloaded automatically during configuration.
+今後の開発予定機能:
 
-### Prerequisites
+- 階層システム（エンティティの親子トランスフォームと伝播）
+- エディタ UI（ImGui ベースのシーン編集、マテリアル/アセットインスペクタ）
+- オブジェクトピッキングとギズモ（選択・トランスフォームハンドル）
+- オーディオシステム（空間オーディオ、再生）
+- Lua スクリプティング（高速なゲームロジックの反復開発）
+- データ永続化とエクスポート（シーン/アセットのシリアライズ、プロジェクトエクスポートパイプライン）
 
-* **Windows 10/11** (DirectX 11 runtime)
+---
+
+## プロジェクトのセットアップ（Visual Studio）
+
+本プロジェクトは **CMake + vcpkg（manifest モード）** を使用します。すべてのサードパーティ依存は CMake の構成時に自動でダウンロードされます。
+
+### 前提条件
+
+* **Windows 10/11**（DirectX 11 ランタイム）
 * **Visual Studio 2022**
-* **Workload**: Desktop development with C++
-* **Components**: MSVC, C++ CMake tools for Windows, Git.
+* **ワークロード**: デスクトップ開発（C++）
+* **コンポーネント**: MSVC、C++ CMake ツール、Git
 
-### 1. Install vcpkg
+### 1. vcpkg のインストール
 
-If you don’t already have vcpkg installed:
+まだ vcpkg を持っていない場合:
 
 ```bash
 cd C:\
 git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg
 .\bootstrap-vcpkg.bat
-# (Optional but recommended):
+# (オプション推奨)
 .\vcpkg integrate install
 ```
 
-*Ensure this file exists: `C:\vcpkg\scripts\buildsystems\vcpkg.cmake`*
+`C:\vcpkg\scripts\buildsystems\vcpkg.cmake` が存在することを確認してください。
 
-### 2. Clone the repository
+### 2. リポジトリをクローン
 
 ```bash
 git clone https://github.com/NathanAung/DX11GameEngine.git
 ```
 
-### 3. Open the project in Visual Studio
+### 3. Visual Studio でプロジェクトを開く
 
-1. Launch Visual Studio.
-2. Select **File → Open → Folder**.
-3. Open the cloned `DX11GameEngine` folder.
-4. Visual Studio will automatically detect the `CMakeLists.txt`.
+1. Visual Studio を起動します。
+2. **ファイル → フォルダーを開く** を選択します。
+3. クローンした `DX11GameEngine` フォルダーを開きます。
+4. Visual Studio が `CMakeLists.txt` を自動検出します。
 
-### 4. Configure CMake (Visual Studio UI)
+### 4. CMake の設定（Visual Studio UI）
 
-1. Go to **Project → CMake Settings**.
-2. Select your configuration (e.g., `x64-Debug`).
-3. Set the following CMake variable:
+1. **プロジェクト → CMake 設定** を開きます。
+2. 設定（例: `x64-Debug`）を選択します。
+3. 以下の CMake 変数を設定します:
    * **Name**: `CMAKE_TOOLCHAIN_FILE`
    * **Value**: `C:/vcpkg/scripts/buildsystems/vcpkg.cmake`
-4. **Save** the settings.
-5. Visual Studio will now configure CMake, invoke vcpkg, and download all dependencies.
-   * The first configure may take several minutes.
+4. 設定を保存します。
+5. Visual Studio が CMake を構成し、vcpkg を呼び出して依存関係を取得します。
+   * 最初の構成は数分かかる場合があります。
 
-### 5. Build and Run
+### 5. ビルドと実行
 
-1. In the Visual Studio toolbar, select:
-   * **Configuration**: `Debug` or `Release`
-   * **Architecture**: `x64`
-   * **Startup target**: `DX11GameEngine`
-2. **Build**: Build → Build All.
-3. **Run**: Debug → Start Without Debugging (`Ctrl + F5`).
+1. Visual Studio ツールバーで:
+   * **構成**: `Debug` または `Release`
+   * **アーキテクチャ**: `x64`
+   * **スタートアップターゲット**: `DX11GameEngine`
+2. **ビルド**: ビルド → すべてビルド
+3. **実行**: デバッグ → デバッグなしで開始（Ctrl + F5）
 
 ---
 
-## Demo Videos
-### Lighting Demo (Click to play video)
+## デモ動画
+### ライティングデモ（クリックで再生）
 [![Lighting Demo](https://i.imgur.com/0RIBnX6.jpeg)]()
-### Galton Board Physics Demo (Click to play video)
+### ガルトンボード物理デモ（クリックで再生）
 [![Galton Board Physics Demo](https://i.imgur.com/Bj7wcyO.jpeg)]()
-### Wall Smasher Game Demo (Click to play video)
+### Wall Smasher ゲームデモ（クリックで再生）
 [![Wall Smasher Game Demo](https://i.imgur.com/jCIpugV.jpeg)]()
-### 3D Model Demo (Click to play video)
+### 3D モデルデモ（クリックで再生）
 [![3D Model Demo](https://i.imgur.com/4AC6h1Z.jpeg)]()
 
-##  Gallery
-### PBR Lighting
-- PBR Lighting and material with metallic/roughness values
+## ギャラリー
+### PBR ライティング
+- メタリック／ラフネスによる PBR 表現
 <img src="https://i.imgur.com/FqLpL3O.jpeg"/>
 
-- Directional, spot and point lights
+- ディレクショナル、スポット、ポイントライト
 <img src="https://i.imgur.com/fT8hAZw.jpeg"/>
 
-### 3D Model Loading and Rendering
+### 3D モデルの読み込みとレンダリング
 <img src="https://i.imgur.com/qVgbAAt.jpeg"/>
 
 <img src="https://i.imgur.com/nliMOQQ.jpeg"/>
-
----
+--- 
