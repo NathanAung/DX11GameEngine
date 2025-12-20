@@ -39,7 +39,7 @@ The engine depends on several open-source libraries and tools. Exact versions ar
 - Assimp — model asset import (.fbx, .obj, etc.)
 - stb_image — image loading
 - EnTT — ECS (entity-component system)
-- RapidJSON — JSON parsing
+- RapidJSON — JSON parsing (planned)
 - Dear ImGui (DX11 backend) — editor/UI (planned)
 - CMake — build system
 - Visual Studio / MSVC — development environment on Windows
@@ -70,7 +70,7 @@ Below is a summary of how major engine subsystems are implemented and interact.
 - Typical frame flow:
   1. Update CPU-side scene (transforms, simple animations).
   2. Upload per-frame constant buffers (camera matrices, lighting).
-  3. Build draw lists (no specialized frustum culling yet).
+  3. Build draw lists.
   4. Execute draw calls.
   5. Present via swap chain.
 - Camera:
@@ -140,7 +140,6 @@ Below is a summary of how major engine subsystems are implemented and interact.
   - Uses `find_package()` for SDL2, Assimp, EnTT, RapidJSON, Dear ImGui, and Jolt.
   - Links Windows system libraries: `d3d11`, `dxgi`, `d3dcompiler`, `dxguid`.
   - Copies `shaders/` and `assets/` to the build output directory via custom targets.
-- No additional per-feature CMake options are currently defined (e.g., `DX11GAMEENGINE_BUILD_DEMO`, `DX11GAMEENGINE_USE_ASSIMP`, etc.); those are planned ideas.
 
 ---
 
@@ -218,19 +217,25 @@ git clone https://github.com/NathanAung/DX11GameEngine.git
 
 ---
 
-## Demo and Gallery
+## Demo Videos
 ### Lighting Demo (Click to play video)
+[![Lighting Demo](https://i.imgur.com/0RIBnX6.jpeg)]()
 ### Galton Board Physics Demo (Click to play video)
+[![Galton Board Physics Demo](https://i.imgur.com/Bj7wcyO.jpeg)]()
 ### Wall Smasher Game Demo (Click to play video)
-### 3D Model Loading Demo (Click to play video)
+[![Wall Smasher Game Demo](https://i.imgur.com/jCIpugV.jpeg)]()
+### 3D Model Demo (Click to play video)
+[![3D Model Demo](https://i.imgur.com/4AC6h1Z.jpeg)]()
 
-### PBR Lighting (directional, point, spot lights)
+##  Gallery
+### PBR Lighting
+- PBR Lighting and material with metallic/roughness values
+<img src="https://i.imgur.com/FqLpL3O.jpeg"/>
+
+- Directional, spot and point lights
 <img src="https://i.imgur.com/fT8hAZw.jpeg"/>
 
-### Physics
-<img src="https://i.imgur.com/ezoxyQU.jpeg"/>
-
-### 3D Model Loading
+### 3D Model Loading and Rendering
 <img src="https://i.imgur.com/qVgbAAt.jpeg"/>
 
 <img src="https://i.imgur.com/nliMOQQ.jpeg"/>
