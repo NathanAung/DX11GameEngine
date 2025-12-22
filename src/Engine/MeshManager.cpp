@@ -51,57 +51,17 @@ namespace Engine
         };
 		// 36 indices (2 triangles per face * 3 indices per triangle * 6 faces)
 		// clockwise winding
-        std::vector<uint16_t> indices16;
+        std::vector<uint32_t> indices;
+        indices.reserve(6 * 6);
         for (int i = 0; i < 6; ++i)
         {
-            uint16_t base = i * 4;
-            indices16.push_back(base + 0); indices16.push_back(base + 2); indices16.push_back(base + 1);
-            indices16.push_back(base + 0); indices16.push_back(base + 3); indices16.push_back(base + 2);
+            uint32_t base = static_cast<uint32_t>(i * 4);
+            indices.push_back(base + 0); indices.push_back(base + 2); indices.push_back(base + 1);
+            indices.push_back(base + 0); indices.push_back(base + 3); indices.push_back(base + 2);
         }
 
-        // VB
-        D3D11_BUFFER_DESC vbDesc{};
-        vbDesc.Usage = D3D11_USAGE_DEFAULT;
-        vbDesc.ByteWidth = static_cast<UINT>(vertices.size() * sizeof(Vertex));
-        vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-        D3D11_SUBRESOURCE_DATA vbData{};
-        vbData.pSysMem = vertices.data();
-
-        ComPtr<ID3D11Buffer> vb;
-        if (FAILED(device->CreateBuffer(&vbDesc, &vbData, vb.GetAddressOf())))
-            return -1;
-
-        // IB
-        D3D11_BUFFER_DESC ibDesc{};
-        ibDesc.Usage = D3D11_USAGE_DEFAULT;
-        ibDesc.ByteWidth = static_cast<UINT>(indices16.size() * sizeof(uint16_t));
-        ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-        D3D11_SUBRESOURCE_DATA ibData{};
-        ibData.pSysMem = indices16.data();
-
-        ComPtr<ID3D11Buffer> ib;
-        if (FAILED(device->CreateBuffer(&ibDesc, &ibData, ib.GetAddressOf())))
-            return -1;
-
-		// Store MeshData
-        MeshData md{};
-        md.vb = vb;
-        md.ib = ib;
-        md.indexCount = static_cast<UINT>(indices16.size());
-        md.stride = sizeof(Vertex);
-        md.idxFmt = DXGI_FORMAT_R16_UINT;
-
-        // Cache CPU-side positions and indices for physics
-        md.positions.reserve(vertices.size());
-        for (const auto& v : vertices) md.positions.push_back(v.position);
-
-        md.indices.reserve(indices16.size());
-        for (auto idx : indices16) md.indices.push_back(static_cast<uint32_t>(idx));
-
-        m_meshes.emplace(101, std::move(md));   // store as mesh ID 101 (temporary)
-        return 101; // temporary mesh ID
+        // Create VB/IB through the common path (now always 32-bit index buffers)
+        return CreateMeshBuffersWithID(device, 101, vertices, indices);
     }
 
 
@@ -126,27 +86,8 @@ namespace Engine
         HRESULT hr = device->CreateBuffer(&vbDesc, &vbData, vb.GetAddressOf());
         if (FAILED(hr)) return -1;
 
-        // Choose 16-bit indices if possible; fallback to 32-bit otherwise
-        bool use16 = (indices.size() < 65536);
-        DXGI_FORMAT idxFmt = use16 ? DXGI_FORMAT_R16_UINT : DXGI_FORMAT_R32_UINT;
-
-		// IB
+		// IB (always 32-bit indices to support large meshes)
         ComPtr<ID3D11Buffer> ib;
-        if (use16)
-        {
-            std::vector<uint16_t> idx16(indices.begin(), indices.end());
-            D3D11_BUFFER_DESC ibDesc{};
-            ibDesc.Usage = D3D11_USAGE_DEFAULT;
-            ibDesc.ByteWidth = static_cast<UINT>(idx16.size() * sizeof(uint16_t));
-            ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-            D3D11_SUBRESOURCE_DATA ibData{};
-            ibData.pSysMem = idx16.data();
-
-            hr = device->CreateBuffer(&ibDesc, &ibData, ib.GetAddressOf());
-            if (FAILED(hr)) return -1;
-        }
-        else
         {
             D3D11_BUFFER_DESC ibDesc{};
             ibDesc.Usage = D3D11_USAGE_DEFAULT;
@@ -165,7 +106,7 @@ namespace Engine
         md.ib = ib;
         md.indexCount = static_cast<UINT>(indices.size());
         md.stride = sizeof(Vertex);
-        md.idxFmt = idxFmt;
+        md.idxFmt = DXGI_FORMAT_R32_UINT;   // enforce 32-bit index format
 
         // CPU-side caches for physics
         md.positions.reserve(vertices.size());
@@ -176,6 +117,66 @@ namespace Engine
         const int id = m_nextMeshID++;
         m_meshes.emplace(id, std::move(md));
         return id;
+    }
+
+    int MeshManager::CreateMeshBuffersWithID(
+        ID3D11Device* device,
+        int forcedID,
+        const std::vector<Vertex>& vertices,
+        const std::vector<uint32_t>& indices)
+    {
+        if (vertices.empty() || indices.empty())
+            return -1;
+
+        // Prevent accidental overwrite
+		if (m_meshes.find(forcedID) != m_meshes.end())
+            return -1;
+
+        // --- VB ---
+        D3D11_BUFFER_DESC vbDesc{};
+        vbDesc.Usage = D3D11_USAGE_DEFAULT;
+        vbDesc.ByteWidth = UINT(vertices.size() * sizeof(Vertex));
+        vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA vbData{};
+        vbData.pSysMem = vertices.data();
+
+        ComPtr<ID3D11Buffer> vb;
+        if (FAILED(device->CreateBuffer(&vbDesc, &vbData, vb.GetAddressOf())))
+            return -1;
+
+        // --- IB ---
+        D3D11_BUFFER_DESC ibDesc{};
+        ibDesc.Usage = D3D11_USAGE_DEFAULT;
+        ibDesc.ByteWidth = UINT(indices.size() * sizeof(uint32_t));
+        ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+
+        D3D11_SUBRESOURCE_DATA ibData{};
+        ibData.pSysMem = indices.data();
+
+        ComPtr<ID3D11Buffer> ib;
+        if (FAILED(device->CreateBuffer(&ibDesc, &ibData, ib.GetAddressOf())))
+            return -1;
+
+        MeshData md{};
+        md.vb = vb;
+        md.ib = ib;
+        md.indexCount = UINT(indices.size());
+        md.stride = sizeof(Vertex);
+        md.idxFmt = DXGI_FORMAT_R32_UINT;
+
+        md.positions.reserve(vertices.size());
+        for (const auto& v : vertices)
+            md.positions.push_back(v.position);
+
+        md.indices = indices;
+
+        m_meshes.emplace(forcedID, std::move(md));
+
+        // Keep auto IDs from colliding later
+        m_nextMeshID = std::max(m_nextMeshID, forcedID + 1);
+
+        return forcedID;
     }
 
 
@@ -273,9 +274,9 @@ namespace Engine
             vertices.push_back(v);
         }
 
-        // Indices
+        // Indices (triangulated)
         std::vector<uint32_t> indices;
-        indices.reserve(mesh->mNumFaces * 3); // triangulated
+        indices.reserve(mesh->mNumFaces * 3);
         for (unsigned int i = 0; i < mesh->mNumFaces; ++i)
         {
 			// Assume triangulated faces
@@ -286,7 +287,7 @@ namespace Engine
             }
         }
 
-        // Create buffers and store
+        // Create buffers and store (always 32-bit indices)
         return CreateMeshBuffers(device, vertices, indices);
     }
 
