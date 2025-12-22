@@ -74,30 +74,6 @@ static void LoadContent()
   //      1000.0f                               // range
   //  );
 
-  //  g_scene.CreatePointLight(
-  //      "Red Point Light",
-  //      XMFLOAT3{ 0.0f, 15.0f, 0.0f },     // position
-  //      XMFLOAT3{ 1.0f, 1.0f, 1.0f },       // color (red)
-  //      100.0f,                              // intensity
-  //      1000.0f                               // range
-  //  );
-
-  //  g_scene.CreatePointLight(
-  //      "Red Point Light",
-  //      XMFLOAT3{ 0.0f, 15.0f, -10.0f },     // position
-  //      XMFLOAT3{ 1.0f, 1.0f, 1.0f },       // color (red)
-  //      100.0f,                              // intensity
-  //      1000.0f                               // range
-  //  );
-
-  //  g_scene.CreatePointLight(
-  //      "Red Point Light",
-  //      XMFLOAT3{ 0.0f, 15.0f, -15.0f },     // position
-  //      XMFLOAT3{ 1.0f, 1.0f, 1.0f },       // color (red)
-  //      100.0f,                              // intensity
-  //      1000.0f                               // range
-  //  );
-
 	// Create a sample spot light (blue) aimed at the model from above
   //  {
 		//// calculate direction vector from position to target
