@@ -18,6 +18,14 @@ C/C++ により実装されており、ECS（Entity Component System）、リソ
 
 ---
 
+## 開発アップデート動画（クリックで再生）
+
+2025/12/22までに実装された機能を紹介する動画です。
+
+[![Development Update](https://i.imgur.com/VwbFdgl.jpeg)](https://youtu.be/ANGTMzYf98M)
+
+
+
 ## 使用言語
 
 本プロジェクトは主に以下で実装されています:
