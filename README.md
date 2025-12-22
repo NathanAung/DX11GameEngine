@@ -222,6 +222,16 @@ git clone https://github.com/NathanAung/DX11GameEngine.git
 
 ---
 
+## リリース
+v0.8 までに本エンジンの現在の機能を紹介するため、複数のデモを公開しています。
+
+* **Engine Demo**：レンダリング、ライティング、物理演算など、エンジンの基本的な機能を実演します。　<br> [**[こちらからダウンロード]**](https://github.com/NathanAung/DX11GameEngine/releases/tag/v0.8-demo)
+* **3D Model Demo**：詳細な 3D モデルの読み込みおよびレンダリングを実演します。　<br> [**[こちらからダウンロード]**](https://github.com/NathanAung/DX11GameEngine/releases/tag/v0.8-3d-model)
+* **Game Demo**：エンジンの物理演算機能を実演します。カメラを操作し、ボールを発射して箱の壁を破壊することができます。　<br> [**[こちらからダウンロード]**](https://github.com/NathanAung/DX11GameEngine/releases/tag/v0.8-game)
+* **Physics Demo**：ガルトンボードのシミュレーションを通して、エンジンの物理演算機能を実演します。　<br> [**[こちらからダウンロード]**](https://github.com/NathanAung/DX11GameEngine/releases/tag/v0.8-physics)
+
+---
+
 ## デモ動画
 ### ライティングデモ（クリックで再生）
 [![Lighting Demo](https://i.imgur.com/0RIBnX6.jpeg)]()
