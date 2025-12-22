@@ -174,7 +174,7 @@ C/C++ により実装されており、ECS（Entity Component System）、リソ
 
 ### 1. vcpkg のインストール
 
-まだ vcpkg をインストールしていない場合:
+vcpkg がまだインストールされていない場合:
 
 ```bash
 cd C:\
