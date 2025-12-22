@@ -1,9 +1,9 @@
-# StepEngine
+# Step Engine
 
 <img src="https://i.imgur.com/8bdSI8v.jpeg"/>
 
 ## はじめに
-StepEngine はゲームエンジンの設計やグラフィックスプログラミングの学習を目的として開発されている、小規模な DirectX 11 ベースのゲームエンジンです。
+Step Engine はゲームエンジンの設計やグラフィックスプログラミングの学習を目的として開発されている、小規模な DirectX 11 ベースのゲームエンジンです。
 C/C++ により実装されており、ECS（Entity Component System）、リソース管理、物理演算統合など、実践的なエンジン構成要素を段階的に学べる設計になっています。
 現在は基本的なライティング対応、Jolt Physics による物理演算、拡張を前提とした各種サブシステムを備えています。
 マテリアル単位での PBR パラメータ（Metallic / Roughness） にも対応しています。
