@@ -137,7 +137,7 @@ namespace Engine
 
     namespace RenderSystem
     {
-        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer)
+        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager)
         {
             auto* context = renderer.GetContext();
 
@@ -243,10 +243,15 @@ namespace Engine
                     XMMatrixTranslation(tr.position.x, tr.position.y, tr.position.z);
                 renderer.UpdateWorldMatrix(world);
 
-                // Bind texture if present to PS t0
+                // Bind texture if present to PS t0, otherwise unbind to prevent state leakage
                 if (mr.texture)
                 {
                     context->PSSetShaderResources(0, 1, &mr.texture);
+                }
+                else
+                {
+                    ID3D11ShaderResourceView* defaultTex = textureManager.GetDefaultTexture();
+                    context->PSSetShaderResources(0, 1, &defaultTex);
                 }
 
                 // Fetch mesh buffers

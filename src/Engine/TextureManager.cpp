@@ -79,6 +79,47 @@ namespace Engine
         return srv.Get();
     }
 
+
+    void TextureManager::CreateDefaultTexture(ID3D11Device* device)
+    {
+        // Skip if already created
+        if (m_defaultTexture) return;
+
+        // 1x1 White Pixel (RGBA: 255, 255, 255, 255)
+        const uint32_t pixel = 0xFFFFFFFF;
+
+        D3D11_TEXTURE2D_DESC texDesc{};
+        texDesc.Width = 1;
+        texDesc.Height = 1;
+        texDesc.MipLevels = 1;
+        texDesc.ArraySize = 1;
+        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texDesc.SampleDesc.Count = 1;
+        texDesc.SampleDesc.Quality = 0;
+        texDesc.Usage = D3D11_USAGE_DEFAULT;
+        texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+        D3D11_SUBRESOURCE_DATA initData{};
+        initData.pSysMem = &pixel;
+        initData.SysMemPitch = sizeof(uint32_t); // 4 bytes for 1 pixel
+        initData.SysMemSlicePitch = 0;
+
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
+        HRESULT hr = device->CreateTexture2D(&texDesc, &initData, texture.GetAddressOf());
+
+        if (SUCCEEDED(hr))
+        {
+            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+            srvDesc.Format = texDesc.Format;
+            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+            srvDesc.Texture2D.MostDetailedMip = 0;
+            srvDesc.Texture2D.MipLevels = 1;
+
+            device->CreateShaderResourceView(texture.Get(), &srvDesc, m_defaultTexture.GetAddressOf());
+        }
+    }
+
+
     ID3D11ShaderResourceView* TextureManager::LoadCubemap(ID3D11Device* device, const std::vector<std::string>& filenames)
     {
         // Expect exactly 6 faces: +X, -X, +Y, -Y, +Z, -Z

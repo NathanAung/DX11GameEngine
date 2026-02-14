@@ -49,6 +49,9 @@ void Render();
 
 static void LoadContent()
 {
+    // Create the default 1x1 fallback texture
+    g_textureManager.CreateDefaultTexture(g_renderer.GetDevice());
+
     // Create resources with renderer device
     const int shaderID   = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
 
@@ -421,7 +424,7 @@ void Render()
 {
     g_renderer.BeginFrame();
 
-    Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer);
+    Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
     // Draw skybox last: z=w ensures it renders only where nothing else drew
     if (g_scene.m_activeRenderCamera != entt::null &&

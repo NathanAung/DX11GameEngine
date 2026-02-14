@@ -7,6 +7,7 @@
 #include "Engine/InputManager.h"
 #include "Engine/Renderer.h"
 #include "Engine/PhysicsManager.h"
+#include "Engine/TextureManager.h"
 
 // Systems for the engine, including various update and rendering systems
 
@@ -15,7 +16,7 @@ namespace Engine
     namespace RenderSystem
     {
         // pass Renderer to access context and sampler
-        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer);
+        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager);
     }
 
     // demo rotation logic

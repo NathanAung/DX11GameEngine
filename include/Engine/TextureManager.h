@@ -20,11 +20,19 @@ namespace Engine
         // Returns SRV raw pointer for TextureCube, or nullptr on failure.
         ID3D11ShaderResourceView* LoadCubemap(ID3D11Device* device, const std::vector<std::string>& filenames);
 
+        // Creates a 1x1 white default texture
+        void CreateDefaultTexture(ID3D11Device* device);
+
+        // Retrieves the default texture
+        ID3D11ShaderResourceView* GetDefaultTexture() const { return m_defaultTexture.Get(); }
+
     private:
         // Cache of loaded 2D textures: filename -> SRV
         std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> m_textureCache;
 
         // Cache of cubemaps by concatenated key of 6 filenames
         std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> m_cubemapCache;
+
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_defaultTexture;
     };
 }
