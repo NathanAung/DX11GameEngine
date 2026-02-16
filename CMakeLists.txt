@@ -40,6 +40,7 @@ set(ENGINE_SOURCE_FILES
     src/Engine/TextureManager.cpp
     src/Engine/Systems.cpp
     src/Engine/PhysicsManager.cpp
+    src/Engine/ImGuiManager.cpp
 )
 
 set(ENGINE_HEADER_FILES
@@ -53,6 +54,7 @@ set(ENGINE_HEADER_FILES
     include/Engine/TextureManager.h
     include/Engine/Systems.h
     include/Engine/PhysicsManager.h
+    include/Engine/ImGuiManager.h
 )
 
 add_executable(DX11GameEngine

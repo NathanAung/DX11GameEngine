@@ -6,6 +6,7 @@
 #include "Engine/ShaderManager.h"
 #include "Engine/Systems.h"
 #include "Engine/TextureManager.h"
+#include "Engine/ImGuiManager.h"
 
 // Common Usings
 using namespace DirectX;
@@ -39,8 +40,11 @@ Engine::TextureManager g_textureManager; // global texture manager instance
 // Renderer
 Engine::Renderer g_renderer;
 
-// New: Physics
+// Physics
 Engine::PhysicsManager g_physicsManager;
+
+// ImGui Manager
+Engine::ImGuiManager g_imGuiManager;
 
 // Forward declarations
 static void LoadContent();
@@ -311,10 +315,24 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    // Initialize Dear ImGui (SDL2 + DX11) after D3D11 is ready
+    if (!g_imGuiManager.Initialize(g_SDLWindow, g_renderer.GetDevice(), g_renderer.GetContext()))
+    {
+        std::fprintf(stderr, "ImGuiManager initialization failed\n");
+        g_renderer.Shutdown();
+        if (g_SDLWindow) {
+            SDL_DestroyWindow(g_SDLWindow);
+            g_SDLWindow = nullptr;
+        }
+        SDL_Quit();
+        return -1;
+    }
+
     // Initialize physics (Jolt)
     if (!g_physicsManager.Initialize())
     {
         std::fprintf(stderr, "PhysicsManager initialization failed\n");
+        g_imGuiManager.Shutdown();
         g_renderer.Shutdown();
         if (g_SDLWindow) {
             SDL_DestroyWindow(g_SDLWindow);
@@ -333,6 +351,7 @@ int main(int argc, char** argv)
     {
         std::fprintf(stderr, "Content load failed: %s\n", e.what());
         g_physicsManager.Shutdown();
+        g_imGuiManager.Shutdown();
         g_renderer.Shutdown();
         if (g_SDLWindow) {
             SDL_DestroyWindow(g_SDLWindow);
@@ -355,8 +374,14 @@ int main(int argc, char** argv)
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
-            // Feed the input manager first (collect keyboard/mouse state)
-            g_input.ProcessEvent(e);
+            // Intercept events for Dear ImGui first
+            bool imguiCaptured = g_imGuiManager.ProcessEvent(e);
+
+            // Feed the input manager if ImGui didn't capture this frame's input
+            if (!imguiCaptured)
+            {
+                g_input.ProcessEvent(e);
+            }
 
             if (e.type == SDL_QUIT) g_running = false;
             else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
@@ -396,6 +421,7 @@ int main(int argc, char** argv)
 
     // Shutdown and cleanup
     g_physicsManager.Shutdown();
+    g_imGuiManager.Shutdown();
     g_renderer.Shutdown();
     if (g_SDLWindow) {
         SDL_DestroyWindow(g_SDLWindow);
@@ -425,6 +451,12 @@ void Render()
     // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
     g_renderer.BindFramebuffer();
 
+    // Begin ImGui frame while the framebuffer is bound (editor UI will display this SRV later)
+    g_imGuiManager.BeginFrame();
+
+    // Root editor layout: invisible grid that panels dock into
+    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
     // Draw skybox last: z=w ensures it renders only where nothing else drew
@@ -440,6 +472,9 @@ void Render()
     // Now bind the real swapchain back buffer.
     // NOTE: The window will intentionally render black until Step 10 (ImGui) displays the framebuffer SRV.
     g_renderer.BindBackBuffer();
+
+    // Draw the UI data to the cleared backbuffer
+    g_imGuiManager.EndFrame();
 
     g_renderer.Present(g_vSync);
 }

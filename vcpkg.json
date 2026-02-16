@@ -11,8 +11,17 @@
     {
       "name": "imgui",
       "features": [
-        "dx11-binding"
+        "dx11-binding",
+        "sdl2-binding",
+        "docking-experimental"
       ]
+    }
+  ],
+  "overrides": [
+    {
+      "name": "imgui",
+      "version": "1.91.8",
+      "port-version": 2
     }
   ]
 }
