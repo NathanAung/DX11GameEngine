@@ -89,6 +89,16 @@ public:
     // Issues the draw call
     void DrawIndexed(UINT indexCount);
 
+    // Framebuffer (Editor Render-to-Texture)
+    // creates an off-screen framebuffer with RTV, DSV, and SRV for editor preview rendering
+	bool CreateFramebuffer(UINT width, UINT height);    
+	// binds the off-screen framebuffer RTV/DSV for rendering; call GetFramebufferSRV() to bind the texture to shaders
+    void BindFramebuffer();
+	// binds the main back buffer RTV/DSV for rendering
+    void BindBackBuffer();
+	// Accessor for the framebuffer texture SRV (for shader binding)
+    ID3D11ShaderResourceView* GetFramebufferSRV() const { return m_framebufferSRV.Get(); }
+
     // Skybox
     void SetSkybox(ID3D11ShaderResourceView* srv) { m_skyboxSRV = srv; }
     void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans);
@@ -119,6 +129,13 @@ private:
     Microsoft::WRL::ComPtr<ID3D11SamplerState> m_samplerState;
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbLight;    // light cbuffer (PS b3)
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbMaterial; // material cbuffer (PS b4)
+
+    // Off-screen framebuffer state (Editor Render-to-Texture)
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> m_framebufferTex;
+    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> m_framebufferRTV;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_framebufferSRV;
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> m_framebufferDepthTex;
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_framebufferDSV;
 
     // skybox state
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_skyboxDepthState;

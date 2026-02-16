@@ -86,9 +86,12 @@ namespace Engine
 		// Get the accumulated mouse movement delta for the current frame
         MouseDelta GetMouseDelta() const { return m_mouseDelta; }
 
+        bool IsMouseCaptured() const { return m_isCaptured; }
+
 		// Enable or disable mouse capture (relative mode)
         void SetMouseCaptured(bool enabled)
         {
+            m_isCaptured = enabled;
             SDL_SetRelativeMouseMode(enabled ? SDL_TRUE : SDL_FALSE);
             SDL_ShowCursor(enabled ? SDL_DISABLE : SDL_ENABLE);
         }
@@ -114,5 +117,7 @@ namespace Engine
         std::array<bool, static_cast<size_t>(Key::Count)> m_keys{ false, false, false, false, false, false, false };
 		// Accumulated mouse movement delta for the current frame
         MouseDelta m_mouseDelta{};
+
+        bool m_isCaptured = false;
     };
 }

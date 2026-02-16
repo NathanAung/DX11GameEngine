@@ -25,6 +25,10 @@ namespace Engine
         if (!CreateInitialResources())
             return false;
 
+        // Create editor framebuffer (Render-to-Texture)
+        if (!CreateFramebuffer(m_dx.width, m_dx.height))
+            return false;
+
         return true;
     }
 
@@ -44,6 +48,13 @@ namespace Engine
         m_cbWorld.Reset();
         m_cbView.Reset();
         m_cbProjection.Reset();
+
+        // framebuffer state
+        m_framebufferDSV.Reset();
+        m_framebufferDepthTex.Reset();
+        m_framebufferSRV.Reset();
+        m_framebufferRTV.Reset();
+        m_framebufferTex.Reset();
 
         ReleaseViews();
 
@@ -81,7 +92,11 @@ namespace Engine
         if (FAILED(hr)) return false;
 
         // Recreate render target and depth-stencil views
-        return CreateViews();
+        if (!CreateViews())
+            return false;
+
+        // Resize editor framebuffer (Render-to-Texture)
+        return CreateFramebuffer(m_dx.width, m_dx.height);
     }
 
 
@@ -398,6 +413,129 @@ namespace Engine
         return true;
     }
 
+    bool Renderer::CreateFramebuffer(UINT width, UINT height)
+    {
+        if (!m_dx.device || !m_dx.context)
+            return false;
+
+        // Safe to call during resize; release old resources first
+        m_framebufferDSV.Reset();
+        m_framebufferDepthTex.Reset();
+        m_framebufferSRV.Reset();
+        m_framebufferRTV.Reset();
+        m_framebufferTex.Reset();
+
+        // Color texture
+        D3D11_TEXTURE2D_DESC texDesc{};
+        texDesc.Width = width;
+        texDesc.Height = height;
+        texDesc.MipLevels = 1;
+        texDesc.ArraySize = 1;
+        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        texDesc.SampleDesc.Count = 1;
+        texDesc.SampleDesc.Quality = 0;
+        texDesc.Usage = D3D11_USAGE_DEFAULT;
+        texDesc.BindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE;
+        texDesc.CPUAccessFlags = 0;
+        texDesc.MiscFlags = 0;
+
+        HRESULT hr = m_dx.device->CreateTexture2D(&texDesc, nullptr, m_framebufferTex.GetAddressOf());
+        if (FAILED(hr)) return false;
+
+        hr = m_dx.device->CreateRenderTargetView(m_framebufferTex.Get(), nullptr, m_framebufferRTV.GetAddressOf());
+        if (FAILED(hr)) return false;
+
+        hr = m_dx.device->CreateShaderResourceView(m_framebufferTex.Get(), nullptr, m_framebufferSRV.GetAddressOf());
+        if (FAILED(hr)) return false;
+
+        // Depth texture
+        D3D11_TEXTURE2D_DESC depthDesc{};
+        depthDesc.Width = width;
+        depthDesc.Height = height;
+        depthDesc.MipLevels = 1;
+        depthDesc.ArraySize = 1;
+        depthDesc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+        depthDesc.SampleDesc.Count = 1;
+        depthDesc.SampleDesc.Quality = 0;
+        depthDesc.Usage = D3D11_USAGE_DEFAULT;
+        depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+        depthDesc.CPUAccessFlags = 0;
+        depthDesc.MiscFlags = 0;
+
+        hr = m_dx.device->CreateTexture2D(&depthDesc, nullptr, m_framebufferDepthTex.GetAddressOf());
+        if (FAILED(hr)) return false;
+
+        hr = m_dx.device->CreateDepthStencilView(m_framebufferDepthTex.Get(), nullptr, m_framebufferDSV.GetAddressOf());
+        if (FAILED(hr)) return false;
+
+        return true;
+    }
+
+
+    void Renderer::BindFramebuffer()
+    {
+        if (!m_dx.context || !m_framebufferRTV || !m_framebufferDSV)
+            return;
+
+        m_dx.context->OMSetRenderTargets(1, m_framebufferRTV.GetAddressOf(), m_framebufferDSV.Get());
+
+        // viewport (match framebuffer)
+        D3D11_VIEWPORT vp{};
+        vp.TopLeftX = 0.0f;
+        vp.TopLeftY = 0.0f;
+        vp.Width    = static_cast<float>(m_dx.width);
+        vp.Height   = static_cast<float>(m_dx.height);
+        vp.MinDepth = 0.0f;
+        vp.MaxDepth = 1.0f;
+        m_dx.context->RSSetViewports(1, &vp);
+
+        // clear to a dark grey editor background
+        const float clearColor[4] = { 0.08f, 0.08f, 0.09f, 1.0f };
+        m_dx.context->ClearRenderTargetView(m_framebufferRTV.Get(), clearColor);
+        m_dx.context->ClearDepthStencilView(m_framebufferDSV.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+        // keep states consistent with BeginFrame()
+        if (m_rasterState)       m_dx.context->RSSetState(m_rasterState.Get());
+        if (m_depthStencilState) m_dx.context->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
+
+        // Bind per-frame CBs (b0=Proj, b1=View, b2=World)
+        ID3D11Buffer* vscbs[] = { m_cbProjection.Get(), m_cbView.Get(), m_cbWorld.Get() };
+        m_dx.context->VSSetConstantBuffers(0, 3, vscbs);
+    }
+
+
+    void Renderer::BindBackBuffer()
+    {
+        if (!m_dx.context || !m_dx.rtv || !m_dx.dsv)
+            return;
+
+        m_dx.context->OMSetRenderTargets(1, m_dx.rtv.GetAddressOf(), m_dx.dsv.Get());
+
+        // viewport (match window)
+        D3D11_VIEWPORT vp{};
+        vp.TopLeftX = 0.0f;
+        vp.TopLeftY = 0.0f;
+        vp.Width    = static_cast<float>(m_dx.width);
+        vp.Height   = static_cast<float>(m_dx.height);
+        vp.MinDepth = 0.0f;
+        vp.MaxDepth = 1.0f;
+        m_dx.context->RSSetViewports(1, &vp);
+
+        // clear main back buffer to pure black
+        const float clearColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        m_dx.context->ClearRenderTargetView(m_dx.rtv.Get(), clearColor);
+        m_dx.context->ClearDepthStencilView(m_dx.dsv.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+        // keep states consistent with BeginFrame()
+        if (m_rasterState)       m_dx.context->RSSetState(m_rasterState.Get());
+        if (m_depthStencilState) m_dx.context->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
+
+        // Bind per-frame CBs (b0=Proj, b1=View, b2=World)
+        ID3D11Buffer* vscbs[] = { m_cbProjection.Get(), m_cbView.Get(), m_cbWorld.Get() };
+        m_dx.context->VSSetConstantBuffers(0, 3, vscbs);
+    }
+
+
     void Renderer::DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans)
     {
         if (!m_skyboxSRV) return;
@@ -447,7 +585,7 @@ namespace Engine
 			throw std::runtime_error("Skybox cube mesh (ID 101) not found in MeshManager.");
         }
 
-        // Restore default states (so subsequent draws aren’t affected)
+        // Restore default states (so subsequent draws aren't affected)
         if (m_depthStencilState) ctx->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
         if (m_rasterState)       ctx->RSSetState(m_rasterState.Get());
     }

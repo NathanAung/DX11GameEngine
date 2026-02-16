@@ -422,7 +422,8 @@ void Update(float deltaTime) {
 
 void Render()
 {
-    g_renderer.BeginFrame();
+    // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
+    g_renderer.BindFramebuffer();
 
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
@@ -435,6 +436,10 @@ void Render()
         const auto& camComp  = g_scene.registry.get<Engine::CameraComponent>(g_scene.m_activeRenderCamera);
         g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans);
     }
+
+    // Now bind the real swapchain back buffer.
+    // NOTE: The window will intentionally render black until Step 10 (ImGui) displays the framebuffer SRV.
+    g_renderer.BindBackBuffer();
 
     g_renderer.Present(g_vSync);
 }
