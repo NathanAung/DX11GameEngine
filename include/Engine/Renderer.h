@@ -137,6 +137,10 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Texture2D> m_framebufferDepthTex;
     Microsoft::WRL::ComPtr<ID3D11DepthStencilView> m_framebufferDSV;
 
+    // Framebuffer dimensions (separate from main window size)
+    UINT m_framebufferWidth = 0;
+    UINT m_framebufferHeight = 0;
+
     // skybox state
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_skyboxDepthState;
     Microsoft::WRL::ComPtr<ID3D11RasterizerState>   m_skyboxRasterState;

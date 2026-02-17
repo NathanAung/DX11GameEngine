@@ -386,25 +386,8 @@ int main(int argc, char** argv)
             if (e.type == SDL_QUIT) g_running = false;
             else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
             {
-                try
-                {
-                    if (g_renderer.Resize((UINT)e.window.data1, (UINT)e.window.data2))
-                    {
-                        // update viewport component on active camera (optional)
-                        if (g_scene.m_activeRenderCamera != entt::null &&
-                            g_scene.registry.valid(g_scene.m_activeRenderCamera) &&
-                            g_scene.registry.all_of<Engine::ViewportComponent>(g_scene.m_activeRenderCamera))
-                        {
-                            auto &vp = g_scene.registry.get<Engine::ViewportComponent>(g_scene.m_activeRenderCamera);
-                            vp.width  = g_renderer.GetWidth();
-                            vp.height = g_renderer.GetHeight();
-                        }
-                    }
-                }
-                catch (const std::exception& ex)
-                {
-                    std::fprintf(stderr, "Resize error: %s\n", ex.what());
-                }
+                (void)g_renderer.Resize((UINT)e.window.data1, (UINT)e.window.data2);
+                // NOTE: Camera ViewportComponent updates are now handled by the "Scene" ImGui panel sizing.
             }
         }
 
@@ -448,14 +431,47 @@ void Update(float deltaTime) {
 
 void Render()
 {
-    // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
-    g_renderer.BindFramebuffer();
-
-    // Begin ImGui frame while the framebuffer is bound (editor UI will display this SRV later)
+	// Start the ImGui frame (after processing input and before rendering)
     g_imGuiManager.BeginFrame();
 
     // Root editor layout: invisible grid that panels dock into
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+
+    // Set a default size (e.g., 800x600) only if there is no saved setting in imgui.ini
+    ImGui::SetNextWindowSize(ImVec2(800.0f, 600.0f), ImGuiCond_FirstUseEver);
+	// set the window to be top centered on first use as well
+	ImGui::SetNextWindowPos(ImVec2((g_windowWidth - 800) / 2.0f, 20.0f), ImGuiCond_FirstUseEver);
+    // Scene View (dockable): drives the render-to-texture size
+    ImGui::Begin("Scene");
+	// Get the available size for the viewport (this is the size of the content region inside the "Scene" window)
+    ImVec2 viewportSize = ImGui::GetContentRegionAvail();
+
+	// Update the active camera's viewport size if it doesn't match the current viewport size
+    if (g_scene.m_activeRenderCamera != entt::null &&
+        g_scene.registry.valid(g_scene.m_activeRenderCamera) &&
+        g_scene.registry.all_of<Engine::ViewportComponent>(g_scene.m_activeRenderCamera))
+    {
+        auto& vp = g_scene.registry.get<Engine::ViewportComponent>(g_scene.m_activeRenderCamera);
+
+        if (viewportSize.x != vp.width || viewportSize.y != vp.height)
+        {
+            if (viewportSize.x > 0.0f && viewportSize.y > 0.0f)
+            {
+                vp.width  = viewportSize.x;
+                vp.height = viewportSize.y;
+
+                g_renderer.CreateFramebuffer((UINT)viewportSize.x, (UINT)viewportSize.y);
+            }
+        }
+    }
+
+	// Render the framebuffer texture (from off-screen rendering) as an ImGui image in the Scene panel
+    ImGui::Image((ImTextureID)(intptr_t)g_renderer.GetFramebufferSRV(), viewportSize);
+
+    ImGui::End();
+
+    // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
+    g_renderer.BindFramebuffer();
 
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
@@ -470,7 +486,7 @@ void Render()
     }
 
     // Now bind the real swapchain back buffer.
-    // NOTE: The window will intentionally render black until Step 10 (ImGui) displays the framebuffer SRV.
+    // NOTE: The window will intentionally render black until ImGui displays the framebuffer SRV.
     g_renderer.BindBackBuffer();
 
     // Draw the UI data to the cleared backbuffer

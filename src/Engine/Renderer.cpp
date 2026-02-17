@@ -415,6 +415,10 @@ namespace Engine
 
     bool Renderer::CreateFramebuffer(UINT width, UINT height)
     {
+        // Track framebuffer size independently from the OS window (used by BindFramebuffer viewport)
+        m_framebufferWidth = width;
+        m_framebufferHeight = height;
+
         if (!m_dx.device || !m_dx.context)
             return false;
 
@@ -483,8 +487,8 @@ namespace Engine
         D3D11_VIEWPORT vp{};
         vp.TopLeftX = 0.0f;
         vp.TopLeftY = 0.0f;
-        vp.Width    = static_cast<float>(m_dx.width);
-        vp.Height   = static_cast<float>(m_dx.height);
+        vp.Width    = static_cast<float>(m_framebufferWidth);
+        vp.Height   = static_cast<float>(m_framebufferHeight);
         vp.MinDepth = 0.0f;
         vp.MaxDepth = 1.0f;
         m_dx.context->RSSetViewports(1, &vp);
