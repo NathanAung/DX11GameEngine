@@ -71,6 +71,16 @@ namespace Engine
             XMVECTOR right = XMVector3Normalize(XMVector3Cross(worldUp, forward));
             XMVECTOR up = XMVector3Normalize(XMVector3Cross(forward, right));
 
+            float scroll = static_cast<float>(input.GetMouseDelta().wheelY);
+            if (isSceneFocused && scroll != 0.0f)
+            {
+                // Multiply by a factor (e.g., 5.0f) so the scroll movement is noticeable
+                float scrollSpeed = fc.moveSpeed * dt * 5.0f; 
+                XMVECTOR move = XMVectorScale(forward, scroll * scrollSpeed);
+                XMVECTOR pos = XMVectorAdd(XMLoadFloat3(&tf.position), move);
+                XMStoreFloat3(&tf.position, pos);
+            }
+
             if (input.IsMouseCaptured() || (isSceneFocused && input.IsKeyDown(Key::LShift)))
             {
                 // Movement: W/A/S/D + Shift, Space up

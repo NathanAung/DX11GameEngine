@@ -27,6 +27,7 @@ namespace Engine
     {
         int dx = 0;
         int dy = 0;
+        int wheelY = 0;
     };
 
     class InputManager
@@ -37,6 +38,7 @@ namespace Engine
         {
             m_mouseDelta.dx = 0;
             m_mouseDelta.dy = 0;
+            m_mouseDelta.wheelY = 0;
         }
 
 		// Process an SDL event and update input state
@@ -72,6 +74,11 @@ namespace Engine
                 // Prefer relative motion if relative mouse mode is on
                 m_mouseDelta.dx += e.motion.xrel;
                 m_mouseDelta.dy += e.motion.yrel;
+                break;
+            }
+            case SDL_MOUSEWHEEL:
+            {
+                m_mouseDelta.wheelY += e.wheel.y;
                 break;
             }
             default:
