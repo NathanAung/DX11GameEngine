@@ -28,6 +28,9 @@ bool g_vSync = true; // can toggle later
 // Input manager
 Engine::InputManager g_input;
 
+// Track Scene panel focus for smart input routing (Shift+WASD without RMB)
+bool g_scenePanelFocused = false;
+
 // ECS: Scene and a sample 3d entity
 Engine::Scene g_scene;
 entt::entity g_sampleEntity = entt::null;
@@ -342,8 +345,6 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    g_input.SetMouseCaptured(true);
-
     try {
         LoadContent();
     }
@@ -374,11 +375,16 @@ int main(int argc, char** argv)
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
+			// Global input handling (e.g., exit on Escape key)
+            if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_ESCAPE) { g_running = false; }
+
             // Intercept events for Dear ImGui first
             bool imguiCaptured = g_imGuiManager.ProcessEvent(e);
 
             // Feed the input manager if ImGui didn't capture this frame's input
-            if (!imguiCaptured)
+            // When right-click flying in the Scene view, ImGui will capture input.
+            // mouse delta + WASD is still needed to reach the engine while captured.
+            if (!imguiCaptured || g_input.IsMouseCaptured() || g_scenePanelFocused)
             {
                 g_input.ProcessEvent(e);
             }
@@ -418,15 +424,10 @@ void Update(float deltaTime) {
     // Physics step and sync
     Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime);
 
-    Engine::CameraInputSystem(g_scene, g_input, deltaTime);
+    Engine::CameraInputSystem(g_scene, g_input, deltaTime, g_scenePanelFocused);
+
     Engine::CameraMatrixSystem(g_scene, g_renderer);
     //Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
-
-    // exit on escape key
-    if(g_input.IsKeyDown(Engine::Key::Esc))
-    {
-		g_running = false;
-	}
 }
 
 void Render()
@@ -467,6 +468,31 @@ void Render()
 
 	// Render the framebuffer texture (from off-screen rendering) as an ImGui image in the Scene panel
     ImGui::Image((ImTextureID)(intptr_t)g_renderer.GetFramebufferSRV(), viewportSize);
+
+    // Smart Input Routing: Right-Click to Fly (Scene panel only)
+    {
+		// Check if the Scene panel is hovered for input routing
+        bool isHovered = ImGui::IsWindowHovered();
+        g_scenePanelFocused = ImGui::IsWindowFocused();
+
+		// Store mouse position on RMB down to restore it on release (prevents warping issues if cursor leaves panel while flying)
+        static int storedMouseX = 0;
+        static int storedMouseY = 0;
+
+		// When right mouse button is clicked while hovering the Scene panel, capture the mouse for camera control
+        if (isHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
+        {
+            SDL_GetMouseState(&storedMouseX, &storedMouseY);
+            g_input.SetMouseCaptured(true);
+        }
+
+        // Release capture when RMB is released (even if cursor left the panel while dragging)
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Right) && g_input.IsMouseCaptured())
+        {
+            g_input.SetMouseCaptured(false);
+            SDL_WarpMouseInWindow(g_SDLWindow, storedMouseX, storedMouseY);
+        }
+    }
 
     ImGui::End();
 

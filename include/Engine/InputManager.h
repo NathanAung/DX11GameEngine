@@ -92,8 +92,8 @@ namespace Engine
         void SetMouseCaptured(bool enabled)
         {
             m_isCaptured = enabled;
-            //SDL_SetRelativeMouseMode(enabled ? SDL_TRUE : SDL_FALSE);
-            //SDL_ShowCursor(enabled ? SDL_DISABLE : SDL_ENABLE);
+            SDL_SetRelativeMouseMode(enabled ? SDL_TRUE : SDL_FALSE);
+            SDL_ShowCursor(enabled ? SDL_DISABLE : SDL_ENABLE);
         }
 
     private:

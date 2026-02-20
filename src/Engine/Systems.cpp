@@ -33,7 +33,7 @@ namespace Engine
     }
 
 
-    void CameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt)
+    void CameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt, bool isSceneFocused)
     {
         // Iterate all entities with Transform + FlyCamControl
         auto view = scene.registry.view<TransformComponent, EditorCamControlComponent>();
@@ -45,17 +45,20 @@ namespace Engine
             if (fc.mode != CameraControlMode::EditorCam)
                 continue;
 
-            // Mouse look: accumulate yaw/pitch
-            const auto md = input.GetMouseDelta();
-            fc.yaw   += static_cast<float>(md.dx) * fc.lookSensitivity;
-            fc.pitch += static_cast<float>(md.dy) * fc.lookSensitivity * -1.0f; // default invertY
+            if (input.IsMouseCaptured())
+            {
+                // Mouse look: accumulate yaw/pitch
+                const auto md = input.GetMouseDelta();
+                fc.yaw   += static_cast<float>(md.dx) * fc.lookSensitivity;
+                fc.pitch += static_cast<float>(md.dy) * fc.lookSensitivity * -1.0f; // default invertY
 
-            // Clamp and wrap
-            const float kPitchLimit = XMConvertToRadians(89.0f);
-            if (fc.pitch >  kPitchLimit) fc.pitch =  kPitchLimit;
-            if (fc.pitch < -kPitchLimit) fc.pitch = -kPitchLimit;
-            if (fc.yaw > XM_PI)  fc.yaw -= XM_2PI;
-            if (fc.yaw < -XM_PI) fc.yaw += XM_2PI;
+                // Clamp and wrap
+                const float kPitchLimit = XMConvertToRadians(89.0f);
+                if (fc.pitch >  kPitchLimit) fc.pitch =  kPitchLimit;
+                if (fc.pitch < -kPitchLimit) fc.pitch = -kPitchLimit;
+                if (fc.yaw > XM_PI)  fc.yaw -= XM_2PI;
+                if (fc.yaw < -XM_PI) fc.yaw += XM_2PI;
+            }
 
             // Recompute basis from yaw/pitch (LH, yaw=0 looks +Z)
             const float cy = cosf(fc.yaw);
@@ -68,23 +71,26 @@ namespace Engine
             XMVECTOR right = XMVector3Normalize(XMVector3Cross(worldUp, forward));
             XMVECTOR up = XMVector3Normalize(XMVector3Cross(forward, right));
 
-            // Movement: W/A/S/D (+ Shift sprint), Space up
-            float speed = fc.moveSpeed * dt;
-            if (input.IsKeyDown(Key::LShift)) speed *= fc.sprintMultiplier;
-
-            XMVECTOR move = XMVectorZero();
-            if (input.IsKeyDown(Key::W)) move = XMVectorAdd(move, forward);
-            if (input.IsKeyDown(Key::S)) move = XMVectorSubtract(move, forward);
-            if (input.IsKeyDown(Key::D)) move = XMVectorAdd(move, right);
-            if (input.IsKeyDown(Key::A)) move = XMVectorSubtract(move, right);
-            if (input.IsKeyDown(Key::Space)) move = XMVectorAdd(move, XMVectorSet(0, 1, 0, 0));
-
-            if (!XMVector3Equal(move, XMVectorZero()))
+            if (input.IsMouseCaptured() || (isSceneFocused && input.IsKeyDown(Key::LShift)))
             {
-                move = XMVector3Normalize(move);
-                move = XMVectorScale(move, speed);
-                XMVECTOR pos = XMVectorAdd(XMLoadFloat3(&tf.position), move);
-                XMStoreFloat3(&tf.position, pos);
+                // Movement: W/A/S/D + Shift, Space up
+                float speed = fc.moveSpeed * dt;
+                //if (input.IsKeyDown(Key::LShift)) speed *= fc.sprintMultiplier;
+
+                XMVECTOR move = XMVectorZero();
+                if (input.IsKeyDown(Key::W)) move = XMVectorAdd(move, forward);
+                if (input.IsKeyDown(Key::S)) move = XMVectorSubtract(move, forward);
+                if (input.IsKeyDown(Key::D)) move = XMVectorAdd(move, right);
+                if (input.IsKeyDown(Key::A)) move = XMVectorSubtract(move, right);
+                if (input.IsKeyDown(Key::Space)) move = XMVectorAdd(move, XMVectorSet(0, 1, 0, 0));
+
+                if (!XMVector3Equal(move, XMVectorZero()))
+                {
+                    move = XMVector3Normalize(move);
+                    move = XMVectorScale(move, speed);
+                    XMVECTOR pos = XMVectorAdd(XMLoadFloat3(&tf.position), move);
+                    XMStoreFloat3(&tf.position, pos);
+                }
             }
 
             // Store rotation in TransformComponent as quaternion from basis

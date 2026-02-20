@@ -23,7 +23,7 @@ namespace Engine
     void DemoRotationSystem(Engine::Scene& scene, entt::entity sampleEntity, float dt);
 
     // input-driven camera movement and look
-    void CameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt);
+    void CameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt, bool isSceneFocused);
 
     // build view/projection matrices for active camera and upload via renderer
     void CameraMatrixSystem(Engine::Scene& scene, Engine::Renderer& renderer);
