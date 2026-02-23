@@ -34,6 +34,8 @@ bool g_scenePanelFocused = false;
 // ECS: Scene and a sample 3d entity
 Engine::Scene g_scene;
 entt::entity g_sampleEntity = entt::null;
+// Track selected entity in the Hierarchy panel for property editing
+entt::entity g_selectedEntity = entt::null; 
 
 // Managers
 Engine::MeshManager g_meshManager;
@@ -104,31 +106,10 @@ static void LoadContent()
         );
     }
 
-    // Load a model; ensure the asset exists and Assimp DLL is present alongside the exe
-    //auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel3.obj");
-
-    //for (int id : meshIDs)
-    //{
-    //    auto e = g_scene.CreateEntity("ModelPart");
-    //    auto& t = g_scene.registry.get<Engine::TransformComponent>(e);
-    //    t.scale = { 1.0f, 1.0f, 1.0f }; // Adjust scale if needed (0.01f or 100.0f)
-    //    XMVECTOR qx = XMQuaternionRotationAxis(XMVectorSet(1, 0, 0, 0), XM_PIDIV2);
-    //    XMStoreFloat4(&t.rotation, qx);
-
-    //    auto& mr = g_scene.registry.emplace<Engine::MeshRendererComponent>(e);
-    //    mr.meshID = id;
-    //    mr.materialID = shaderID; // Basic Material
-    //    mr.metallic = 0.0f; // FORCE NON-METALLIC (Fixes Black Texture)
-    //    mr.roughness = 0.8f;
-
-    //    ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture3.jpg");
-    //    mr.texture = tex; // assign texture to component
-    //}
-
     auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");
     // Create the sample entity
     {
-        g_sampleEntity = g_scene.CreateSampleEntity("Rotating 3D Model");
+        g_sampleEntity = g_scene.CreateSampleEntity("Sample 3D Model");
 
         // Hook the sample entity to resources (now using first mesh from model)
         auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_sampleEntity);
@@ -494,6 +475,32 @@ void Render()
         }
     }
 
+    ImGui::End();
+
+    ImGui::Begin("Hierarchy");
+    {
+        auto view = g_scene.registry.view<Engine::NameComponent>();
+        for (auto entity : view)
+        {
+            auto& nameComp = view.get<Engine::NameComponent>(entity);
+
+            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
+            // Note: Leaf because entities do not have children yet
+            if (g_selectedEntity == entity)
+                flags |= ImGuiTreeNodeFlags_Selected;
+
+            bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", nameComp.name.c_str());
+            if (ImGui::IsItemClicked()) { g_selectedEntity = entity; }
+
+            if (opened) { ImGui::TreePop(); }
+        }
+
+        // Deselection: click empty space in the window to clear selection
+        if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+        {
+            g_selectedEntity = entt::null;
+        }
+    }
     ImGui::End();
 
     // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
