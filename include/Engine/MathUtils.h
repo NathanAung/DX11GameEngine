@@ -17,12 +17,25 @@ namespace Engine::Math
         // Using a common Yaw-Pitch-Roll extraction (pitch around X, yaw around Y, roll around Z)
         XMMATRIX m = XMMatrixRotationQuaternion(quat);
 
-        // Pitch (X)
-        pitch = asinf(-XMVectorGetZ(m.r[1]));
-        // Yaw (Y)
-        yaw = atan2f(XMVectorGetX(m.r[2]), XMVectorGetX(m.r[0]));
-        // Roll (Z)
-        roll = atan2f(XMVectorGetZ(m.r[1]), XMVectorGetY(m.r[1]));
+        // Extract Pitch (X) from m21, clamped to [-1, 1] to prevent NaN
+        float sp = -DirectX::XMVectorGetY(m.r[2]);
+        if (sp > 1.0f) sp = 1.0f;
+        if (sp < -1.0f) sp = -1.0f;
+        pitch = asinf(sp);
+
+        // Check for Gimbal Lock (Pitch is exactly +/- 90 degrees)
+        if (fabs(sp) > 0.9999f)
+        {
+            // Roll is locked, extract Yaw from m00 and m02
+            roll = 0.0f;
+            yaw = atan2f(-DirectX::XMVectorGetZ(m.r[0]), DirectX::XMVectorGetX(m.r[0]));
+        }
+        else
+        {
+            // Normal extraction for Yaw (Y) and Roll (Z)
+            yaw = atan2f(DirectX::XMVectorGetX(m.r[2]), DirectX::XMVectorGetZ(m.r[2]));
+            roll = atan2f(DirectX::XMVectorGetY(m.r[0]), DirectX::XMVectorGetY(m.r[1]));
+        }
 
         const float degPitch = XMConvertToDegrees(pitch);
         const float degYaw   = XMConvertToDegrees(yaw);

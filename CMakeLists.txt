@@ -55,6 +55,7 @@ set(ENGINE_HEADER_FILES
     include/Engine/Systems.h
     include/Engine/PhysicsManager.h
     include/Engine/ImGuiManager.h
+    include/Engine/MathUtils.h
 )
 
 add_executable(DX11GameEngine
