@@ -7,6 +7,7 @@
 #include "Engine/Systems.h"
 #include "Engine/TextureManager.h"
 #include "Engine/ImGuiManager.h"
+#include "Engine/MathUtils.h"
 
 // Common Usings
 using namespace DirectX;
@@ -365,7 +366,7 @@ int main(int argc, char** argv)
             // Feed the input manager if ImGui didn't capture this frame's input
             // When right-click flying in the Scene view, ImGui will capture input.
             // mouse delta + WASD is still needed to reach the engine while captured.
-            if (!imguiCaptured || g_input.IsMouseCaptured() || g_scenePanelFocused)
+            if (!imguiCaptured || g_input.IsMouseCaptured() || g_scenePanelFocused || e.type == SDL_KEYUP)
             {
                 g_input.ProcessEvent(e);
             }
@@ -423,6 +424,8 @@ void Render()
     ImGui::SetNextWindowSize(ImVec2(800.0f, 600.0f), ImGuiCond_FirstUseEver);
 	// set the window to be top centered on first use as well
 	ImGui::SetNextWindowPos(ImVec2((g_windowWidth - 800) / 2.0f, 20.0f), ImGuiCond_FirstUseEver);
+
+	// SCENE WINDOW
     // Scene View (dockable): drives the render-to-texture size
     ImGui::Begin("Scene");
 	// Get the available size for the viewport (this is the size of the content region inside the "Scene" window)
@@ -477,21 +480,27 @@ void Render()
 
     ImGui::End();
 
+	// HIERARCHY WINDOW
     ImGui::Begin("Hierarchy");
     {
+		// List all entities with a NameComponent in the hierarchy
         auto view = g_scene.registry.view<Engine::NameComponent>();
         for (auto entity : view)
         {
             auto& nameComp = view.get<Engine::NameComponent>(entity);
 
+			// Set tree node flags: leaf because we don't have parent-child relationships yet, and span width for better clickability
             ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
             // Note: Leaf because entities do not have children yet
             if (g_selectedEntity == entity)
                 flags |= ImGuiTreeNodeFlags_Selected;
 
+			// Use the entity ID as the ImGui tree node ID to ensure uniqueness
             bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", nameComp.name.c_str());
+			// Handle selection: clicking on the item selects it
             if (ImGui::IsItemClicked()) { g_selectedEntity = entity; }
 
+			// No child nodes for now since we don't have parent-child relationships, but if we did, they would go here
             if (opened) { ImGui::TreePop(); }
         }
 
@@ -499,6 +508,94 @@ void Render()
         if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
         {
             g_selectedEntity = entt::null;
+        }
+    }
+    ImGui::End();
+
+	// INSPECTOR WINDOW
+    ImGui::Begin("Inspector");
+    {
+        if (g_selectedEntity != entt::null && g_scene.registry.valid(g_selectedEntity))
+        {
+            // NameComponent UI
+            if (g_scene.registry.all_of<Engine::NameComponent>(g_selectedEntity))
+            {
+                auto& nc = g_scene.registry.get<Engine::NameComponent>(g_selectedEntity);
+
+                static char buffer[256] = {};
+#ifdef _MSC_VER
+                strncpy_s(buffer, nc.name.c_str(), sizeof(buffer) - 1);
+#else
+                std::strncpy(buffer, nc.name.c_str(), sizeof(buffer) - 1);
+#endif
+
+                if (ImGui::InputText("Name", buffer, sizeof(buffer)))
+                {
+                    nc.name = buffer;
+                }
+            }
+
+            // TransformComponent UI
+            if (g_scene.registry.all_of<Engine::TransformComponent>(g_selectedEntity))
+            {
+                auto& tc = g_scene.registry.get<Engine::TransformComponent>(g_selectedEntity);
+
+                if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    ImGui::DragFloat3("Position", &tc.position.x, 0.1f);
+                    ImGui::DragFloat3("Scale", &tc.scale.x, 0.1f);
+
+                    auto euler = Engine::Math::QuaternionToEulerDegrees(tc.rotation);
+                    if (ImGui::DragFloat3("Rotation", &euler.x, 1.0f))
+                    {
+                        tc.rotation = Engine::Math::EulerDegreesToQuaternion(euler);
+                    }
+                }
+            }
+
+            // LightComponent UI
+            if (g_scene.registry.all_of<Engine::LightComponent>(g_selectedEntity))
+            {
+                auto& lc = g_scene.registry.get<Engine::LightComponent>(g_selectedEntity);
+
+                if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+                {
+                    ImGui::ColorEdit3("Color", &lc.color.x);
+                    ImGui::DragFloat("Intensity", &lc.intensity, 0.1f, 0.0f, 1000.0f);
+                    ImGui::DragFloat("Range", &lc.range, 0.5f, 0.0f, 1000.0f);
+                }
+            }
+
+            // RigidBodyComponent UI
+            if (g_scene.registry.all_of<Engine::RigidBodyComponent>(g_selectedEntity))
+            {
+                auto& rb = g_scene.registry.get<Engine::RigidBodyComponent>(g_selectedEntity);
+
+                if (ImGui::CollapsingHeader("RigidBody"))
+                {
+                    // Note: these values currently dictate the initial state of the Jolt body.
+                    // Changing them at runtime won't update the Jolt body yet for now.
+                    ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.0f, 10000.0f);
+                    ImGui::DragFloat("Friction", &rb.friction, 0.01f, 0.0f, 10.0f);
+                    ImGui::DragFloat("Restitution", &rb.restitution, 0.01f, 0.0f, 1.0f);
+                    ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 100.0f);
+                }
+            }
+
+			// MeshRendererComponent UI
+            if (g_scene.registry.all_of<Engine::MeshRendererComponent>(g_selectedEntity))
+            {
+                auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_selectedEntity);
+                if (ImGui::CollapsingHeader("Mesh Renderer"))
+                {
+                    ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
+                    ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
+                }
+            }
+        }
+        else
+        {
+            ImGui::Text("No entity selected");
         }
     }
     ImGui::End();

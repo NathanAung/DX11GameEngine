@@ -85,7 +85,7 @@ namespace Engine
             {
                 // Movement: W/A/S/D + Shift, Space up
                 float speed = fc.moveSpeed * dt;
-                //if (input.IsKeyDown(Key::LShift)) speed *= fc.sprintMultiplier;
+                if (input.IsKeyDown(Key::LShift)) speed *= fc.sprintMultiplier;
 
                 XMVECTOR move = XMVectorZero();
                 if (input.IsKeyDown(Key::W)) move = XMVectorAdd(move, forward);
