@@ -7,8 +7,7 @@
 #include "Engine/Systems.h"
 #include "Engine/TextureManager.h"
 #include "Engine/ImGuiManager.h"
-#include "Engine/MathUtils.h"
-#include <filesystem>
+#include "Engine/EditorUI.h"
 
 // Common Usings
 using namespace DirectX;
@@ -30,18 +29,9 @@ bool g_vSync = true; // can toggle later
 // Input manager
 Engine::InputManager g_input;
 
-// Track Scene panel focus for smart input routing (Shift+WASD without RMB)
-bool g_scenePanelFocused = false;
-
 // ECS: Scene and a sample 3d entity
 Engine::Scene g_scene;
 entt::entity g_sampleEntity = entt::null;
-// Track selected entity in the Hierarchy panel for property editing
-entt::entity g_selectedEntity = entt::null; 
-
-// Content Browser state
-const std::filesystem::path g_assetPath = "assets";         // Root directory that the content browser won't navigate above
-std::filesystem::path g_currentDirectory = g_assetPath;     // Tracks the folder the user is currently viewing
 
 // Managers
 Engine::MeshManager g_meshManager;
@@ -56,6 +46,9 @@ Engine::PhysicsManager g_physicsManager;
 
 // ImGui Manager
 Engine::ImGuiManager g_imGuiManager;
+
+// Editor UI
+Engine::EditorUI g_editorUI;
 
 // Forward declarations
 static void LoadContent();
@@ -362,7 +355,7 @@ int main(int argc, char** argv)
         SDL_Event e;
         while (SDL_PollEvent(&e))
         {
-			// Global input handling (e.g., exit on Escape key)
+            // Global input handling (e.g., exit on Escape key)
             if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_ESCAPE) { g_running = false; }
 
             // Intercept events for Dear ImGui first
@@ -371,7 +364,7 @@ int main(int argc, char** argv)
             // Feed the input manager if ImGui didn't capture this frame's input
             // When right-click flying in the Scene view, ImGui will capture input.
             // mouse delta + WASD is still needed to reach the engine while captured.
-            if (!imguiCaptured || g_input.IsMouseCaptured() || g_scenePanelFocused || e.type == SDL_KEYUP)
+            if (!imguiCaptured || g_input.IsMouseCaptured() || g_editorUI.IsSceneFocused() || e.type == SDL_KEYUP)
             {
                 g_input.ProcessEvent(e);
             }
@@ -411,7 +404,7 @@ void Update(float deltaTime) {
     // Physics step and sync
     Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime);
 
-    Engine::CameraInputSystem(g_scene, g_input, deltaTime, g_scenePanelFocused);
+    Engine::CameraInputSystem(g_scene, g_input, deltaTime, g_editorUI.IsSceneFocused());
 
     Engine::CameraMatrixSystem(g_scene, g_renderer);
     //Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
@@ -419,251 +412,11 @@ void Update(float deltaTime) {
 
 void Render()
 {
-	// Start the ImGui frame (after processing input and before rendering)
+    // Start the ImGui frame (after processing input and before rendering)
     g_imGuiManager.BeginFrame();
 
-    // Root editor layout: invisible grid that panels dock into
-    ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
-
-    // Set a default size (e.g., 800x600) only if there is no saved setting in imgui.ini
-    ImGui::SetNextWindowSize(ImVec2(800.0f, 600.0f), ImGuiCond_FirstUseEver);
-	// set the window to be top centered on first use as well
-	ImGui::SetNextWindowPos(ImVec2((g_windowWidth - 800) / 2.0f, 20.0f), ImGuiCond_FirstUseEver);
-
-	// SCENE WINDOW
-    // Scene View (dockable): drives the render-to-texture size
-    ImGui::Begin("Scene");
-	// Get the available size for the viewport (this is the size of the content region inside the "Scene" window)
-    ImVec2 viewportSize = ImGui::GetContentRegionAvail();
-
-	// Update the active camera's viewport size if it doesn't match the current viewport size
-    if (g_scene.m_activeRenderCamera != entt::null &&
-        g_scene.registry.valid(g_scene.m_activeRenderCamera) &&
-        g_scene.registry.all_of<Engine::ViewportComponent>(g_scene.m_activeRenderCamera))
-    {
-        auto& vp = g_scene.registry.get<Engine::ViewportComponent>(g_scene.m_activeRenderCamera);
-
-        if (viewportSize.x != vp.width || viewportSize.y != vp.height)
-        {
-            if (viewportSize.x > 0.0f && viewportSize.y > 0.0f)
-            {
-                vp.width  = viewportSize.x;
-                vp.height = viewportSize.y;
-
-                g_renderer.CreateFramebuffer((UINT)viewportSize.x, (UINT)viewportSize.y);
-            }
-        }
-    }
-
-	// Render the framebuffer texture (from off-screen rendering) as an ImGui image in the Scene panel
-    ImGui::Image((ImTextureID)(intptr_t)g_renderer.GetFramebufferSRV(), viewportSize);
-
-    // Smart Input Routing: Right-Click to Fly (Scene panel only)
-    {
-		// Check if the Scene panel is hovered for input routing
-        bool isHovered = ImGui::IsWindowHovered();
-        g_scenePanelFocused = ImGui::IsWindowFocused();
-
-		// Store mouse position on RMB down to restore it on release (prevents warping issues if cursor leaves panel while flying)
-        static int storedMouseX = 0;
-        static int storedMouseY = 0;
-
-		// When right mouse button is clicked while hovering the Scene panel, capture the mouse for camera control
-        if (isHovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right))
-        {
-            SDL_GetMouseState(&storedMouseX, &storedMouseY);
-            g_input.SetMouseCaptured(true);
-        }
-
-        // Release capture when RMB is released (even if cursor left the panel while dragging)
-        if (!ImGui::IsMouseDown(ImGuiMouseButton_Right) && g_input.IsMouseCaptured())
-        {
-            g_input.SetMouseCaptured(false);
-            SDL_WarpMouseInWindow(g_SDLWindow, storedMouseX, storedMouseY);
-        }
-    }
-
-    ImGui::End();
-
-	// HIERARCHY WINDOW
-    ImGui::Begin("Hierarchy");
-    {
-		// List all entities with a NameComponent in the hierarchy
-        auto view = g_scene.registry.view<Engine::NameComponent>();
-        for (auto entity : view)
-        {
-            auto& nameComp = view.get<Engine::NameComponent>(entity);
-
-			// Set tree node flags: leaf because we don't have parent-child relationships yet, and span width for better clickability
-            ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
-            // Note: Leaf because entities do not have children yet
-            if (g_selectedEntity == entity)
-                flags |= ImGuiTreeNodeFlags_Selected;
-
-			// Use the entity ID as the ImGui tree node ID to ensure uniqueness
-            bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", nameComp.name.c_str());
-			// Handle selection: clicking on the item selects it
-            if (ImGui::IsItemClicked()) { g_selectedEntity = entity; }
-
-			// No child nodes for now since we don't have parent-child relationships, but if we did, they would go here
-            if (opened) { ImGui::TreePop(); }
-        }
-
-        // Deselection: click empty space in the window to clear selection
-        if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
-        {
-            g_selectedEntity = entt::null;
-        }
-    }
-    ImGui::End();
-
-	// INSPECTOR WINDOW
-    ImGui::Begin("Inspector");
-    {
-        if (g_selectedEntity != entt::null && g_scene.registry.valid(g_selectedEntity))
-        {
-            // NameComponent UI
-            if (g_scene.registry.all_of<Engine::NameComponent>(g_selectedEntity))
-            {
-                auto& nc = g_scene.registry.get<Engine::NameComponent>(g_selectedEntity);
-
-                static char buffer[256] = {};
-#ifdef _MSC_VER
-                strncpy_s(buffer, nc.name.c_str(), sizeof(buffer) - 1);
-#else
-                std::strncpy(buffer, nc.name.c_str(), sizeof(buffer) - 1);
-#endif
-
-                if (ImGui::InputText("Name", buffer, sizeof(buffer)))
-                {
-                    nc.name = buffer;
-                }
-            }
-
-            // TransformComponent UI
-            if (g_scene.registry.all_of<Engine::TransformComponent>(g_selectedEntity))
-            {
-                auto& tc = g_scene.registry.get<Engine::TransformComponent>(g_selectedEntity);
-
-                if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
-                {
-                    ImGui::DragFloat3("Position", &tc.position.x, 0.1f);
-                    ImGui::DragFloat3("Scale", &tc.scale.x, 0.1f);
-
-                    // Static cache to hold UI state between frames
-                    static entt::entity s_lastEntity = entt::null;
-                    static DirectX::XMFLOAT3 s_cachedEuler{ 0.0f, 0.0f, 0.0f };
-
-                    // 1. Check if the selection changed
-                    bool selectionChanged = (s_lastEntity != g_selectedEntity);
-                    s_lastEntity = g_selectedEntity;
-
-                    // 2. Check if the quaternion was changed externally (e.g., by Physics)
-                    // Compare the actual quaternion against the one generated by cached Euler angles.
-                    DirectX::XMFLOAT4 expectedQuat = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
-                    DirectX::XMVECTOR q1 = DirectX::XMLoadFloat4(&expectedQuat);
-                    DirectX::XMVECTOR q2 = DirectX::XMLoadFloat4(&tc.rotation);
-
-                    // Use dot product to check if quaternions are virtually identical
-                    float dot = fabs(DirectX::XMVectorGetX(DirectX::XMQuaternionDot(q1, q2)));
-                    bool externallyChanged = (dot < 0.9999f);
-
-                    // 3. Update the cache ONLY if selection changed or physics moved the object
-                    if (selectionChanged || externallyChanged)
-                    {
-                        s_cachedEuler = Engine::Math::QuaternionToEulerDegrees(tc.rotation);
-                    }
-
-                    // 4. Draw the UI using the stable cached values
-                    if (ImGui::DragFloat3("Rotation", &s_cachedEuler.x, 1.0f))
-                    {
-                        // 5. If the user drags the slider, push the new rotation to the component
-                        tc.rotation = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
-                    }
-                }
-            }
-
-            // LightComponent UI
-            if (g_scene.registry.all_of<Engine::LightComponent>(g_selectedEntity))
-            {
-                auto& lc = g_scene.registry.get<Engine::LightComponent>(g_selectedEntity);
-
-                if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
-                {
-                    ImGui::ColorEdit3("Color", &lc.color.x);
-                    ImGui::DragFloat("Intensity", &lc.intensity, 0.1f, 0.0f, 1000.0f);
-                    ImGui::DragFloat("Range", &lc.range, 0.5f, 0.0f, 1000.0f);
-                }
-            }
-
-            // RigidBodyComponent UI
-            if (g_scene.registry.all_of<Engine::RigidBodyComponent>(g_selectedEntity))
-            {
-                auto& rb = g_scene.registry.get<Engine::RigidBodyComponent>(g_selectedEntity);
-
-                if (ImGui::CollapsingHeader("RigidBody"))
-                {
-                    // Note: these values currently dictate the initial state of the Jolt body.
-                    // Changing them at runtime won't update the Jolt body yet for now.
-                    ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.0f, 10000.0f);
-                    ImGui::DragFloat("Friction", &rb.friction, 0.01f, 0.0f, 10.0f);
-                    ImGui::DragFloat("Restitution", &rb.restitution, 0.01f, 0.0f, 1.0f);
-                    ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 100.0f);
-                }
-            }
-
-			// MeshRendererComponent UI
-            if (g_scene.registry.all_of<Engine::MeshRendererComponent>(g_selectedEntity))
-            {
-                auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_selectedEntity);
-                if (ImGui::CollapsingHeader("Mesh Renderer"))
-                {
-                    ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
-                    ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
-                }
-            }
-        }
-        else
-        {
-            ImGui::Text("No entity selected");
-        }
-    }
-    ImGui::End();
-
-	// CONTENT BROWSER WINDOW
-    ImGui::Begin("Content Browser");
-    {
-        // Back button: only when inside a subfolder (never go above assets root)
-        if (g_currentDirectory != g_assetPath)
-        {
-            if (ImGui::Button("<- Back"))
-            {
-                g_currentDirectory = g_currentDirectory.parent_path();
-            }
-        }
-
-        // Iterate and display the current directory
-        for (auto& directoryEntry : std::filesystem::directory_iterator(g_currentDirectory))
-        {
-            const auto& path = directoryEntry.path();
-            std::string filenameString = path.filename().string();
-
-            // Directories: clickable to navigate into
-            if (directoryEntry.is_directory())
-            {
-                if (ImGui::Selectable(("[DIR] " + filenameString).c_str()))
-                {
-                    g_currentDirectory /= path.filename();
-                }
-            }
-            else
-            {
-                // Files: display only for now (drag/drop & open actions later)
-                ImGui::Text("[FILE] %s", filenameString.c_str());
-            }
-        }
-    }
-    ImGui::End();
+	// Render the editor UI (ImGui panels, etc.) first to set up the framebuffer and any UI state
+    g_editorUI.Render(g_scene, g_renderer, g_input, g_SDLWindow);
 
     // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
     g_renderer.BindFramebuffer();
@@ -676,7 +429,7 @@ void Render()
         g_scene.registry.all_of<Engine::TransformComponent, Engine::CameraComponent>(g_scene.m_activeRenderCamera))
     {
         const auto& camTrans = g_scene.registry.get<Engine::TransformComponent>(g_scene.m_activeRenderCamera);
-        const auto& camComp  = g_scene.registry.get<Engine::CameraComponent>(g_scene.m_activeRenderCamera);
+        const auto& camComp = g_scene.registry.get<Engine::CameraComponent>(g_scene.m_activeRenderCamera);
         g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans);
     }
 

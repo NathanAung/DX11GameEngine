@@ -41,6 +41,7 @@ set(ENGINE_SOURCE_FILES
     src/Engine/Systems.cpp
     src/Engine/PhysicsManager.cpp
     src/Engine/ImGuiManager.cpp
+    src/Engine/EditorUI.cpp
 )
 
 set(ENGINE_HEADER_FILES
@@ -56,6 +57,7 @@ set(ENGINE_HEADER_FILES
     include/Engine/PhysicsManager.h
     include/Engine/ImGuiManager.h
     include/Engine/MathUtils.h
+    include/Engine/EditorUI.h
 )
 
 add_executable(DX11GameEngine
