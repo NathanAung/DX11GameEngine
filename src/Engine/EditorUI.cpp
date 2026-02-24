@@ -2,14 +2,64 @@
 #include "Engine/Components.h"
 #include "Engine/MathUtils.h"
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <SDL.h>
 
 namespace Engine
 {
     void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, SDL_Window* window)
     {
-        // Root editor layout: invisible grid that panels dock into
-        ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+        // 1. Setup variables for the Dockspace
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
+
+        // 2. Set Dockspace flags and styling to match the viewport
+        ImGui::SetNextWindowPos(viewport->WorkPos);
+        ImGui::SetNextWindowSize(viewport->WorkSize);
+        ImGui::SetNextWindowViewport(viewport->ID);
+
+        ImGuiWindowFlags host_window_flags = 0;
+        host_window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+        host_window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+        // 3. Create the invisible background window to host the dockspace
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+        ImGui::Begin("DockSpace Window", nullptr, host_window_flags);
+        ImGui::PopStyleVar(3);
+
+        // 4. Submit the actual DockSpace
+        ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+
+        // 5. Build the Default Layout (Only runs once, if the layout is completely empty/new)
+        static bool first_time = true;
+        if (first_time)
+        {
+            first_time = false;
+
+            // Clear out existing layout for this dockspace
+            ImGui::DockBuilderRemoveNode(dockspace_id);
+            ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+            ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->Size);
+
+            // Split the dockspace mathematically
+            ImGuiID dock_main_id = dockspace_id;
+            ImGuiID dock_id_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.20f, nullptr, &dock_main_id);
+            ImGuiID dock_id_right = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id);
+            ImGuiID dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
+
+            // Assign panels to the newly created splits
+            ImGui::DockBuilderDockWindow("Hierarchy", dock_id_left);
+            ImGui::DockBuilderDockWindow("Inspector", dock_id_right);
+            ImGui::DockBuilderDockWindow("Content Browser", dock_id_bottom);
+            ImGui::DockBuilderDockWindow("Scene", dock_main_id); // Scene takes whatever is left in the center
+
+            ImGui::DockBuilderFinish(dockspace_id);
+        }
+
+        // End the DockSpace Window host
+        ImGui::End();
 
         // SCENE WINDOW
         // Scene View (dockable): drives the render-to-texture size
@@ -129,7 +179,7 @@ namespace Engine
                     if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
                     {
                         ImGui::DragFloat3("Position", &tc.position.x, 0.1f);
-                        ImGui::DragFloat3("Scale", &tc.scale.x, 0.1f);
+                        ImGui::DragFloat3("Scale", &tc.scale.x, 0.1f, 0.01f, 10000.0f);
 
                         // Static cache to hold UI state between frames
                         static entt::entity s_lastEntity = entt::null;
@@ -205,7 +255,7 @@ namespace Engine
                 }
             }
             else {
-				ImGui::Text("No entity selected.");
+                ImGui::Text("No entity selected.");
             }
         }
         ImGui::End();
