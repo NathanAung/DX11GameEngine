@@ -9,6 +9,10 @@
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>  // apply runtime scaling
 
+// Jolt raycasting
+#include <Jolt/Physics/Collision/RayCast.h>
+#include <Jolt/Physics/Collision/CastResult.h>
+
 using namespace JPH;
 
 namespace Engine {
@@ -105,6 +109,38 @@ void PhysicsManager::Update(float deltaTime) {
 
 JPH::BodyInterface& PhysicsManager::GetBodyInterface() {
     return m_physicsSystem->GetBodyInterface();
+}
+
+
+entt::entity PhysicsManager::CastRay(const Engine::Math::Ray& ray, entt::registry& registry)
+{
+    if (!m_physicsSystem)
+        return entt::null;
+
+	// Convert Engine ray to Jolt ray (scale direction for longer raycast)
+    JPH::Vec3 origin(ray.origin.x, ray.origin.y, ray.origin.z);
+    JPH::Vec3 direction(ray.direction.x * 1000.0f, ray.direction.y * 1000.0f, ray.direction.z * 1000.0f);
+
+    JPH::RRayCast joltRay{ origin, direction };
+    JPH::RayCastResult hit;
+
+	// Perform raycast against the physics world
+    if (m_physicsSystem->GetNarrowPhaseQuery().CastRay(joltRay, hit))
+    {
+        JPH::BodyID hitID = hit.mBodyID;
+
+		// Iterate through entities with RigidBodyComponent to find matching BodyID
+        auto view = registry.view<Engine::RigidBodyComponent>();
+        for (auto ent : view)
+        {
+            if (view.get<Engine::RigidBodyComponent>(ent).bodyID == hitID)
+            {
+                return ent; // Match found
+            }
+        }
+    }
+
+    return entt::null;
 }
 
 

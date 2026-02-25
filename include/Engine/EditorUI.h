@@ -11,10 +11,12 @@ struct SDL_Window;
 
 namespace Engine
 {
+    class PhysicsManager;
+
     class EditorUI
     {
     public:
-        void Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, SDL_Window* window);
+        void Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window);
 
         bool IsSceneFocused() const { return m_scenePanelFocused; }
 

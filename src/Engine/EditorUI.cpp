@@ -1,13 +1,15 @@
 #include "Engine/EditorUI.h"
 #include "Engine/Components.h"
 #include "Engine/MathUtils.h"
+#include "Engine/PhysicsManager.h"
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <SDL.h>
+#include <DirectXCollision.h>
 
 namespace Engine
 {
-    void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, SDL_Window* window)
+    void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
     {
         // 1. Setup variables for the Dockspace
         ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -123,8 +125,53 @@ namespace Engine
 
                 auto ray = Engine::Math::ScreenToWorldRay(localX, localY, viewportSize.x, viewportSize.y, view, proj);
 
-                // Temporary verification
-                printf("Ray Dir: %f, %f, %f\n", ray.direction.x, ray.direction.y, ray.direction.z);
+                entt::entity hitEntity = physicsManager.CastRay(ray, scene.registry);
+
+                // FALLBACK: If physics didn't hit anything, test mathematical bounding boxes
+                if (hitEntity == entt::null)
+                {
+					// Look through all entities with a TransformComponent and test against their Oriented Bounding Box (OBB)
+                    float closestDistance = FLT_MAX;
+                    auto view = scene.registry.view<Engine::TransformComponent>();
+
+                    for (auto entity : view)
+                    {
+                        // Skip entities that have a RigidBody (physics already tested them and missed)
+                        if (scene.registry.all_of<Engine::RigidBodyComponent>(entity))
+                            continue;
+
+                        // Skip the camera we are currently looking through to prevent self-intersection
+                        if (entity == scene.m_activeRenderCamera)
+                            continue;
+
+                        auto& tc = view.get<Engine::TransformComponent>(entity);
+
+                        // Construct an Oriented Bounding Box (OBB) from the TransformComponent
+                        DirectX::BoundingOrientedBox obb;
+                        obb.Center = tc.position;
+                        // Assuming a standard 1x1x1 unit volume, half-extents are 0.5 * scale
+                        obb.Extents = DirectX::XMFLOAT3(tc.scale.x * 0.5f, tc.scale.y * 0.5f, tc.scale.z * 0.5f);
+                        obb.Orientation = tc.rotation;
+
+                        // Test for intersection
+                        float distance = 0.0f;
+                        if (obb.Intersects(DirectX::XMLoadFloat3(&ray.origin), DirectX::XMLoadFloat3(&ray.direction), distance))
+                        {
+                            // Keep track of the closest intersected entity
+                            if (distance < closestDistance)
+                            {
+                                closestDistance = distance;
+                                hitEntity = entity;
+                            }
+                        }
+                    }
+                }
+
+                // Update selection if we hit something (either via physics or OBB)
+                if (hitEntity != entt::null)
+                {
+                    m_selectedEntity = hitEntity;
+                }
             }
         }
 

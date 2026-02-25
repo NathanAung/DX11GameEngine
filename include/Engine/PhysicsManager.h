@@ -18,6 +18,9 @@
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 #include <Jolt/Physics/Body/MotionType.h>
 
+#include "Engine/MathUtils.h"
+#include <entt/entt.hpp>
+
 // for cache
 #include <unordered_map>
 
@@ -122,6 +125,9 @@ public:
     
 	// Remove body by ID
     void RemoveRigidBody(JPH::BodyID bodyID);
+
+	// Raycast and return hit entity (or null if no hit)
+    entt::entity CastRay(const Engine::Math::Ray& ray, entt::registry& registry);
 
 private:
 	JPH::TempAllocatorImpl* m_tempAllocator = nullptr;                  // for per-frame temporary allocations

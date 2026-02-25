@@ -71,7 +71,7 @@ static void LoadContent()
     const int skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice());
 
     // Create the editor camera entity
-    g_scene.CreateEditorCamera("Main Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
+    g_scene.CreateEditorCamera("Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
 
     // Create a directional light
     g_scene.CreateDirectionalLight("Sun Light");
@@ -416,7 +416,7 @@ void Render()
     g_imGuiManager.BeginFrame();
 
 	// Render the editor UI (ImGui panels, etc.) first to set up the framebuffer and any UI state
-    g_editorUI.Render(g_scene, g_renderer, g_input, g_SDLWindow);
+    g_editorUI.Render(g_scene, g_renderer, g_input, g_physicsManager, g_SDLWindow);
 
     // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
     g_renderer.BindFramebuffer();
