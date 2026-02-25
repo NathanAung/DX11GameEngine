@@ -89,6 +89,45 @@ namespace Engine
         // Render the framebuffer texture (from off-screen rendering) as an ImGui image in the Scene panel
         ImGui::Image((ImTextureID)(intptr_t)renderer.GetFramebufferSRV(), viewportSize);
 
+		// Handle mouse click in the Scene panel to generate a Screen-to-World ray for potential object picking
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        {
+            ImVec2 mousePos = ImGui::GetMousePos();
+            ImVec2 screenPos = ImGui::GetItemRectMin();
+
+            float localX = mousePos.x - screenPos.x;
+            float localY = mousePos.y - screenPos.y;
+
+            // Generate Screen-to-World ray based on the active camera using the same math as CameraMatrixSystem
+            if (scene.m_activeRenderCamera != entt::null &&
+                scene.registry.valid(scene.m_activeRenderCamera) &&
+                scene.registry.all_of<Engine::TransformComponent, Engine::CameraComponent>(scene.m_activeRenderCamera))
+            {
+                const auto& tf = scene.registry.get<Engine::TransformComponent>(scene.m_activeRenderCamera);
+                const auto& camc = scene.registry.get<Engine::CameraComponent>(scene.m_activeRenderCamera);
+
+                // Build camera world matrix from TransformComponent (same as CameraMatrixSystem)
+                const DirectX::XMMATRIX S = DirectX::XMMatrixScaling(tf.scale.x, tf.scale.y, tf.scale.z);
+                DirectX::XMVECTOR qn = DirectX::XMLoadFloat4(&tf.rotation);
+                qn = DirectX::XMQuaternionNormalize(qn);
+                const DirectX::XMMATRIX R = DirectX::XMMatrixRotationQuaternion(qn);
+                const DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(tf.position.x, tf.position.y, tf.position.z);
+                const DirectX::XMMATRIX world = S * R * T;
+
+                // View matrix (LH): inverse of camera world matrix
+                const DirectX::XMMATRIX view = DirectX::XMMatrixInverse(nullptr, world);
+
+                // Projection matrix (LH): use current Scene viewport aspect
+                const float aspect = (viewportSize.y != 0.0f) ? (viewportSize.x / viewportSize.y) : 1.0f;
+                const DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(camc.FOV, aspect, camc.nearClip, camc.farClip);
+
+                auto ray = Engine::Math::ScreenToWorldRay(localX, localY, viewportSize.x, viewportSize.y, view, proj);
+
+                // Temporary verification
+                printf("Ray Dir: %f, %f, %f\n", ray.direction.x, ray.direction.y, ray.direction.z);
+            }
+        }
+
         // Smart Input Routing: Right-Click to Fly (Scene panel only)
         {
             // Check if the Scene panel is hovered for input routing

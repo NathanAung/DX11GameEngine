@@ -3,6 +3,13 @@
 
 namespace Engine::Math
 {
+	// Simple struct to represent a ray in world space, with an origin and a direction.
+    struct Ray
+    {
+        DirectX::XMFLOAT3 origin;
+        DirectX::XMFLOAT3 direction;
+    };
+
     inline DirectX::XMFLOAT3 QuaternionToEulerDegrees(const DirectX::XMFLOAT4& q)
     {
         using namespace DirectX;
@@ -38,8 +45,8 @@ namespace Engine::Math
         }
 
         const float degPitch = XMConvertToDegrees(pitch);
-        const float degYaw   = XMConvertToDegrees(yaw);
-        const float degRoll  = XMConvertToDegrees(roll);
+        const float degYaw = XMConvertToDegrees(yaw);
+        const float degRoll = XMConvertToDegrees(roll);
 
         return XMFLOAT3{ degPitch, degYaw, degRoll };
     }
@@ -59,5 +66,36 @@ namespace Engine::Math
         XMFLOAT4 out{};
         XMStoreFloat4(&out, q);
         return out;
+    }
+
+	// Generate a world ray from screen coordinates (e.g., mouse position) using the camera's view and projection matrices.
+    inline Ray ScreenToWorldRay(float mouseX, float mouseY, float screenW, float screenH, const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj)
+    {
+        using namespace DirectX;
+
+		// Unproject the near and far points from screen space to world space
+        XMVECTOR nearPoint = XMVector3Unproject(
+            XMVectorSet(mouseX, mouseY, 0.0f, 0.0f),
+            0.0f, 0.0f, screenW, screenH,
+            0.0f, 1.0f,
+            proj, view, XMMatrixIdentity()
+        );
+
+		// Note: The far point's Z is set to 1.0f to represent the far plane in normalized device coordinates
+        XMVECTOR farPoint = XMVector3Unproject(
+            XMVectorSet(mouseX, mouseY, 1.0f, 0.0f),
+            0.0f, 0.0f, screenW, screenH,
+            0.0f, 1.0f,
+            proj, view, XMMatrixIdentity()
+        );
+
+		// The ray direction is the normalized vector from the near point to the far point
+        XMVECTOR dir = XMVector3Normalize(XMVectorSubtract(farPoint, nearPoint));
+
+		// Store the ray origin and direction in the Ray struct
+        Ray ray{};
+        XMStoreFloat3(&ray.origin, nearPoint);
+        XMStoreFloat3(&ray.direction, dir);
+        return ray;
     }
 }
