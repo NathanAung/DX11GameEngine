@@ -91,18 +91,51 @@ namespace Engine
             }
         }
 
-        // Render the framebuffer texture (from off-screen rendering) as an ImGui image in the Scene panel
+        // Capture the exact screen position BEFORE drawing the image to avoid title bar offsets
+        ImVec2 imagePos = ImGui::GetCursorScreenPos();
+
+        // Render the framebuffer texture
         ImGui::Image((ImTextureID)(intptr_t)renderer.GetFramebufferSRV(), viewportSize);
 
-        // Configure ImGuizmo to draw over the Scene window
-		ImGuizmo::SetOrthographic(false);   // using perspective projection for correct gizmo scaling
-		ImGuizmo::SetDrawlist();    // draw on top of the Scene panel
-        ImVec2 windowPos = ImGui::GetWindowPos();
-        ImVec2 windowSize = ImGui::GetWindowSize();
-		ImGuizmo::SetRect(windowPos.x, windowPos.y, windowSize.x, windowSize.y);    // set the gizmo rect to match the entire Scene panel (not just the content region) to allow for better interaction near edges
+        // Configure ImGuizmo to perfectly overlay the rendered image
+        ImGuizmo::SetOrthographic(false);
+        ImGuizmo::SetDrawlist();
+        ImGuizmo::AllowAxisFlip(false);
+        ImGuizmo::SetRect(imagePos.x, imagePos.y, viewportSize.x, viewportSize.y);
+
+        // Generate Screen-to-World ray based on the active camera using the same math as CameraMatrixSystem
+        // NOTE: ImGuizmo needs the camera matrices every single frame to render handles.
+        DirectX::XMMATRIX view = DirectX::XMMatrixIdentity();
+        DirectX::XMMATRIX proj = DirectX::XMMatrixIdentity();
+        DirectX::XMFLOAT4X4 view4x4{}, proj4x4{};
+
+        // Generate Screen-to-World ray based on the active camera using the same math as CameraMatrixSystem
+        if (scene.m_activeRenderCamera != entt::null &&
+            scene.registry.valid(scene.m_activeRenderCamera) &&
+            scene.registry.all_of<Engine::TransformComponent, Engine::CameraComponent>(scene.m_activeRenderCamera))
+        {
+            const auto& tf = scene.registry.get<Engine::TransformComponent>(scene.m_activeRenderCamera);
+            const auto& camc = scene.registry.get<Engine::CameraComponent>(scene.m_activeRenderCamera);
+
+            DirectX::XMVECTOR qn = DirectX::XMQuaternionNormalize(DirectX::XMLoadFloat4(&tf.rotation));
+            const DirectX::XMMATRIX R = DirectX::XMMatrixRotationQuaternion(qn);
+            const DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(tf.position.x, tf.position.y, tf.position.z);
+
+            // Strip scale from the camera's world matrix to prevent view matrix distortion
+            const DirectX::XMMATRIX cameraWorldNoScale = R * T;
+            view = DirectX::XMMatrixInverse(nullptr, cameraWorldNoScale);
+
+            // Projection matrix (LH): use current Scene viewport aspect
+            const float aspect = (viewportSize.y != 0.0f) ? (viewportSize.x / viewportSize.y) : 1.0f;
+            proj = DirectX::XMMatrixPerspectiveFovLH(camc.FOV, aspect, camc.nearClip, camc.farClip);
+        }
+
+		// Store the camera matrices in XMFLOAT4X4 format for ImGuizmo
+        DirectX::XMStoreFloat4x4(&view4x4, view);
+        DirectX::XMStoreFloat4x4(&proj4x4, proj);
 
 		// Handle mouse click in the Scene panel to generate a Screen-to-World ray for potential object picking
-        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver())
         {
             ImVec2 mousePos = ImGui::GetMousePos();
             ImVec2 screenPos = ImGui::GetItemRectMin();
@@ -110,78 +143,54 @@ namespace Engine
             float localX = mousePos.x - screenPos.x;
             float localY = mousePos.y - screenPos.y;
 
-            // Generate Screen-to-World ray based on the active camera using the same math as CameraMatrixSystem
-            if (scene.m_activeRenderCamera != entt::null &&
-                scene.registry.valid(scene.m_activeRenderCamera) &&
-                scene.registry.all_of<Engine::TransformComponent, Engine::CameraComponent>(scene.m_activeRenderCamera))
+            auto ray = Engine::Math::ScreenToWorldRay(localX, localY, viewportSize.x, viewportSize.y, view, proj);
+
+            entt::entity hitEntity = physicsManager.CastRay(ray, scene.registry);
+
+            // FALLBACK: If physics didn't hit anything, test mathematical bounding boxes
+            if (hitEntity == entt::null)
             {
-                const auto& tf = scene.registry.get<Engine::TransformComponent>(scene.m_activeRenderCamera);
-                const auto& camc = scene.registry.get<Engine::CameraComponent>(scene.m_activeRenderCamera);
+				// Look through all entities with a TransformComponent and test against their Oriented Bounding Box (OBB)
+                float closestDistance = FLT_MAX;
+                auto view = scene.registry.view<Engine::TransformComponent>();
 
-                // Build camera world matrix from TransformComponent (same as CameraMatrixSystem)
-                const DirectX::XMMATRIX S = DirectX::XMMatrixScaling(tf.scale.x, tf.scale.y, tf.scale.z);
-                DirectX::XMVECTOR qn = DirectX::XMLoadFloat4(&tf.rotation);
-                qn = DirectX::XMQuaternionNormalize(qn);
-                const DirectX::XMMATRIX R = DirectX::XMMatrixRotationQuaternion(qn);
-                const DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(tf.position.x, tf.position.y, tf.position.z);
-                const DirectX::XMMATRIX world = S * R * T;
-
-                // View matrix (LH): inverse of camera world matrix
-                const DirectX::XMMATRIX view = DirectX::XMMatrixInverse(nullptr, world);
-
-                // Projection matrix (LH): use current Scene viewport aspect
-                const float aspect = (viewportSize.y != 0.0f) ? (viewportSize.x / viewportSize.y) : 1.0f;
-                const DirectX::XMMATRIX proj = DirectX::XMMatrixPerspectiveFovLH(camc.FOV, aspect, camc.nearClip, camc.farClip);
-
-                auto ray = Engine::Math::ScreenToWorldRay(localX, localY, viewportSize.x, viewportSize.y, view, proj);
-
-                entt::entity hitEntity = physicsManager.CastRay(ray, scene.registry);
-
-                // FALLBACK: If physics didn't hit anything, test mathematical bounding boxes
-                if (hitEntity == entt::null)
+                for (auto entity : view)
                 {
-					// Look through all entities with a TransformComponent and test against their Oriented Bounding Box (OBB)
-                    float closestDistance = FLT_MAX;
-                    auto view = scene.registry.view<Engine::TransformComponent>();
+                    // Skip entities that have a RigidBody (physics already tested them and missed)
+                    if (scene.registry.all_of<Engine::RigidBodyComponent>(entity))
+                        continue;
 
-                    for (auto entity : view)
+                    // Skip the camera we are currently looking through to prevent self-intersection
+                    if (entity == scene.m_activeRenderCamera)
+                        continue;
+
+                    auto& tc = view.get<Engine::TransformComponent>(entity);
+
+                    // Construct an Oriented Bounding Box (OBB) from the TransformComponent
+                    DirectX::BoundingOrientedBox obb;
+                    obb.Center = tc.position;
+                    // Assuming a standard 1x1x1 unit volume, half-extents are 0.5 * scale
+                    obb.Extents = DirectX::XMFLOAT3(tc.scale.x * 0.5f, tc.scale.y * 0.5f, tc.scale.z * 0.5f);
+                    obb.Orientation = tc.rotation;
+
+                    // Test for intersection
+                    float distance = 0.0f;
+                    if (obb.Intersects(DirectX::XMLoadFloat3(&ray.origin), DirectX::XMLoadFloat3(&ray.direction), distance))
                     {
-                        // Skip entities that have a RigidBody (physics already tested them and missed)
-                        if (scene.registry.all_of<Engine::RigidBodyComponent>(entity))
-                            continue;
-
-                        // Skip the camera we are currently looking through to prevent self-intersection
-                        if (entity == scene.m_activeRenderCamera)
-                            continue;
-
-                        auto& tc = view.get<Engine::TransformComponent>(entity);
-
-                        // Construct an Oriented Bounding Box (OBB) from the TransformComponent
-                        DirectX::BoundingOrientedBox obb;
-                        obb.Center = tc.position;
-                        // Assuming a standard 1x1x1 unit volume, half-extents are 0.5 * scale
-                        obb.Extents = DirectX::XMFLOAT3(tc.scale.x * 0.5f, tc.scale.y * 0.5f, tc.scale.z * 0.5f);
-                        obb.Orientation = tc.rotation;
-
-                        // Test for intersection
-                        float distance = 0.0f;
-                        if (obb.Intersects(DirectX::XMLoadFloat3(&ray.origin), DirectX::XMLoadFloat3(&ray.direction), distance))
+                        // Keep track of the closest intersected entity
+                        if (distance < closestDistance)
                         {
-                            // Keep track of the closest intersected entity
-                            if (distance < closestDistance)
-                            {
-                                closestDistance = distance;
-                                hitEntity = entity;
-                            }
+                            closestDistance = distance;
+                            hitEntity = entity;
                         }
                     }
                 }
+            }
 
-                // Update selection if we hit something (either via physics or OBB)
-                if (hitEntity != entt::null)
-                {
-                    m_selectedEntity = hitEntity;
-                }
+            // Update selection if we hit something (either via physics or OBB)
+            if (hitEntity != entt::null)
+            {
+                m_selectedEntity = hitEntity;
             }
         }
 
@@ -213,6 +222,42 @@ namespace Engine
             {
                 input.SetMouseCaptured(false);
                 SDL_WarpMouseInWindow(window, storedMouseX, storedMouseY);
+            }
+        }
+
+        // Draw Gizmo if an entity is selected
+        if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity) && scene.registry.all_of<Engine::TransformComponent>(m_selectedEntity))
+        {
+            auto& tc = scene.registry.get<Engine::TransformComponent>(m_selectedEntity);
+
+            // Map m_gizmoType to ImGuizmo Operation
+            ImGuizmo::OPERATION op = ImGuizmo::TRANSLATE;
+            if (m_gizmoType == 1) op = ImGuizmo::ROTATE;
+            if (m_gizmoType == 2) op = ImGuizmo::SCALE;
+
+            // Build the selected entity's world matrix
+            DirectX::XMMATRIX S = DirectX::XMMatrixScaling(tc.scale.x, tc.scale.y, tc.scale.z);
+            DirectX::XMVECTOR qn = DirectX::XMQuaternionNormalize(DirectX::XMLoadFloat4(&tc.rotation));
+            DirectX::XMMATRIX R = DirectX::XMMatrixRotationQuaternion(qn);
+            DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
+            DirectX::XMMATRIX world = S * R * T;
+
+            DirectX::XMFLOAT4X4 world4x4;
+            DirectX::XMStoreFloat4x4(&world4x4, world);
+
+            // Draw the Gizmo and manipulate the matrix
+            ImGuizmo::Manipulate(&view4x4.m[0][0], &proj4x4.m[0][0], op, ImGuizmo::LOCAL, &world4x4.m[0][0]);
+
+            if (ImGuizmo::IsUsing())
+            {
+                // Use DirectX native decomposition to avoid ImGuizmo's Euler angle bugs
+                DirectX::XMMATRIX modifiedWorld = DirectX::XMLoadFloat4x4(&world4x4);
+                DirectX::XMVECTOR vScale, vRotQuat, vTrans;
+                DirectX::XMMatrixDecompose(&vScale, &vRotQuat, &vTrans, modifiedWorld);
+
+                DirectX::XMStoreFloat3(&tc.position, vTrans);
+                DirectX::XMStoreFloat3(&tc.scale, vScale);
+                DirectX::XMStoreFloat4(&tc.rotation, vRotQuat);
             }
         }
 

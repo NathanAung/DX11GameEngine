@@ -2060,7 +2060,8 @@ namespace IMGUIZMO_NAMESPACE
          vec_t intersectViewPos;
          intersectViewPos.TransformPoint(intersectWorldPos, gContext.mViewMat);
 
-         if (ImAbs(modelViewPos.z) - ImAbs(intersectViewPos.z) < -FLT_EPSILON)
+         // modified from original code to match DirectX's left hand system
+         if (ImAbs(modelViewPos.z) - ImAbs(intersectViewPos.z) > FLT_EPSILON)
          {
             continue;
          }

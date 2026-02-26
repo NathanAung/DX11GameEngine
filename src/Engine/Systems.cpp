@@ -92,7 +92,7 @@ namespace Engine
                 if (input.IsKeyDown(Key::S)) move = XMVectorSubtract(move, forward);
                 if (input.IsKeyDown(Key::D)) move = XMVectorAdd(move, right);
                 if (input.IsKeyDown(Key::A)) move = XMVectorSubtract(move, right);
-                if (input.IsKeyDown(Key::Space)) move = XMVectorAdd(move, XMVectorSet(0, 1, 0, 0));
+                //if (input.IsKeyDown(Key::Space)) move = XMVectorAdd(move, XMVectorSet(0, 1, 0, 0));
 
                 if (!XMVector3Equal(move, XMVectorZero()))
                 {
