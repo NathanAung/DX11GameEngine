@@ -25,6 +25,9 @@ namespace Engine
 
         entt::entity m_selectedEntity = entt::null;
 
+		// Used to determine which transformation gizmo to display in the Scene view when an entity is selected.
+        int m_gizmoType = 0; // 0 = Translate, 1 = Rotate, 2 = Scale
+
         std::filesystem::path m_assetPath = "assets";
         std::filesystem::path m_currentDirectory = "assets";
     };

@@ -42,6 +42,7 @@ set(ENGINE_SOURCE_FILES
     src/Engine/PhysicsManager.cpp
     src/Engine/ImGuiManager.cpp
     src/Engine/EditorUI.cpp
+    external/imguizmo/ImGuizmo.cpp
 )
 
 set(ENGINE_HEADER_FILES
@@ -58,6 +59,7 @@ set(ENGINE_HEADER_FILES
     include/Engine/ImGuiManager.h
     include/Engine/MathUtils.h
     include/Engine/EditorUI.h
+    external/imguizmo/ImGuizmo.h
 )
 
 add_executable(DX11GameEngine
@@ -113,7 +115,9 @@ endif()
 # --------------------------------------------------------------
 
 target_include_directories(DX11GameEngine
-    PRIVATE ${CMAKE_SOURCE_DIR}/include
+    PRIVATE 
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/external/imguizmo
 )
 
 # --------------------------------------------------------------

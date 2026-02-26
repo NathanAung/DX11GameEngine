@@ -4,6 +4,7 @@
 #include "Engine/PhysicsManager.h"
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <ImGuizmo.h>
 #include <SDL.h>
 #include <DirectXCollision.h>
 
@@ -11,6 +12,8 @@ namespace Engine
 {
     void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
     {
+        ImGuizmo::BeginFrame();
+
         // 1. Setup variables for the Dockspace
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
@@ -90,6 +93,13 @@ namespace Engine
 
         // Render the framebuffer texture (from off-screen rendering) as an ImGui image in the Scene panel
         ImGui::Image((ImTextureID)(intptr_t)renderer.GetFramebufferSRV(), viewportSize);
+
+        // Configure ImGuizmo to draw over the Scene window
+		ImGuizmo::SetOrthographic(false);   // using perspective projection for correct gizmo scaling
+		ImGuizmo::SetDrawlist();    // draw on top of the Scene panel
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 windowSize = ImGui::GetWindowSize();
+		ImGuizmo::SetRect(windowPos.x, windowPos.y, windowSize.x, windowSize.y);    // set the gizmo rect to match the entire Scene panel (not just the content region) to allow for better interaction near edges
 
 		// Handle mouse click in the Scene panel to generate a Screen-to-World ray for potential object picking
         if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
@@ -180,6 +190,12 @@ namespace Engine
             // Check if the Scene panel is hovered for input routing
             bool isHovered = ImGui::IsWindowHovered();
             m_scenePanelFocused = ImGui::IsWindowFocused();
+
+            if (m_scenePanelFocused && ImGui::IsKeyPressed(ImGuiKey_Space))
+            {
+                // Cycle between 0 (Translate), 1 (Rotate), and 2 (Scale)
+                m_gizmoType = (m_gizmoType + 1) % 3;
+            }
 
             // Store mouse position on RMB down to restore it on release (prevents warping issues if cursor leaves panel while flying)
             static int storedMouseX = 0;
