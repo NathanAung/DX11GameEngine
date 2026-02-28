@@ -272,6 +272,10 @@ namespace Engine
             {
                 auto& nameComp = view.get<Engine::NameComponent>(entity);
 
+				// Prevent editor camera from showing in the hierarchy
+                if (scene.registry.all_of<Engine::EditorCamControlComponent>(entity))
+					continue;
+
                 // Set tree node flags: leaf because parent-child relationships are not implemented yet, and span width for better clickability
                 ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
                 // Note: Leaf because entities do not have children yet

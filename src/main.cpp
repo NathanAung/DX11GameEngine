@@ -415,6 +415,18 @@ void Render()
     // Start the ImGui frame (after processing input and before rendering)
     g_imGuiManager.BeginFrame();
 
+    ImGuiIO& io = ImGui::GetIO();
+    if (g_input.IsMouseCaptured())
+    {
+        // Tell ImGui to completely ignore all mouse inputs while the camera is active
+        io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+    }
+    else
+    {
+        // Restore mouse inputs when the camera is released
+        io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+    }
+
 	// Render the editor UI (ImGui panels, etc.) first to set up the framebuffer and any UI state
     g_editorUI.Render(g_scene, g_renderer, g_input, g_physicsManager, g_SDLWindow);
 
