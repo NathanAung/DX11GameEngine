@@ -58,6 +58,24 @@ namespace Engine
     }
 
 
+    entt::entity Scene::CreateGameCamera(const std::string& name, unsigned width, unsigned height)
+    {
+        entt::entity e = CreateEntity(name);
+
+        // Position at z = -5 looking toward +Z in LH space
+        auto& tf = registry.get<TransformComponent>(e);
+        tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, -10.0f };
+        tf.rotation = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
+        tf.scale    = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+
+        // Attach camera and viewport
+        registry.emplace<CameraComponent>(e, CameraComponent{});
+        registry.emplace<ViewportComponent>(e, ViewportComponent{ width, height });
+        
+        return e;
+	}
+
+
     entt::entity Scene::CreateDirectionalLight(const char* name)
     {
         entt::entity e = registry.create();

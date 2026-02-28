@@ -12,6 +12,15 @@ namespace Engine
 {
     void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
     {
+        // Cache the Editor Camera so we can always revert to it
+        if (m_editorCamera == entt::null)
+        {
+            auto view = scene.registry.view<Engine::EditorCamControlComponent>();
+            if (view.begin() != view.end()) {
+                m_editorCamera = *view.begin();
+            }
+        }
+
         ImGuizmo::BeginFrame();
 
         // 1. Setup variables for the Dockspace
@@ -54,16 +63,77 @@ namespace Engine
             ImGuiID dock_id_right = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id);
             ImGuiID dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
 
+            // Create a top strip for the toolbar
+            ImGuiID dock_id_top = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Up, 0.07f, nullptr, &dock_main_id);
+
             // Assign panels to the newly created splits
             ImGui::DockBuilderDockWindow("Hierarchy", dock_id_left);
             ImGui::DockBuilderDockWindow("Inspector", dock_id_right);
             ImGui::DockBuilderDockWindow("Content Browser", dock_id_bottom);
+            ImGui::DockBuilderDockWindow("Toolbar", dock_id_top);
             ImGui::DockBuilderDockWindow("Scene", dock_main_id); // Scene takes whatever is left in the center
 
             ImGui::DockBuilderFinish(dockspace_id);
         }
 
         // End the DockSpace Window host
+        ImGui::End();
+
+        // TOOLBAR WINDOW (Play / Stop)
+
+		// Set the window class to prevent docking and resizing, and to remove the tab bar
+        ImGuiWindowClass window_class;
+        window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoResize;
+        ImGui::SetNextWindowClass(&window_class);
+
+		// Style the toolbar to be more compact and visually distinct
+        //ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 2));
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
+        auto& colors = ImGui::GetStyle().Colors;
+        const auto& buttonHovered = colors[ImGuiCol_ButtonHovered];
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(buttonHovered.x, buttonHovered.y, buttonHovered.z, 0.5f));
+        const auto& buttonActive = colors[ImGuiCol_ButtonActive];
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(buttonActive.x, buttonActive.y, buttonActive.z, 0.5f));
+
+        ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
+
+        // Center the buttons
+        float size = ImGui::GetWindowHeight() / 2;
+        ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - (size * 0.5f));
+
+        // Play / Stop Logic
+        bool isPlaying = m_state == EditorState::Play;
+        const char* buttonLabel = isPlaying ? "Stop" : "Play";
+
+		// When the button is clicked, toggle between Play and Edit modes
+        if (ImGui::Button(buttonLabel, ImVec2(size * 2.5f, size)))
+        {
+            if (m_state == EditorState::Edit)
+            {
+                m_state = EditorState::Play;
+                // Switch to Game Camera
+                auto camView = scene.registry.view<Engine::CameraComponent>();
+                for (auto entity : camView)
+                {
+                    // Find the first camera that is NOT the editor camera
+                    if (!scene.registry.all_of<Engine::EditorCamControlComponent>(entity))
+                    {
+                        scene.m_activeRenderCamera = entity;
+                        break;
+                    }
+                }
+            }
+            else if (m_state == EditorState::Play)
+            {
+                m_state = EditorState::Edit;
+                // Revert to Editor Camera
+                scene.m_activeRenderCamera = m_editorCamera;
+            }
+        }
+
+        ImGui::PopStyleVar(1);
+        ImGui::PopStyleColor(3);
         ImGui::End();
 
         // SCENE WINDOW
@@ -134,8 +204,8 @@ namespace Engine
         DirectX::XMStoreFloat4x4(&view4x4, view);
         DirectX::XMStoreFloat4x4(&proj4x4, proj);
 
-		// Handle mouse click in the Scene panel to generate a Screen-to-World ray for potential object picking
-        if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver())
+		// Handle mouse click in the Scene panel to generate a Screen-to-World ray for potential object picking (Edit mode only)
+        if (m_state == EditorState::Edit && ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver())
         {
             ImVec2 mousePos = ImGui::GetMousePos();
             ImVec2 screenPos = ImGui::GetItemRectMin();
@@ -225,8 +295,9 @@ namespace Engine
             }
         }
 
-        // Draw Gizmo if an entity is selected
-        if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity) && scene.registry.all_of<Engine::TransformComponent>(m_selectedEntity))
+        // Draw Gizmo if an entity is selected (Edit mode only)
+        if (m_state == EditorState::Edit &&
+            m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity) && scene.registry.all_of<Engine::TransformComponent>(m_selectedEntity))
         {
             auto& tc = scene.registry.get<Engine::TransformComponent>(m_selectedEntity);
 
@@ -263,187 +334,191 @@ namespace Engine
 
         ImGui::End();
 
-        // HIERARCHY WINDOW
-        ImGui::Begin("Hierarchy");
-        {
-            // List all entities with a NameComponent in the hierarchy
-            auto view = scene.registry.view<Engine::NameComponent>();
-            for (auto entity : view)
+		// Only show these windows in Edit mode
+        if (m_state == EditorState::Edit) {
+
+            // HIERARCHY WINDOW
+            ImGui::Begin("Hierarchy");
             {
-                auto& nameComp = view.get<Engine::NameComponent>(entity);
-
-				// Prevent editor camera from showing in the hierarchy
-                if (scene.registry.all_of<Engine::EditorCamControlComponent>(entity))
-					continue;
-
-                // Set tree node flags: leaf because parent-child relationships are not implemented yet, and span width for better clickability
-                ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
-                // Note: Leaf because entities do not have children yet
-                if (m_selectedEntity == entity)
-                    flags |= ImGuiTreeNodeFlags_Selected;
-
-                // Use the entity ID as the ImGui tree node ID to ensure uniqueness
-                bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", nameComp.name.c_str());
-                // Handle selection: clicking on the item selects it
-                if (ImGui::IsItemClicked()) { m_selectedEntity = entity; }
-
-                // No child nodes for now, but they would go here
-                if (opened) { ImGui::TreePop(); }
-            }
-
-            // Deselection: click empty space in the window to clear selection
-            if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
-            {
-                m_selectedEntity = entt::null;
-            }
-        }
-        ImGui::End();
-
-        // INSPECTOR WINDOW
-        ImGui::Begin("Inspector");
-        {
-            if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity))
-            {
-                // NameComponent UI
-                if (scene.registry.all_of<Engine::NameComponent>(m_selectedEntity))
+                // List all entities with a NameComponent in the hierarchy
+                auto view = scene.registry.view<Engine::NameComponent>();
+                for (auto entity : view)
                 {
-                    auto& nc = scene.registry.get<Engine::NameComponent>(m_selectedEntity);
+                    auto& nameComp = view.get<Engine::NameComponent>(entity);
 
-                    static char buffer[256] = {};
+                    // Prevent editor camera from showing in the hierarchy
+                    if (scene.registry.all_of<Engine::EditorCamControlComponent>(entity))
+                        continue;
+
+                    // Set tree node flags: leaf because parent-child relationships are not implemented yet, and span width for better clickability
+                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
+                    // Note: Leaf because entities do not have children yet
+                    if (m_selectedEntity == entity)
+                        flags |= ImGuiTreeNodeFlags_Selected;
+
+                    // Use the entity ID as the ImGui tree node ID to ensure uniqueness
+                    bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", nameComp.name.c_str());
+                    // Handle selection: clicking on the item selects it
+                    if (ImGui::IsItemClicked()) { m_selectedEntity = entity; }
+
+                    // No child nodes for now, but they would go here
+                    if (opened) { ImGui::TreePop(); }
+                }
+
+                // Deselection: click empty space in the window to clear selection
+                if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+                {
+                    m_selectedEntity = entt::null;
+                }
+            }
+            ImGui::End();
+
+            // INSPECTOR WINDOW
+            ImGui::Begin("Inspector");
+            {
+                if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity))
+                {
+                    // NameComponent UI
+                    if (scene.registry.all_of<Engine::NameComponent>(m_selectedEntity))
+                    {
+                        auto& nc = scene.registry.get<Engine::NameComponent>(m_selectedEntity);
+
+                        static char buffer[256] = {};
 #ifdef _MSC_VER
-                    strncpy_s(buffer, nc.name.c_str(), sizeof(buffer) - 1);
+                        strncpy_s(buffer, nc.name.c_str(), sizeof(buffer) - 1);
 #else
-                    std::strncpy(buffer, nc.name.c_str(), sizeof(buffer) - 1);
+                        std::strncpy(buffer, nc.name.c_str(), sizeof(buffer) - 1);
 #endif
 
-                    if (ImGui::InputText("Name", buffer, sizeof(buffer)))
-                    {
-                        nc.name = buffer;
-                    }
-                }
-
-                // TransformComponent UI
-                if (scene.registry.all_of<Engine::TransformComponent>(m_selectedEntity))
-                {
-                    auto& tc = scene.registry.get<Engine::TransformComponent>(m_selectedEntity);
-
-                    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
-                    {
-                        ImGui::DragFloat3("Position", &tc.position.x, 0.1f);
-                        ImGui::DragFloat3("Scale", &tc.scale.x, 0.1f, 0.01f, 10000.0f);
-
-                        // Static cache to hold UI state between frames
-                        static entt::entity s_lastEntity = entt::null;
-                        static DirectX::XMFLOAT3 s_cachedEuler{ 0.0f, 0.0f, 0.0f };
-
-                        // 1. Check if the selection changed
-                        bool selectionChanged = (s_lastEntity != m_selectedEntity);
-                        s_lastEntity = m_selectedEntity;
-
-                        // 2. Check if the quaternion was changed externally (e.g., by Physics)
-                        // Compare the actual quaternion against the one generated by cached Euler angles.
-                        DirectX::XMFLOAT4 expectedQuat = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
-                        DirectX::XMVECTOR q1 = DirectX::XMLoadFloat4(&expectedQuat);
-                        DirectX::XMVECTOR q2 = DirectX::XMLoadFloat4(&tc.rotation);
-
-                        // Use dot product to check if quaternions are virtually identical
-                        float dot = fabs(DirectX::XMVectorGetX(DirectX::XMQuaternionDot(q1, q2)));
-                        bool externallyChanged = (dot < 0.9999f);
-
-                        // 3. Update the cache ONLY if selection changed or physics moved the object
-                        if (selectionChanged || externallyChanged)
+                        if (ImGui::InputText("Name", buffer, sizeof(buffer)))
                         {
-                            s_cachedEuler = Engine::Math::QuaternionToEulerDegrees(tc.rotation);
-                        }
-
-                        // 4. Draw the UI using the stable cached values
-                        if (ImGui::DragFloat3("Rotation", &s_cachedEuler.x, 1.0f))
-                        {
-                            // 5. If the user drags the slider, push the new rotation to the component
-                            tc.rotation = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
+                            nc.name = buffer;
                         }
                     }
-                }
 
-                // LightComponent UI
-                if (scene.registry.all_of<Engine::LightComponent>(m_selectedEntity))
-                {
-                    auto& lc = scene.registry.get<Engine::LightComponent>(m_selectedEntity);
-
-                    if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+                    // TransformComponent UI
+                    if (scene.registry.all_of<Engine::TransformComponent>(m_selectedEntity))
                     {
-                        ImGui::ColorEdit3("Color", &lc.color.x);
-                        ImGui::DragFloat("Intensity", &lc.intensity, 0.1f, 0.0f, 1000.0f);
-                        ImGui::DragFloat("Range", &lc.range, 0.5f, 0.0f, 1000.0f);
+                        auto& tc = scene.registry.get<Engine::TransformComponent>(m_selectedEntity);
+
+                        if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+                        {
+                            ImGui::DragFloat3("Position", &tc.position.x, 0.1f);
+                            ImGui::DragFloat3("Scale", &tc.scale.x, 0.1f, 0.01f, 10000.0f);
+
+                            // Static cache to hold UI state between frames
+                            static entt::entity s_lastEntity = entt::null;
+                            static DirectX::XMFLOAT3 s_cachedEuler{ 0.0f, 0.0f, 0.0f };
+
+                            // 1. Check if the selection changed
+                            bool selectionChanged = (s_lastEntity != m_selectedEntity);
+                            s_lastEntity = m_selectedEntity;
+
+                            // 2. Check if the quaternion was changed externally (e.g., by Physics)
+                            // Compare the actual quaternion against the one generated by cached Euler angles.
+                            DirectX::XMFLOAT4 expectedQuat = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
+                            DirectX::XMVECTOR q1 = DirectX::XMLoadFloat4(&expectedQuat);
+                            DirectX::XMVECTOR q2 = DirectX::XMLoadFloat4(&tc.rotation);
+
+                            // Use dot product to check if quaternions are virtually identical
+                            float dot = fabs(DirectX::XMVectorGetX(DirectX::XMQuaternionDot(q1, q2)));
+                            bool externallyChanged = (dot < 0.9999f);
+
+                            // 3. Update the cache ONLY if selection changed or physics moved the object
+                            if (selectionChanged || externallyChanged)
+                            {
+                                s_cachedEuler = Engine::Math::QuaternionToEulerDegrees(tc.rotation);
+                            }
+
+                            // 4. Draw the UI using the stable cached values
+                            if (ImGui::DragFloat3("Rotation", &s_cachedEuler.x, 1.0f))
+                            {
+                                // 5. If the user drags the slider, push the new rotation to the component
+                                tc.rotation = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
+                            }
+                        }
+                    }
+
+                    // LightComponent UI
+                    if (scene.registry.all_of<Engine::LightComponent>(m_selectedEntity))
+                    {
+                        auto& lc = scene.registry.get<Engine::LightComponent>(m_selectedEntity);
+
+                        if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+                        {
+                            ImGui::ColorEdit3("Color", &lc.color.x);
+                            ImGui::DragFloat("Intensity", &lc.intensity, 0.1f, 0.0f, 1000.0f);
+                            ImGui::DragFloat("Range", &lc.range, 0.5f, 0.0f, 1000.0f);
+                        }
+                    }
+
+                    // RigidbodyComponent UI
+                    if (scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity))
+                    {
+                        auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
+
+                        if (ImGui::CollapsingHeader("RigidBody"))
+                        {
+                            // Note: these values currently dictate the initial state of the Jolt body.
+                            // Changing them at runtime won't update the Jolt body yet for now.
+                            ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.0f, 10000.0f);
+                            ImGui::DragFloat("Friction", &rb.friction, 0.01f, 0.0f, 10.0f);
+                            ImGui::DragFloat("Restitution", &rb.restitution, 0.01f, 0.0f, 1.0f);
+                            ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 100.0f);
+                        }
+                    }
+
+                    // MeshRendererComponent UI
+                    if (scene.registry.all_of<Engine::MeshRendererComponent>(m_selectedEntity))
+                    {
+                        auto& mr = scene.registry.get<Engine::MeshRendererComponent>(m_selectedEntity);
+                        if (ImGui::CollapsingHeader("Mesh Renderer"))
+                        {
+                            ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
+                            ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
+                        }
                     }
                 }
-
-                // RigidbodyComponent UI
-                if (scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity))
-                {
-                    auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
-
-                    if (ImGui::CollapsingHeader("RigidBody"))
-                    {
-                        // Note: these values currently dictate the initial state of the Jolt body.
-                        // Changing them at runtime won't update the Jolt body yet for now.
-                        ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.0f, 10000.0f);
-                        ImGui::DragFloat("Friction", &rb.friction, 0.01f, 0.0f, 10.0f);
-                        ImGui::DragFloat("Restitution", &rb.restitution, 0.01f, 0.0f, 1.0f);
-                        ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 100.0f);
-                    }
-                }
-
-                // MeshRendererComponent UI
-                if (scene.registry.all_of<Engine::MeshRendererComponent>(m_selectedEntity))
-                {
-                    auto& mr = scene.registry.get<Engine::MeshRendererComponent>(m_selectedEntity);
-                    if (ImGui::CollapsingHeader("Mesh Renderer"))
-                    {
-                        ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
-                        ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
-                    }
+                else {
+                    ImGui::Text("No entity selected.");
                 }
             }
-            else {
-                ImGui::Text("No entity selected.");
-            }
-        }
-        ImGui::End();
+            ImGui::End();
 
-        // CONTENT BROWSER WINDOW
-        ImGui::Begin("Content Browser");
-        {
-            // Back button: only when inside a subfolder (never go above assets root)
-            if (m_currentDirectory != m_assetPath)
+            // CONTENT BROWSER WINDOW
+            ImGui::Begin("Content Browser");
             {
-                if (ImGui::Button("<- Back"))
+                // Back button: only when inside a subfolder (never go above assets root)
+                if (m_currentDirectory != m_assetPath)
                 {
-                    m_currentDirectory = m_currentDirectory.parent_path();
-                }
-            }
-
-            // Iterate and display the current directory
-            for (auto& directoryEntry : std::filesystem::directory_iterator(m_currentDirectory))
-            {
-                const auto& path = directoryEntry.path();
-                std::string filenameString = path.filename().string();
-
-                // Directories: clickable to navigate into
-                if (directoryEntry.is_directory())
-                {
-                    if (ImGui::Selectable(("[DIR] " + filenameString).c_str()))
+                    if (ImGui::Button("<- Back"))
                     {
-                        m_currentDirectory /= path.filename();
+                        m_currentDirectory = m_currentDirectory.parent_path();
                     }
                 }
-                else
+
+                // Iterate and display the current directory
+                for (auto& directoryEntry : std::filesystem::directory_iterator(m_currentDirectory))
                 {
-                    // Files: display only for now (drag/drop & open actions later)
-                    ImGui::Text("[FILE] %s", filenameString.c_str());
+                    const auto& path = directoryEntry.path();
+                    std::string filenameString = path.filename().string();
+
+                    // Directories: clickable to navigate into
+                    if (directoryEntry.is_directory())
+                    {
+                        if (ImGui::Selectable(("[DIR] " + filenameString).c_str()))
+                        {
+                            m_currentDirectory /= path.filename();
+                        }
+                    }
+                    else
+                    {
+                        // Files: display only for now (drag/drop & open actions later)
+                        ImGui::Text("[FILE] %s", filenameString.c_str());
+                    }
                 }
             }
+            ImGui::End();
         }
-        ImGui::End();
     }
 }

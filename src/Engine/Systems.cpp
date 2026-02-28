@@ -33,7 +33,7 @@ namespace Engine
     }
 
 
-    void CameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt, bool isSceneFocused)
+    void EditorCameraInputSystem(Engine::Scene& scene, const Engine::InputManager& input, float dt, bool isSceneFocused)
     {
         // Iterate all entities with Transform + FlyCamControl
         auto view = scene.registry.view<TransformComponent, EditorCamControlComponent>();

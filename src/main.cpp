@@ -73,6 +73,9 @@ static void LoadContent()
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
 
+	// Create a game camera entity (not controlled by editor, used for gameplay or scripted cameras)
+	g_scene.CreateGameCamera("Main Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
+
     // Create a directional light
     g_scene.CreateDirectionalLight("Sun Light");
 
@@ -404,7 +407,9 @@ void Update(float deltaTime) {
     // Physics step and sync
     Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime);
 
-    Engine::CameraInputSystem(g_scene, g_input, deltaTime, g_editorUI.IsSceneFocused());
+    // only process editor camera in Edit mode
+	if (g_editorUI.GetState() == Engine::EditorState::Edit)
+        Engine::EditorCameraInputSystem(g_scene, g_input, deltaTime, g_editorUI.IsSceneFocused());
 
     Engine::CameraMatrixSystem(g_scene, g_renderer);
     //Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
