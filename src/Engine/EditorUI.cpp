@@ -112,6 +112,10 @@ namespace Engine
             if (m_state == EditorState::Edit)
             {
                 m_state = EditorState::Play;
+
+                // Snapshot the scene before simulation starts
+                scene.CopyToBackup();
+
                 // Switch to Game Camera
                 auto camView = scene.registry.view<Engine::CameraComponent>();
                 for (auto entity : camView)
@@ -127,6 +131,10 @@ namespace Engine
             else if (m_state == EditorState::Play)
             {
                 m_state = EditorState::Edit;
+
+                // Restore the original scene state and reset all physics bodies
+                scene.RestoreFromBackup(physicsManager);
+
                 // Revert to Editor Camera
                 scene.m_activeRenderCamera = m_editorCamera;
             }

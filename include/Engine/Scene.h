@@ -7,11 +7,16 @@
 
 namespace Engine
 {
+    class PhysicsManager;
+
     class Scene
     {
     public:
         // Exposed by design to allow direct registry access as requested
         entt::registry registry;
+
+        // Backup snapshot registry (used for Play->Edit restore)
+        entt::registry m_backupRegistry;
 
         // Active camera entity used for rendering
         entt::entity m_activeRenderCamera = entt::null;
@@ -46,5 +51,9 @@ namespace Engine
                                      float intensity,
                                      float range,
                                      float spotAngleRadians);
+
+        // Backup/restore to support Edit <-> Play state machine
+        void CopyToBackup();
+        void RestoreFromBackup(Engine::PhysicsManager& physicsManager);
     };
 }

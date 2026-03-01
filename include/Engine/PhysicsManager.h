@@ -129,6 +129,13 @@ public:
 	// Raycast and return hit entity (or null if no hit)
     entt::entity CastRay(const Engine::Math::Ray& ray, entt::registry& registry);
 
+    // Teleport a body to match the current TransformComponent, and rebuild it if scale changed
+    void ResetBodyTransform(const TransformComponent& tc, RigidBodyComponent& rbc, const MeshManager& meshManager);
+
+private:
+    // Helper: build the correct Jolt collision shape using RigidBodyComponent + Transform scale
+    JPH::ShapeRefC CreatePhysicsShape(const TransformComponent& tc, const RigidBodyComponent& rbc, const MeshManager& meshManager);
+
 private:
 	JPH::TempAllocatorImpl* m_tempAllocator = nullptr;                  // for per-frame temporary allocations
 	JPH::JobSystemThreadPool* m_jobSystem = nullptr;                    // for multithreading

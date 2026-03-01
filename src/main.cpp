@@ -404,8 +404,8 @@ int main(int argc, char** argv)
 }
 
 void Update(float deltaTime) {
-    // Physics step and sync
-    Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime);
+    // Physics step and sync (Play: simulate + pull. Edit: push gizmo transforms to colliders)
+    Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime, g_editorUI.GetState() == Engine::EditorState::Play);
 
     // only process editor camera in Edit mode
 	if (g_editorUI.GetState() == Engine::EditorState::Edit)

@@ -29,5 +29,5 @@ namespace Engine
     void CameraMatrixSystem(Engine::Scene& scene, Engine::Renderer& renderer);
 
     // physics update system: initialize bodies, step simulation, sync back transforms
-    void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt);
+    void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt, bool isPlaying);
 }

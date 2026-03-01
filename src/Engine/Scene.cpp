@@ -1,5 +1,6 @@
 #include "Engine/Scene.h"
 #include "Engine/Components.h"
+#include "Engine/PhysicsManager.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
@@ -172,5 +173,65 @@ namespace Engine
         registry.emplace<LightComponent>(e, lc);
 
         return e;
+    }
+
+
+    void Scene::CopyToBackup()
+    {
+		// Clear backup registry and copy all entities and core components from main registry
+        m_backupRegistry.clear();
+        for (auto entity : registry.view<entt::entity>())
+        {
+            // Create the exact same entity ID in the backup registry
+            auto copy = m_backupRegistry.create(entity);
+
+            // Copy all core components if they exist
+            if (registry.all_of<IDComponent>(entity)) m_backupRegistry.emplace<IDComponent>(copy, registry.get<IDComponent>(entity));
+            if (registry.all_of<NameComponent>(entity)) m_backupRegistry.emplace<NameComponent>(copy, registry.get<NameComponent>(entity));
+            if (registry.all_of<TransformComponent>(entity)) m_backupRegistry.emplace<TransformComponent>(copy, registry.get<TransformComponent>(entity));
+            if (registry.all_of<RigidBodyComponent>(entity)) m_backupRegistry.emplace<RigidBodyComponent>(copy, registry.get<RigidBodyComponent>(entity));
+            if (registry.all_of<MeshRendererComponent>(entity)) m_backupRegistry.emplace<MeshRendererComponent>(copy, registry.get<MeshRendererComponent>(entity));
+            if (registry.all_of<LightComponent>(entity)) m_backupRegistry.emplace<LightComponent>(copy, registry.get<LightComponent>(entity));
+            if (registry.all_of<CameraComponent>(entity)) m_backupRegistry.emplace<CameraComponent>(copy, registry.get<CameraComponent>(entity));
+            if (registry.all_of<ViewportComponent>(entity)) m_backupRegistry.emplace<ViewportComponent>(copy, registry.get<ViewportComponent>(entity));
+            if (registry.all_of<EditorCamControlComponent>(entity)) m_backupRegistry.emplace<EditorCamControlComponent>(copy, registry.get<EditorCamControlComponent>(entity));
+        }
+    }
+
+
+    void Scene::RestoreFromBackup(Engine::PhysicsManager& physicsManager)
+    {
+        // Completely destroy all current Jolt bodies before resetting the registry
+        auto physView = registry.view<RigidBodyComponent>();
+        for (auto entity : physView)
+        {
+            physicsManager.RemoveRigidBody(physView.get<RigidBodyComponent>(entity).bodyID);
+        }
+
+		// Clear main registry and copy all entities and core components from backup registry
+        registry.clear();
+        for (auto entity : m_backupRegistry.view<entt::entity>())
+        {
+            auto restored = registry.create(entity);
+            // Manually copy all core components back from the backup
+            if (m_backupRegistry.all_of<IDComponent>(entity)) registry.emplace<IDComponent>(restored, m_backupRegistry.get<IDComponent>(entity));
+            if (m_backupRegistry.all_of<NameComponent>(entity)) registry.emplace<NameComponent>(restored, m_backupRegistry.get<NameComponent>(entity));
+            if (m_backupRegistry.all_of<TransformComponent>(entity)) registry.emplace<TransformComponent>(restored, m_backupRegistry.get<TransformComponent>(entity));
+            if (m_backupRegistry.all_of<RigidBodyComponent>(entity)) 
+            {
+                auto rb = m_backupRegistry.get<RigidBodyComponent>(entity);
+                // Invalidate the runtime state so Jolt creates a fresh body next frame
+                rb.bodyID = JPH::BodyID();
+                rb.bodyCreated = false;
+                registry.emplace<RigidBodyComponent>(restored, rb);
+            }
+            if (m_backupRegistry.all_of<MeshRendererComponent>(entity)) registry.emplace<MeshRendererComponent>(restored, m_backupRegistry.get<MeshRendererComponent>(entity));
+            if (m_backupRegistry.all_of<LightComponent>(entity)) registry.emplace<LightComponent>(restored, m_backupRegistry.get<LightComponent>(entity));
+            if (m_backupRegistry.all_of<CameraComponent>(entity)) registry.emplace<CameraComponent>(restored, m_backupRegistry.get<CameraComponent>(entity));
+            if (m_backupRegistry.all_of<ViewportComponent>(entity)) registry.emplace<ViewportComponent>(restored, m_backupRegistry.get<ViewportComponent>(entity));
+            if (m_backupRegistry.all_of<EditorCamControlComponent>(entity)) registry.emplace<EditorCamControlComponent>(restored, m_backupRegistry.get<EditorCamControlComponent>(entity));
+        }
+
+        // NOTE: Bodies are rebuilt by PhysicsSystem on the next frame from restored ECS state.
     }
 }

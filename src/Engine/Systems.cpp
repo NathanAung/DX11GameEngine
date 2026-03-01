@@ -53,7 +53,7 @@ namespace Engine
                 fc.pitch += static_cast<float>(md.dy) * fc.lookSensitivity * -1.0f; // default invertY
 
                 // Clamp and wrap
-                const float kPitchLimit = XMConvertToRadians(89.0f);
+                constexpr float kPitchLimit = XMConvertToRadians(89.0f);
                 if (fc.pitch >  kPitchLimit) fc.pitch =  kPitchLimit;
                 if (fc.pitch < -kPitchLimit) fc.pitch = -kPitchLimit;
                 if (fc.yaw > XM_PI)  fc.yaw -= XM_2PI;
@@ -279,10 +279,6 @@ namespace Engine
                 ID3D11InputLayout* layout = shaderManager.GetInputLayout(mr.materialID);
                 renderer.SubmitMesh(buffers, layout);
                 renderer.DrawIndexed(buffers.indexCount);
-
-                // unbind texture to avoid hazards with subsequent draws (optional here)
-                // ID3D11ShaderResourceView* nullSRV[1] = { nullptr };
-                // context->PSSetShaderResources(0, 1, nullSRV);
             }
         }
     }
@@ -296,7 +292,7 @@ namespace Engine
         return XMFLOAT4(q.GetX(), q.GetY(), q.GetZ(), q.GetW());
     }
 
-    void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt)
+    void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt, bool isPlaying)
     {
         // Phase 1: Initialization (Create Bodies)
         auto physView = scene.registry.view<TransformComponent, RigidBodyComponent>();
@@ -317,25 +313,42 @@ namespace Engine
             }
         }
 
-        // Phase 2: Simulation
-        physicsManager.Update(dt);
-
-        // Phase 3: Synchronization (Jolt -> ECS)
-        JPH::BodyInterface& bi = physicsManager.GetBodyInterface();
-        for (auto ent : physView)
+		// Only update physics and sync transforms if we're in Play mode. 
+        // In Edit mode, we allow free Transform editing without physics interference, and we push those changes to Jolt so colliders stay in sync with gizmo movements.
+        if (isPlaying)
         {
-            auto& tc = physView.get<TransformComponent>(ent);
-            auto& rb = physView.get<RigidBodyComponent>(ent);
+            // Phase 2: Simulation
+            physicsManager.Update(dt);
 
-            // Skip statics and invalid bodies
-            if (rb.motionType == RBMotion::Static) continue;
-            if (rb.bodyID.IsInvalid()) continue;
+            // Phase 3: Synchronization (Jolt -> ECS)
+            JPH::BodyInterface& bi = physicsManager.GetBodyInterface();
+            for (auto ent : physView)
+            {
+                auto& tc = physView.get<TransformComponent>(ent);
+                auto& rb = physView.get<RigidBodyComponent>(ent);
 
-            const JPH::Vec3 pos = bi.GetPosition(rb.bodyID);
-            const JPH::Quat rot = bi.GetRotation(rb.bodyID);
+                // Skip statics and invalid bodies
+                if (rb.motionType == RBMotion::Static) continue;
+                if (rb.bodyID.IsInvalid()) continue;
 
-            tc.position = FromJolt(pos);
-            tc.rotation = FromJolt(rot);
+                const JPH::Vec3 pos = bi.GetPosition(rb.bodyID);
+                const JPH::Quat rot = bi.GetRotation(rb.bodyID);
+
+                tc.position = FromJolt(pos);
+                tc.rotation = FromJolt(rot);
+            }
+        }
+        else
+        {
+            // Edit Mode: Sync ECS -> Jolt (Push Gizmo movements to physics colliders)
+            for (auto ent : physView)
+            {
+                auto& tc = physView.get<TransformComponent>(ent);
+                auto& rb = physView.get<RigidBodyComponent>(ent);
+                if (!rb.bodyID.IsInvalid()) {
+                    physicsManager.ResetBodyTransform(tc, rb, meshManager);
+                }
+            }
         }
     }
 }
