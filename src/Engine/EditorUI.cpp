@@ -348,6 +348,47 @@ namespace Engine
             // HIERARCHY WINDOW
             ImGui::Begin("Hierarchy");
             {
+                // Right-click empty space in the Hierarchy to create entities
+                if (ImGui::BeginPopupContextWindow("HierarchyContextMenu", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+                {
+                    if (ImGui::BeginMenu("Create New Entity"))
+                    {
+                        // EMPTY ENTITY
+                        if (ImGui::MenuItem("Empty Entity")) {
+                            scene.CreateEntity("New Entity");
+                        }
+
+						// CAMERA ENTITY
+                        if (ImGui::MenuItem("Camera")) {
+                            scene.CreateGameCamera("Camera", 1280, 720);
+                        }
+
+						// PRIMITIVE SHAPES
+                        if (ImGui::BeginMenu("Shapes"))
+                        {
+                            if (ImGui::MenuItem("Cube")) scene.CreateCube("Cube");
+                            if (ImGui::MenuItem("Sphere")) scene.CreateSphere("Sphere");
+                            if (ImGui::MenuItem("Capsule")) scene.CreateCapsule("Capsule");
+                            ImGui::EndMenu();
+                        }
+
+						// LIGHT ENTITIES
+                        if (ImGui::BeginMenu("Lights"))
+                        {
+                            if (ImGui::MenuItem("Directional Light")) scene.CreateDirectionalLight("Directional Light");
+                            if (ImGui::MenuItem("Point Light")) scene.CreatePointLight("Point Light", {0, 0, 0}, {1, 1, 1}, 1.0f, 10.0f);
+                            if (ImGui::MenuItem("Spot Light")) scene.CreateSpotLight("Spot Light", {0, 0, 0}, {0, 0, 1}, {1, 1, 1}, 1.0f, 10.0f, 0.785f);
+                            ImGui::EndMenu();
+                        }
+                        ImGui::EndMenu();
+                    }
+
+                    ImGui::EndPopup();
+                }
+
+				// We cannot destroy entities while iterating over the view, so we defer destruction until after the loop
+                entt::entity entityToDestroy = entt::null;
+
                 // List all entities with a NameComponent in the hierarchy
                 auto view = scene.registry.view<Engine::NameComponent>();
                 for (auto entity : view)
@@ -369,14 +410,41 @@ namespace Engine
                     // Handle selection: clicking on the item selects it
                     if (ImGui::IsItemClicked()) { m_selectedEntity = entity; }
 
+                    if (ImGui::BeginPopupContextItem())
+                    {
+                        if (ImGui::MenuItem("Delete Entity"))
+                        {
+                            if (m_selectedEntity == entity) m_selectedEntity = entt::null;
+                            // Defer the destruction until after the view loop completes
+                            entityToDestroy = entity;
+                        }
+                        ImGui::EndPopup();
+                    }
+
                     // No child nodes for now, but they would go here
                     if (opened) { ImGui::TreePop(); }
+                }
+
+                // Safely destroy the flagged entity now that iterators are no longer in use
+                if (entityToDestroy != entt::null)
+                {
+                    scene.DestroyEntity(entityToDestroy, physicsManager);
+                    entityToDestroy = entt::null;
                 }
 
                 // Deselection: click empty space in the window to clear selection
                 if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
                 {
                     m_selectedEntity = entt::null;
+                }
+
+                if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity))
+                {
+                    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete))
+                    {
+                        scene.DestroyEntity(m_selectedEntity, physicsManager);
+                        m_selectedEntity = entt::null;
+                    }
                 }
             }
             ImGui::End();

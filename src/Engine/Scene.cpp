@@ -39,6 +39,41 @@ namespace Engine
     }
 
 
+    void Scene::SetDefaultAssets(int shaderID, int cubeID, int sphereID, int capsuleID) {
+        m_defaultShaderID = shaderID;
+        m_cubeMeshID = cubeID;
+        m_sphereMeshID = sphereID;
+        m_capsuleMeshID = capsuleID;
+    }
+
+
+    entt::entity Scene::CreateCube(const std::string& name) {
+        entt::entity e = CreateEntity(name);
+        auto& mesh = registry.emplace<MeshRendererComponent>(e);
+        mesh.meshID = m_cubeMeshID;
+        mesh.materialID = m_defaultShaderID;
+        return e;
+    }
+
+
+    entt::entity Scene::CreateSphere(const std::string& name) {
+        entt::entity e = CreateEntity(name);
+        auto& mesh = registry.emplace<MeshRendererComponent>(e);
+        mesh.meshID = m_sphereMeshID;
+        mesh.materialID = m_defaultShaderID;
+        return e;
+    }
+
+
+    entt::entity Scene::CreateCapsule(const std::string& name) {
+        entt::entity e = CreateEntity(name);
+        auto& mesh = registry.emplace<MeshRendererComponent>(e);
+        mesh.meshID = m_capsuleMeshID;
+        mesh.materialID = m_defaultShaderID;
+        return e;
+    }
+
+
     entt::entity Scene::CreateEditorCamera(const std::string& name, unsigned width, unsigned height)
     {
         entt::entity e = CreateEntity(name);
@@ -173,6 +208,25 @@ namespace Engine
         registry.emplace<LightComponent>(e, lc);
 
         return e;
+    }
+
+
+    void Scene::DestroyEntity(entt::entity entity, Engine::PhysicsManager& physicsManager)
+    {
+        if (!registry.valid(entity)) return;
+
+        // Safely remove physics body from Jolt world before destroying the entity
+        if (registry.all_of<RigidBodyComponent>(entity))
+        {
+            auto& rb = registry.get<RigidBodyComponent>(entity);
+            if (!rb.bodyID.IsInvalid())
+            {
+                physicsManager.RemoveRigidBody(rb.bodyID);
+            }
+        }
+
+        // Destroy the entity and all its components in EnTT
+        registry.destroy(entity);
     }
 
 

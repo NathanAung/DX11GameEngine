@@ -61,7 +61,7 @@ static void LoadContent()
     g_textureManager.CreateDefaultTexture(g_renderer.GetDevice());
 
     // Create resources with renderer device
-    const int shaderID   = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
+    const int shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
 
     // Ensure skybox cube mesh (ID 101) always exists for DrawSkybox
     // Note: keep this unconditional to guarantee Mesh 101 availability
@@ -69,6 +69,13 @@ static void LoadContent()
 
     // Compile & load skybox shaders (assign temporary ID 2 inside ShaderManager implementation)
     const int skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice());
+
+    // Create shared primitive meshes for editor-spawned entities
+    const int sphereMeshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), 0.5f, 32, 32);
+    const int capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), 0.5f, 1.0f, 32, 32);
+
+    // Cache default assets on the Scene so EditorUI can autonomously spawn primitives
+    g_scene.SetDefaultAssets(shaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
 
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
@@ -225,7 +232,7 @@ static void LoadContent()
         g_scene.registry.emplace<Engine::RigidBodyComponent>(sphere, rb);
 
         Engine::MeshRendererComponent rend{};
-        rend.meshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), 0.5f, 32, 32); // radius matches physics
+        rend.meshID = sphereMeshID; // radius matches physics
         rend.materialID = shaderID;
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
@@ -248,7 +255,7 @@ static void LoadContent()
         g_scene.registry.emplace<Engine::RigidBodyComponent>(capsule, rb);
 
         Engine::MeshRendererComponent rend{};
-        rend.meshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), 0.5f, 1.0f, 32, 32);
+		rend.meshID = capsuleMeshID;
         rend.materialID = shaderID;
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
