@@ -19,6 +19,7 @@ namespace Engine
     struct NameComponent
     {
         std::string name;
+        bool isActive = true; // Master entity toggle
     };
 
     // Local transform (position, rotation as quaternion, scale)
@@ -32,6 +33,8 @@ namespace Engine
     // Placeholder renderer bindings
     struct MeshRendererComponent
     {
+        bool isActive = true;
+
         int meshID = 0;
         int materialID = 0;
         ID3D11ShaderResourceView* texture = nullptr; // texture SRV bound to PS t0
@@ -87,6 +90,8 @@ namespace Engine
     // Direction is derived from the entity's Transform rotation.
     struct LightComponent
     {
+        bool isActive = true;
+
         DirectX::XMFLOAT3 color{ 1.0f, 1.0f, 1.0f };
         float intensity = 1.0f;                         // multiplier
         LightType type = LightType::Directional;
@@ -100,6 +105,8 @@ namespace Engine
 
     struct RigidBodyComponent
     {
+        bool isActive = true;
+
         // Config
         RBShape  shape      = RBShape::Box;
         RBMotion motionType = RBMotion::Static;

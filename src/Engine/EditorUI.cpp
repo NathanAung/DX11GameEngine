@@ -242,6 +242,13 @@ namespace Engine
                     if (entity == scene.m_activeRenderCamera)
                         continue;
 
+                    // Skip inactive entities (master toggle)
+                    if (scene.registry.all_of<Engine::NameComponent>(entity))
+                    {
+                        if (!scene.registry.get<Engine::NameComponent>(entity).isActive)
+                            continue;
+                    }
+
                     auto& tc = view.get<Engine::TransformComponent>(entity);
 
                     // Construct an Oriented Bounding Box (OBB) from the TransformComponent
@@ -399,6 +406,11 @@ namespace Engine
                     if (scene.registry.all_of<Engine::EditorCamControlComponent>(entity))
                         continue;
 
+                    // Grey-out inactive entities in the list so state is obvious
+                    if (!nameComp.isActive) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                    }
+
                     // Set tree node flags: leaf because parent-child relationships are not implemented yet, and span width for better clickability
                     ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
                     // Note: Leaf because entities do not have children yet
@@ -409,6 +421,10 @@ namespace Engine
                     bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", nameComp.name.c_str());
                     // Handle selection: clicking on the item selects it
                     if (ImGui::IsItemClicked()) { m_selectedEntity = entity; }
+
+                    if (!nameComp.isActive) {
+                        ImGui::PopStyleColor();
+                    }
 
                     if (ImGui::BeginPopupContextItem())
                     {
@@ -457,18 +473,22 @@ namespace Engine
                     // NameComponent UI
                     if (scene.registry.all_of<Engine::NameComponent>(m_selectedEntity))
                     {
-                        auto& nc = scene.registry.get<Engine::NameComponent>(m_selectedEntity);
+                        auto& nameComp = scene.registry.get<Engine::NameComponent>(m_selectedEntity);
+
+                        // Master active toggle next to name (entity-wide active state)
+                        ImGui::Checkbox("##EntityActive", &nameComp.isActive);
+                        ImGui::SameLine();
 
                         static char buffer[256] = {};
 #ifdef _MSC_VER
-                        strncpy_s(buffer, nc.name.c_str(), sizeof(buffer) - 1);
+                        strncpy_s(buffer, nameComp.name.c_str(), sizeof(buffer) - 1);
 #else
-                        std::strncpy(buffer, nc.name.c_str(), sizeof(buffer) - 1);
+                        std::strncpy(buffer, nameComp.name.c_str(), sizeof(buffer) - 1);
 #endif
 
-                        if (ImGui::InputText("Name", buffer, sizeof(buffer)))
+                        if (ImGui::InputText("##Name", buffer, sizeof(buffer)))
                         {
-                            nc.name = buffer;
+                            nameComp.name = buffer;
                         }
                     }
 
@@ -520,11 +540,40 @@ namespace Engine
                     {
                         auto& lc = scene.registry.get<Engine::LightComponent>(m_selectedEntity);
 
-                        if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+                        ImGui::PushID("Light");
+                        ImGui::Checkbox("##Active", &lc.isActive);
+                        ImGui::SameLine();
+                        bool treeOpen = ImGui::TreeNodeEx("Light", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                        bool removeComponent = false;
+                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                            ImGui::EndPopup();
+                        }
+
+                        if (treeOpen)
                         {
+                            // Fundamental Light type picker
+                            const char* lightTypes[] = { "Directional", "Point", "Spot" };
+                            // Assuming LightType enum maps 0=Directional, 1=Point, 2=Spot
+                            int currentLightIdx = static_cast<int>(lc.type);
+
+                            if (ImGui::Combo("Light Type", &currentLightIdx, lightTypes, IM_ARRAYSIZE(lightTypes)))
+                            {
+                                lc.type = static_cast<Engine::LightType>(currentLightIdx);
+                            }
+
                             ImGui::ColorEdit3("Color", &lc.color.x);
                             ImGui::DragFloat("Intensity", &lc.intensity, 0.1f, 0.0f, 1000.0f);
                             ImGui::DragFloat("Range", &lc.range, 0.5f, 0.0f, 1000.0f);
+
+                            ImGui::TreePop();
+                        }
+                        ImGui::PopID();
+
+                        if (removeComponent)
+                        {
+                            scene.registry.remove<Engine::LightComponent>(m_selectedEntity);
                         }
                     }
 
@@ -533,14 +582,85 @@ namespace Engine
                     {
                         auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
 
-                        if (ImGui::CollapsingHeader("RigidBody"))
+                        ImGui::PushID("Rigidbody");
+                        ImGui::Checkbox("##Active", &rb.isActive);
+                        ImGui::SameLine();
+                        bool treeOpen = ImGui::TreeNodeEx("Rigidbody", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                        bool removeComponent = false;
+                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                            ImGui::EndPopup();
+                        }
+
+                        if (treeOpen)
                         {
-                            // Note: these values currently dictate the initial state of the Jolt body.
-                            // Changing them at runtime won't update the Jolt body yet for now.
-                            ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.0f, 10000.0f);
-                            ImGui::DragFloat("Friction", &rb.friction, 0.01f, 0.0f, 10.0f);
-                            ImGui::DragFloat("Restitution", &rb.restitution, 0.01f, 0.0f, 1.0f);
-                            ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 100.0f);
+                            // Fundamental rigid body settings: Shape + Motion
+                            // CRUCIAL: on change, destroy the Jolt body so PhysicsSystem rebuilds it next frame.
+                            const char* rbShapes[] = { "Box", "Sphere", "Capsule", "Mesh" };
+                            int currentShapeIdx = static_cast<int>(rb.shape);
+                            if (ImGui::Combo("Shape", &currentShapeIdx, rbShapes, IM_ARRAYSIZE(rbShapes)))
+                            {
+                                rb.shape = static_cast<Engine::RBShape>(currentShapeIdx);
+                                // Invalidate body to force a rebuild with the new shape
+                                if (!rb.bodyID.IsInvalid()) {
+                                    physicsManager.RemoveRigidBody(rb.bodyID);
+                                    rb.bodyID = JPH::BodyID();
+                                    rb.bodyCreated = false;
+                                }
+                            }
+
+                            const char* rbMotions[] = { "Static", "Dynamic" };
+                            int currentMotionIdx = static_cast<int>(rb.motionType);
+                            if (ImGui::Combo("Motion Type", &currentMotionIdx, rbMotions, IM_ARRAYSIZE(rbMotions)))
+                            {
+                                rb.motionType = static_cast<Engine::RBMotion>(currentMotionIdx);
+                                // Invalidate body to force a rebuild with the new mass properties
+                                if (!rb.bodyID.IsInvalid()) {
+                                    physicsManager.RemoveRigidBody(rb.bodyID);
+                                    rb.bodyID = JPH::BodyID();
+                                    rb.bodyCreated = false;
+                                }
+                            }
+
+                            // Mass and Linear Damping: These require a core physical structural rebuild
+                            if (ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.01f, 1000.0f) ||
+                                ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 1.0f))
+                            {
+                                if (!rb.bodyID.IsInvalid()) {
+                                    physicsManager.RemoveRigidBody(rb.bodyID);
+                                    rb.bodyID = JPH::BodyID();
+                                    rb.bodyCreated = false;
+                                }
+                            }
+
+                            // Friction and Restitution: These can be mutated directly via Jolt's API instantly
+                            if (ImGui::DragFloat("Friction", &rb.friction, 0.01f, 0.0f, 1.0f))
+                            {
+                                if (!rb.bodyID.IsInvalid()) {
+                                    physicsManager.GetBodyInterface().SetFriction(rb.bodyID, rb.friction);
+                                }
+                            }
+
+                            if (ImGui::DragFloat("Restitution", &rb.restitution, 0.01f, 0.0f, 1.0f))
+                            {
+                                if (!rb.bodyID.IsInvalid()) {
+                                    physicsManager.GetBodyInterface().SetRestitution(rb.bodyID, rb.restitution);
+                                }
+                            }
+
+                            ImGui::TreePop();
+                        }
+                        ImGui::PopID();
+
+                        if (removeComponent)
+                        {
+                            // CRITICAL: unregister the Jolt body first to prevent leaks
+                            if (!rb.bodyID.IsInvalid())
+                            {
+                                physicsManager.RemoveRigidBody(rb.bodyID);
+                            }
+                            scene.registry.remove<Engine::RigidBodyComponent>(m_selectedEntity);
                         }
                     }
 
@@ -548,11 +668,69 @@ namespace Engine
                     if (scene.registry.all_of<Engine::MeshRendererComponent>(m_selectedEntity))
                     {
                         auto& mr = scene.registry.get<Engine::MeshRendererComponent>(m_selectedEntity);
-                        if (ImGui::CollapsingHeader("Mesh Renderer"))
+
+                        ImGui::PushID("MeshRenderer");
+                        ImGui::Checkbox("##Active", &mr.isActive);
+                        ImGui::SameLine();
+                        bool treeOpen = ImGui::TreeNodeEx("Mesh Renderer", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                        bool removeComponent = false;
+                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                            ImGui::EndPopup();
+                        }
+
+                        if (treeOpen)
                         {
+                            // Fundamental mesh selection: choose from default primitive meshes
+                            const char* meshTypes[] = { "Cube", "Sphere", "Capsule" };
+                            int currentMeshIdx = -1;
+                            if (mr.meshID == scene.GetCubeMeshID()) currentMeshIdx = 0;
+                            else if (mr.meshID == scene.GetSphereMeshID()) currentMeshIdx = 1;
+                            else if (mr.meshID == scene.GetCapsuleMeshID()) currentMeshIdx = 2;
+
+                            if (ImGui::Combo("Mesh Shape", &currentMeshIdx, meshTypes, IM_ARRAYSIZE(meshTypes)))
+                            {
+                                if (currentMeshIdx == 0) mr.meshID = scene.GetCubeMeshID();
+                                else if (currentMeshIdx == 1) mr.meshID = scene.GetSphereMeshID();
+                                else if (currentMeshIdx == 2) mr.meshID = scene.GetCapsuleMeshID();
+
+								mr.materialID = scene.GetDefaultShaderID(); // Reset to default material when mesh changes
+                            }
+
                             ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
                             ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
+
+                            ImGui::TreePop();
                         }
+                        ImGui::PopID();
+
+                        if (removeComponent)
+                        {
+                            scene.registry.remove<Engine::MeshRendererComponent>(m_selectedEntity);
+                        }
+                    }
+
+					// Add Component (only show what the entity doesn't currently have)
+                    ImGui::Separator();
+                    ImGui::Spacing();
+                    if (ImGui::Button("Add Component", ImVec2(-1, 30))) {
+                        ImGui::OpenPopup("AddComponentPopup");
+                    }
+
+                    if (ImGui::BeginPopup("AddComponentPopup"))
+                    {
+                        if (!scene.registry.all_of<Engine::MeshRendererComponent>(m_selectedEntity)) {
+                            if (ImGui::MenuItem("Mesh Renderer")) scene.registry.emplace<Engine::MeshRendererComponent>(m_selectedEntity);
+                        }
+                        if (!scene.registry.all_of<Engine::LightComponent>(m_selectedEntity)) {
+                            if (ImGui::MenuItem("Light")) scene.registry.emplace<Engine::LightComponent>(m_selectedEntity);
+                        }
+                        if (!scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
+                            if (ImGui::MenuItem("Rigidbody")) scene.registry.emplace<Engine::RigidBodyComponent>(m_selectedEntity);
+                        }
+                        // Add other components like CameraComponent, etc.
+                        ImGui::EndPopup();
                     }
                 }
                 else {

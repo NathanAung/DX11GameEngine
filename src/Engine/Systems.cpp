@@ -191,8 +191,16 @@ namespace Engine
                 {
                     if (lc.lightCount >= MAX_LIGHTS) break;
 
+                    // Respect master entity toggle (skip inactive entities entirely)
+                    if (scene.registry.all_of<NameComponent>(lightEnt)) {
+                        if (!scene.registry.get<NameComponent>(lightEnt).isActive) continue;
+                    }
+
                     const auto& ltTf = lightView.get<TransformComponent>(lightEnt);
                     const auto& lt = lightView.get<LightComponent>(lightEnt);
+
+                    // Respect component active toggle
+                    if (!lt.isActive) continue;
 
                     // Direction: forward vector from quaternion rotated +Z (LH)
 					// forward is used because directional light shines along its forward axis
@@ -241,8 +249,16 @@ namespace Engine
             auto view = scene.registry.view<MeshRendererComponent, TransformComponent>();
             for (auto entity : view)
             {
+                // Respect master entity toggle (skip inactive entities entirely)
+                if (scene.registry.all_of<NameComponent>(entity)) {
+                    if (!scene.registry.get<NameComponent>(entity).isActive) continue;
+                }
+
                 auto& mr = view.get<MeshRendererComponent>(entity);
                 auto& tr = view.get<TransformComponent>(entity);
+
+                // Respect component active toggle
+                if (!mr.isActive) continue;
 
                 // Per-entity material constants (PS b4)
                 {
@@ -294,12 +310,24 @@ namespace Engine
 
     void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt, bool isPlaying)
     {
-        // Phase 1: Initialization (Create Bodies)
+        // Phase 1: Initialization (Create Bodies) + Maintenance (Destroy bodies for inactive entities/components)
         auto physView = scene.registry.view<TransformComponent, RigidBodyComponent>();
         for (auto ent : physView)
         {
             auto& tc = physView.get<TransformComponent>(ent);
             auto& rb = physView.get<RigidBodyComponent>(ent);
+
+            bool isEntityActive = scene.registry.all_of<NameComponent>(ent) ? scene.registry.get<NameComponent>(ent).isActive : true;
+
+            // If either the entity is off, or the component is off, destroy the Jolt body
+            if (!rb.isActive || !isEntityActive) {
+                if (!rb.bodyID.IsInvalid()) {
+                    physicsManager.RemoveRigidBody(rb.bodyID);
+                    rb.bodyID = JPH::BodyID();
+                    rb.bodyCreated = false;
+                }
+                continue;
+            }
 
             // Auto-wire meshID if missing
             if (rb.shape == RBShape::Mesh && rb.meshID == 0 && scene.registry.all_of<MeshRendererComponent>(ent)) {
@@ -327,6 +355,9 @@ namespace Engine
                 auto& tc = physView.get<TransformComponent>(ent);
                 auto& rb = physView.get<RigidBodyComponent>(ent);
 
+                bool isEntityActive = scene.registry.all_of<NameComponent>(ent) ? scene.registry.get<NameComponent>(ent).isActive : true;
+                if (!rb.isActive || !isEntityActive) continue;
+
                 // Skip statics and invalid bodies
                 if (rb.motionType == RBMotion::Static) continue;
                 if (rb.bodyID.IsInvalid()) continue;
@@ -345,6 +376,10 @@ namespace Engine
             {
                 auto& tc = physView.get<TransformComponent>(ent);
                 auto& rb = physView.get<RigidBodyComponent>(ent);
+
+                bool isEntityActive = scene.registry.all_of<NameComponent>(ent) ? scene.registry.get<NameComponent>(ent).isActive : true;
+                if (!rb.isActive || !isEntityActive) continue;
+
                 if (!rb.bodyID.IsInvalid()) {
                     physicsManager.ResetBodyTransform(tc, rb, meshManager);
                 }

@@ -58,6 +58,12 @@ namespace Engine
         entt::entity CreateSphere(const std::string& name);
         entt::entity CreateCapsule(const std::string& name);
 
+        // Expose default primitive mesh IDs for editor dropdowns
+        int GetCubeMeshID() const { return m_cubeMeshID; }
+        int GetSphereMeshID() const { return m_sphereMeshID; }
+        int GetCapsuleMeshID() const { return m_capsuleMeshID; }
+		int GetDefaultShaderID() const { return m_defaultShaderID; }
+
         // Safely destroy an entity and unregister any physics bodies (Jolt) first
         void DestroyEntity(entt::entity entity, Engine::PhysicsManager& physicsManager);
 
