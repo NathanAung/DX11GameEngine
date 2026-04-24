@@ -18,6 +18,9 @@ namespace Engine
         // Compiles SkyboxVS/PS and creates a matching Input Layout. Returns shaderID 2.
         int LoadSkyboxShaders(ID3D11Device* device);
 
+        // Compiles UnlitVS/PS and creates a matching Input Layout. Returns shaderID 3.
+        int LoadUnlitShaders(ID3D11Device* device);
+
         // Binds shaders & input layout for a shader id
         void Bind(int shaderID, ID3D11DeviceContext* context) const;
 

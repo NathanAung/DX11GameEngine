@@ -25,6 +25,8 @@ namespace Engine
 
         EditorState GetState() const { return m_state; }
 
+        entt::entity GetSelectedEntity() const { return m_selectedEntity; }
+
     private:
         bool m_scenePanelFocused = false;
 

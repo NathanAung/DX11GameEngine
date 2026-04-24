@@ -63,6 +63,9 @@ static void LoadContent()
     // Create resources with renderer device
     const int shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
 
+    // Compile & load Unlit shaders (assign temporary ID 3 inside ShaderManager implementation)
+    const int unlitShaderID = g_shaderManager.LoadUnlitShaders(g_renderer.GetDevice());
+
     // Ensure skybox cube mesh (ID 101) always exists for DrawSkybox
     // Note: keep this unconditional to guarantee Mesh 101 availability
     const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice()); // temporary ID 101
@@ -75,7 +78,7 @@ static void LoadContent()
     const int capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), 0.5f, 1.0f, 32, 32);
 
     // Cache default assets on the Scene so EditorUI can autonomously spawn primitives
-    g_scene.SetDefaultAssets(shaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
+    g_scene.SetDefaultAssets(shaderID, unlitShaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
 
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
@@ -446,6 +449,10 @@ void Render()
     g_renderer.BindFramebuffer();
 
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
+
+	// Draw debug colliders if in Edit mode
+    if (g_editorUI.GetState() == Engine::EditorState::Edit)
+        Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
 
     // Draw skybox last: z=w ensures it renders only where nothing else drew
     if (g_scene.m_activeRenderCamera != entt::null &&

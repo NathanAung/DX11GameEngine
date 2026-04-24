@@ -53,7 +53,7 @@ namespace Engine
                                      float spotAngleRadians);
 
         // Cached default assets so the editor can autonomously spawn primitives
-        void SetDefaultAssets(int shaderID, int cubeID, int sphereID, int capsuleID);
+        void SetDefaultAssets(int shaderID, int debugShaderID, int cubeID, int sphereID, int capsuleID);
         entt::entity CreateCube(const std::string& name);
         entt::entity CreateSphere(const std::string& name);
         entt::entity CreateCapsule(const std::string& name);
@@ -63,6 +63,7 @@ namespace Engine
         int GetSphereMeshID() const { return m_sphereMeshID; }
         int GetCapsuleMeshID() const { return m_capsuleMeshID; }
 		int GetDefaultShaderID() const { return m_defaultShaderID; }
+        int GetDebugShaderID() const { return m_debugShaderID; }
 
         // Safely destroy an entity and unregister any physics bodies (Jolt) first
         void DestroyEntity(entt::entity entity, Engine::PhysicsManager& physicsManager);
@@ -74,6 +75,7 @@ namespace Engine
     private:
 		// Cache default asset IDs for editor-spawned primitives
         int m_defaultShaderID = 0;
+        int m_debugShaderID = 0;
         int m_cubeMeshID = 0;
         int m_sphereMeshID = 0;
         int m_capsuleMeshID = 0;

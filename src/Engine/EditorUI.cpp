@@ -120,8 +120,8 @@ namespace Engine
                 auto camView = scene.registry.view<Engine::CameraComponent>();
                 for (auto entity : camView)
                 {
-                    // Find the first camera that is NOT the editor camera
-                    if (!scene.registry.all_of<Engine::EditorCamControlComponent>(entity))
+                    // Find the first active camera that is NOT the editor camera
+                    if (!scene.registry.all_of<Engine::EditorCamControlComponent>(entity) && scene.registry.get<NameComponent>(entity).isActive)
                     {
                         scene.m_activeRenderCamera = entity;
                         break;
@@ -621,6 +621,28 @@ namespace Engine
                                     rb.bodyID = JPH::BodyID();
                                     rb.bodyCreated = false;
                                 }
+                            }
+
+                            // Physical dimensions (force Jolt rebuild on change)
+							// NOTE* min/max values are hardcoded for now
+                            bool shapeChanged = false;
+                            if (rb.shape == Engine::RBShape::Box) {
+                                if (ImGui::DragFloat3("Half Extents", &rb.halfExtent.x, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                            }
+                            else if (rb.shape == Engine::RBShape::Sphere) {
+                                if (ImGui::DragFloat("Radius", &rb.radius, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                            }
+                            else if (rb.shape == Engine::RBShape::Capsule) {
+                                if (ImGui::DragFloat("Radius", &rb.radius, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                                if (ImGui::DragFloat("Height", &rb.height, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                            }
+                            // implement mesh collider later
+
+                            // Force Jolt to rebuild the body with the new dimensions
+                            if (shapeChanged && !rb.bodyID.IsInvalid()) {
+                                physicsManager.RemoveRigidBody(rb.bodyID);
+                                rb.bodyID = JPH::BodyID();
+                                rb.bodyCreated = false;
                             }
 
                             // Mass and Linear Damping: These require a core physical structural rebuild
