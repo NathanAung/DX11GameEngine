@@ -57,6 +57,7 @@ struct LightConstants
 // padding added to ensure 16-byte alignment
 struct MaterialConstants
 {
+    DirectX::XMFLOAT4 baseColor; // Tint for LitColor mode (or white for Textured mode)
     float roughness;
     float metallic;
     float padding[2]; // Pad to 16-byte alignment
@@ -103,7 +104,7 @@ public:
 
     // Skybox
     void SetSkybox(ID3D11ShaderResourceView* srv) { m_skyboxSRV = srv; }
-    void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans);
+    void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, int cubeMeshID);
 
     // Resource Accessors (for Systems to use if needed)
     ID3D11Device* GetDevice() const { return m_dx.device.Get(); }

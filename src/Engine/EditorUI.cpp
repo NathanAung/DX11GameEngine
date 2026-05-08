@@ -718,12 +718,31 @@ namespace Engine
                                 if (currentMeshIdx == 0) mr.meshID = scene.GetCubeMeshID();
                                 else if (currentMeshIdx == 1) mr.meshID = scene.GetSphereMeshID();
                                 else if (currentMeshIdx == 2) mr.meshID = scene.GetCapsuleMeshID();
-
-								mr.materialID = scene.GetDefaultShaderID(); // Reset to default material when mesh changes
                             }
 
-                            ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
-                            ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
+                            // Material Type selector
+                            const char* matTypes[] = { "LitColor", "UnlitColor", "Textured" };
+                            int currentMatIdx = static_cast<int>(mr.matType);
+                            if (ImGui::Combo("Material Type", &currentMatIdx, matTypes, IM_ARRAYSIZE(matTypes)))
+                            {
+                                mr.matType = static_cast<Engine::MaterialType>(currentMatIdx);
+                            }
+
+                            if (mr.matType == Engine::MaterialType::LitColor || mr.matType == Engine::MaterialType::UnlitColor)
+                            {
+                                ImGui::ColorEdit4("Base Color", &mr.baseColor.x);
+                            }
+
+                            if (mr.matType == Engine::MaterialType::LitColor || mr.matType == Engine::MaterialType::Textured)
+                            {
+                                ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
+                                ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
+                            }
+
+                            if (mr.matType == Engine::MaterialType::Textured)
+                            {
+                                ImGui::TextDisabled("Texture assignment via Drag & Drop coming soon...");
+                            }
 
                             ImGui::TreePop();
                         }

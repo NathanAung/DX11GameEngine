@@ -52,7 +52,6 @@ namespace Engine
         entt::entity e = CreateEntity(name);
         auto& mesh = registry.emplace<MeshRendererComponent>(e);
         mesh.meshID = m_cubeMeshID;
-        mesh.materialID = m_defaultShaderID;
         return e;
     }
 
@@ -61,7 +60,6 @@ namespace Engine
         entt::entity e = CreateEntity(name);
         auto& mesh = registry.emplace<MeshRendererComponent>(e);
         mesh.meshID = m_sphereMeshID;
-        mesh.materialID = m_defaultShaderID;
         return e;
     }
 
@@ -70,7 +68,6 @@ namespace Engine
         entt::entity e = CreateEntity(name);
         auto& mesh = registry.emplace<MeshRendererComponent>(e);
         mesh.meshID = m_capsuleMeshID;
-        mesh.materialID = m_defaultShaderID;
         return e;
     }
 

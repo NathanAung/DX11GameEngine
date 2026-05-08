@@ -30,14 +30,19 @@ namespace Engine
         DirectX::XMFLOAT3 scale{ 1.0f, 1.0f, 1.0f };
     };
 
+    enum class MaterialType { LitColor, UnlitColor, Textured };
+
     // Placeholder renderer bindings
     struct MeshRendererComponent
     {
         bool isActive = true;
 
         int meshID = 0;
-        int materialID = 0;
         ID3D11ShaderResourceView* texture = nullptr; // texture SRV bound to PS t0
+
+        // Material switching
+        MaterialType matType = MaterialType::LitColor;
+        DirectX::XMFLOAT4 baseColor{ 1.0f, 1.0f, 1.0f, 1.0f }; // Tint or solid color
 
         // Simple PBR material parameters
         float roughness = 0.5f; // [0..1]

@@ -61,7 +61,7 @@ namespace Engine
         }
 
         // Create VB/IB through the common path (now always 32-bit index buffers)
-        return CreateMeshBuffersWithID(device, 101, vertices, indices);
+        return CreateMeshBuffers(device, vertices, indices);
     }
 
 
@@ -117,66 +117,6 @@ namespace Engine
         const int id = m_nextMeshID++;
         m_meshes.emplace(id, std::move(md));
         return id;
-    }
-
-    int MeshManager::CreateMeshBuffersWithID(
-        ID3D11Device* device,
-        int forcedID,
-        const std::vector<Vertex>& vertices,
-        const std::vector<uint32_t>& indices)
-    {
-        if (vertices.empty() || indices.empty())
-            return -1;
-
-        // Prevent accidental overwrite
-		if (m_meshes.find(forcedID) != m_meshes.end())
-            return -1;
-
-        // --- VB ---
-        D3D11_BUFFER_DESC vbDesc{};
-        vbDesc.Usage = D3D11_USAGE_DEFAULT;
-        vbDesc.ByteWidth = UINT(vertices.size() * sizeof(Vertex));
-        vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-        D3D11_SUBRESOURCE_DATA vbData{};
-        vbData.pSysMem = vertices.data();
-
-        ComPtr<ID3D11Buffer> vb;
-        if (FAILED(device->CreateBuffer(&vbDesc, &vbData, vb.GetAddressOf())))
-            return -1;
-
-        // --- IB ---
-        D3D11_BUFFER_DESC ibDesc{};
-        ibDesc.Usage = D3D11_USAGE_DEFAULT;
-        ibDesc.ByteWidth = UINT(indices.size() * sizeof(uint32_t));
-        ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-        D3D11_SUBRESOURCE_DATA ibData{};
-        ibData.pSysMem = indices.data();
-
-        ComPtr<ID3D11Buffer> ib;
-        if (FAILED(device->CreateBuffer(&ibDesc, &ibData, ib.GetAddressOf())))
-            return -1;
-
-        MeshData md{};
-        md.vb = vb;
-        md.ib = ib;
-        md.indexCount = UINT(indices.size());
-        md.stride = sizeof(Vertex);
-        md.idxFmt = DXGI_FORMAT_R32_UINT;
-
-        md.positions.reserve(vertices.size());
-        for (const auto& v : vertices)
-            md.positions.push_back(v.position);
-
-        md.indices = indices;
-
-        m_meshes.emplace(forcedID, std::move(md));
-
-        // Keep auto IDs from colliding later
-        m_nextMeshID = std::max(m_nextMeshID, forcedID + 1);
-
-        return forcedID;
     }
 
 
