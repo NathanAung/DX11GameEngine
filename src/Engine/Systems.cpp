@@ -347,6 +347,8 @@ namespace Engine
             auto& rb = scene.registry.get<RigidBodyComponent>(selectedEntity);
             if (!rb.isActive) return;
 
+			if (!rb.showWireframe) return;
+
             // Enable Wireframe
             renderer.SetWireframeMode(true);
 
