@@ -55,6 +55,7 @@ cbuffer CB_Light : register(b3)
 // Simple material constants (register b4)
 cbuffer CB_Material : register(b4)
 {
+    float4 baseColor;
     float g_Roughness;
     float g_Metallic;
     float2 g_Padding; // pad to 16B
@@ -136,12 +137,12 @@ float ComputeAttenuation(float distance, float range)
 float4 main(PSInput input) : SV_Target
 {
     // step 1: Sample base color (albedo)
-    float4 albedoTex = g_Texture.Sample(g_Sampler, input.texCoord);
-    float3 albedo = albedoTex.rgb;
+    float4 texColor = g_Texture.Sample(g_Sampler, input.texCoord) * baseColor;
+    float3 albedo = texColor.rgb;
 
     // step 2: compute base vectors
-    float3 N = normalize(input.normal);                     // normal
-    float3 V = normalize(g_CameraPos - input.worldPos);     // view (camera) direction
+    float3 N = normalize(input.normal); // normal
+    float3 V = normalize(g_CameraPos - input.worldPos); // view (camera) direction
 
     // step 3: compute base reflectivity F0: ~0.04 for dielectrics, albedo for metals
     // For non-metals, use constant 0.04; for metals, use albedo color
@@ -192,13 +193,6 @@ float4 main(PSInput input) : SV_Target
                 {
                     attenuation = 0.0;
                 }
-                // edge smoothening
-                //else
-                //{
-                //    float epsilon = 0.1; // softness of edge
-                //    float spotEffect = saturate((theta - cos(light.spotAngle)) / epsilon);
-                //    attenuation *= spotEffect;
-                //}
             }
         }
 
@@ -228,9 +222,9 @@ float4 main(PSInput input) : SV_Target
         float3 specular = numerator / denom;
 
         // Energy conservation; ensures that the surface does not reflect more light than it receives
-        float3 kS = F;                          // specular reflection component
-        float3 kD = 1.0 - kS;                   // diffuse reflection component
-        kD *= (1.0 - saturate(g_Metallic));     // metals have no diffuse
+        float3 kS = F; // specular reflection component
+        float3 kD = 1.0 - kS; // diffuse reflection component
+        kD *= (1.0 - saturate(g_Metallic)); // metals have no diffuse
 
         // Lambertian diffuse term, scaled by albedo and PI 
         float3 diffuse = (kD * albedo) / PI;
@@ -243,5 +237,5 @@ float4 main(PSInput input) : SV_Target
     float3 ambient = 0.03 * albedo;
     float3 color = ambient + Lo;
 
-    return float4(color, albedoTex.a);
+    return float4(color, texColor.a);
 }

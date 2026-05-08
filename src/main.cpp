@@ -133,17 +133,11 @@ static void LoadContent()
         else {
             throw std::runtime_error("Failed to load model meshes.");
         }
-        //else
-        //{
-        //    // fallback to temp cube if model failed to load
-        //    mr.meshID = 101;    // per spec, temporary ID
-        //}
-
-        mr.materialID = shaderID;  // map materialID -> shaderID(1) (temporary ID)
 
         // example texture loading via texture manager and keep SRV
         ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture.png");
         mr.texture = tex; // assign texture to component
+		mr.matType = Engine::MaterialType::Textured; // switch to textured shader path
         // PBR value testing
         mr.roughness = 0.3f; // shiny
         mr.metallic = 0.2f; // metallic (with yellow-ish albedo you'd get gold-like)
@@ -191,8 +185,7 @@ static void LoadContent()
         g_scene.registry.emplace<Engine::RigidBodyComponent>(ground, rb);
 
         Engine::MeshRendererComponent rend{};
-        rend.meshID = 101;               // cube mesh
-        rend.materialID = shaderID;
+        rend.meshID = g_scene.GetCubeMeshID();               // cube mesh
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(ground, rend);
@@ -212,8 +205,7 @@ static void LoadContent()
         g_scene.registry.emplace<Engine::RigidBodyComponent>(box, rb);
 
         Engine::MeshRendererComponent rend{};
-        rend.meshID = 101;
-        rend.materialID = shaderID;
+        rend.meshID = g_scene.GetCubeMeshID();
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(box, rend);
@@ -236,7 +228,6 @@ static void LoadContent()
 
         Engine::MeshRendererComponent rend{};
         rend.meshID = sphereMeshID; // radius matches physics
-        rend.materialID = shaderID;
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(sphere, rend);
@@ -259,7 +250,6 @@ static void LoadContent()
 
         Engine::MeshRendererComponent rend{};
 		rend.meshID = capsuleMeshID;
-        rend.materialID = shaderID;
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(capsule, rend);
@@ -461,7 +451,7 @@ void Render()
     {
         const auto& camTrans = g_scene.registry.get<Engine::TransformComponent>(g_scene.m_activeRenderCamera);
         const auto& camComp = g_scene.registry.get<Engine::CameraComponent>(g_scene.m_activeRenderCamera);
-        g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans);
+        g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans, g_scene.GetCubeMeshID());
     }
 
     // Now bind the real swapchain back buffer.

@@ -37,7 +37,7 @@ namespace Engine
     {
     public:
         // Procedural primitives
-        // Creates a unit cube mesh and stores it as meshID 101. Returns 101. (temporary ID)
+        // Creates a unit cube mesh
         int InitializeCube(ID3D11Device* device);
         int CreateSphere(ID3D11Device* device, float radius, int slices, int stacks);
         // Capsule (Y-axis aligned). radius = sphere radius, cylinderHeight = straight section height (no caps).
@@ -73,11 +73,6 @@ namespace Engine
                               const std::vector<Vertex>& vertices,
                               const std::vector<uint32_t>& indices);
 
-		// Create buffers with forced ID (used for cube with fixed ID 101)
-        int CreateMeshBuffersWithID(ID3D11Device* device, int forcedID,
-                                const std::vector<Vertex>& vertices,
-                                const std::vector<uint32_t>& indices);
-
         // Process Assimp node recursively
         void ProcessNode(ID3D11Device* device, aiNode* node, const aiScene* scene, std::vector<int>& outMeshIDs);
 
@@ -87,7 +82,7 @@ namespace Engine
         // Map of meshID to MeshData
         std::unordered_map<int, MeshData> m_meshes;
 
-        // ID allocator (starts after reserved 101)
-        int m_nextMeshID = 102;
+        // ID allocator
+        int m_nextMeshID = 1;
     };
 }

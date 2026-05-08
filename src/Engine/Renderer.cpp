@@ -360,9 +360,9 @@ namespace Engine
 		// Unmap the buffer to upload the data to the GPU
         m_dx.context->Unmap(m_cbColor.Get(), 0);
 
-        // Bind to PS at slot b4 (matches UnlitPS ColorConstants : register(b4))
+        // Bind to PS at slot b4 (matches UnlitPS ColorConstants : register(b0))
         ID3D11Buffer* cbs[] = { m_cbColor.Get() };
-        m_dx.context->PSSetConstantBuffers(4, 1, cbs);
+        m_dx.context->PSSetConstantBuffers(0, 1, cbs);
     }
 
 
@@ -616,7 +616,7 @@ namespace Engine
     }
 
 
-    void Renderer::DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans)
+    void Renderer::DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, int cubeMeshID)
     {
         if (!m_skyboxSRV) return;
 
@@ -653,16 +653,16 @@ namespace Engine
         ID3D11ShaderResourceView* srv = m_skyboxSRV.Get();
         ctx->PSSetShaderResources(0, 1, &srv);
 
-        // Draw cube mesh (ID 101)
+        // Draw cube mesh
         Engine::MeshBuffers cube{};
-        if (meshMan.GetMesh(101, cube))
+        if (meshMan.GetMesh(cubeMeshID, cube))
         {
             ID3D11InputLayout* layout = shaderMan.GetInputLayout(2);
             SubmitMesh(cube, layout);
             DrawIndexed(cube.indexCount);
         }
         else {
-			throw std::runtime_error("Skybox cube mesh (ID 101) not found in MeshManager.");
+			throw std::runtime_error("Skybox cube mesh not found in MeshManager.");
         }
 
         // Restore default states (so subsequent draws aren't affected)

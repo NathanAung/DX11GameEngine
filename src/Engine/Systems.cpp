@@ -157,9 +157,6 @@ namespace Engine
         {
             auto* context = renderer.GetContext();
 
-            // Bind basic shaders (temporary ID 1)
-            renderer.BindShader(shaderManager, 1);
-
             // Bind sampler to PS s0 once per frame
             ID3D11SamplerState* sampler = renderer.GetSamplerState();
             if (sampler)
@@ -260,14 +257,6 @@ namespace Engine
                 // Respect component active toggle
                 if (!mr.isActive) continue;
 
-                // Per-entity material constants (PS b4)
-                {
-                    Engine::MaterialConstants mat{};
-                    mat.roughness = mr.roughness;
-                    mat.metallic = mr.metallic;
-                    renderer.UpdateMaterialConstants(mat);
-                }
-
                 // World matrix from transform (position, rotation, scale)
                 XMMATRIX world =
                     XMMatrixScaling(tr.scale.x, tr.scale.y, tr.scale.z) *
@@ -275,26 +264,77 @@ namespace Engine
                     XMMatrixTranslation(tr.position.x, tr.position.y, tr.position.z);
                 renderer.UpdateWorldMatrix(world);
 
-                // Bind texture if present to PS t0, otherwise unbind to prevent state leakage
-                if (mr.texture)
-                {
-                    context->PSSetShaderResources(0, 1, &mr.texture);
-                }
-                else
-                {
-                    ID3D11ShaderResourceView* defaultTex = textureManager.GetDefaultTexture();
-                    context->PSSetShaderResources(0, 1, &defaultTex);
-                }
-
                 // Fetch mesh buffers
                 MeshBuffers buffers{};
                 if (!meshManager.GetMesh(mr.meshID, buffers))
                     continue;
 
-                // Submit and draw
-                ID3D11InputLayout* layout = shaderManager.GetInputLayout(mr.materialID);
-                renderer.SubmitMesh(buffers, layout);
-                renderer.DrawIndexed(buffers.indexCount);
+                if (mr.matType == Engine::MaterialType::UnlitColor)
+                {
+                    // Bind the Unlit Shader
+                    renderer.BindShader(shaderManager, scene.GetDebugShaderID());
+
+                    // Update the unlit color buffer (b4)
+                    renderer.UpdateColorConstants(mr.baseColor);
+
+                    // Submit and draw
+                    ID3D11InputLayout* layout = shaderManager.GetInputLayout(scene.GetDebugShaderID());
+                    renderer.SubmitMesh(buffers, layout);
+                    renderer.DrawIndexed(buffers.indexCount);
+                }
+                else if (mr.matType == Engine::MaterialType::LitColor)
+                {
+                    // Bind the PBR Shader
+                    renderer.BindShader(shaderManager, scene.GetDefaultShaderID());
+
+                    // Bind a default 1x1 white texture so the color isn't tinted black
+                    ID3D11ShaderResourceView* defaultTex = textureManager.GetDefaultTexture();
+                    context->PSSetShaderResources(0, 1, &defaultTex);
+
+                    // Update PBR material constants (PS b4)
+                    {
+                        Engine::MaterialConstants mat{};
+                        mat.baseColor = mr.baseColor;
+                        mat.roughness = mr.roughness;
+                        mat.metallic  = mr.metallic;
+                        renderer.UpdateMaterialConstants(mat);
+                    }
+
+                    // Submit and draw
+                    ID3D11InputLayout* layout = shaderManager.GetInputLayout(scene.GetDefaultShaderID());
+                    renderer.SubmitMesh(buffers, layout);
+                    renderer.DrawIndexed(buffers.indexCount);
+                }
+                else if (mr.matType == Engine::MaterialType::Textured)
+                {
+                    // Bind the PBR Shader
+                    renderer.BindShader(shaderManager, scene.GetDefaultShaderID());
+
+                    // Bind mesh.texture (if valid, else bind default white texture).
+                    if (mr.texture)
+                    {
+                        context->PSSetShaderResources(0, 1, &mr.texture);
+                    }
+                    else
+                    {
+                        ID3D11ShaderResourceView* defaultTex = textureManager.GetDefaultTexture();
+                        context->PSSetShaderResources(0, 1, &defaultTex);
+                    }
+
+                    // Update the material buffer with baseColor white, so texture shows accurately
+                    {
+                        Engine::MaterialConstants mat{};
+                        mat.baseColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+                        mat.roughness = mr.roughness;
+                        mat.metallic  = mr.metallic;
+                        renderer.UpdateMaterialConstants(mat);
+                    }
+
+                    // Submit and draw
+                    ID3D11InputLayout* layout = shaderManager.GetInputLayout(scene.GetDefaultShaderID());
+                    renderer.SubmitMesh(buffers, layout);
+                    renderer.DrawIndexed(buffers.indexCount);
+                }
             }
         }
 
