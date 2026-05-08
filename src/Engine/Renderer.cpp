@@ -38,12 +38,15 @@ namespace Engine
         m_samplerState.Reset();
         m_depthStencilState.Reset();
         m_rasterState.Reset();
+        m_solidRasterizerState.Reset();
+        m_wireframeRasterizerState.Reset();
         m_skyboxDepthState.Reset();
         m_skyboxRasterState.Reset();
         m_skyboxSRV.Reset();
 
         m_cbLight.Reset();
         m_cbMaterial.Reset();
+        m_cbColor.Reset();
 
         m_cbWorld.Reset();
         m_cbView.Reset();
@@ -63,6 +66,16 @@ namespace Engine
         m_dx.device.Reset();
     }
 
+    void Renderer::SetWireframeMode(bool enable)
+    {
+        // Swap between solid and wireframe rasterizer states (debug draw visibility uses Cull None)
+        if (!m_dx.context) return;
+
+        if (enable)
+            m_dx.context->RSSetState(m_wireframeRasterizerState.Get());
+        else
+            m_dx.context->RSSetState(m_solidRasterizerState.Get());
+    }
 
     void Renderer::Present(bool vsync)
     {
@@ -262,6 +275,8 @@ namespace Engine
         depthDesc.SampleDesc.Quality = 0;
         depthDesc.Usage = D3D11_USAGE_DEFAULT;              // GPU read/write
         depthDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL;     // Bind as depth-stencil buffer
+        depthDesc.CPUAccessFlags = 0;
+        depthDesc.MiscFlags = 0;
 
         // Create the depth-stencil texture
         hr = m_dx.device->CreateTexture2D(&depthDesc, nullptr, m_dx.depthStencilBuffer.GetAddressOf());
@@ -322,6 +337,35 @@ namespace Engine
         }
     }
 
+
+    void Renderer::UpdateColorConstants(const DirectX::XMFLOAT4& color)
+    {
+        if (!m_cbColor || !m_dx.context) return;
+
+		// Map the constant buffer, copy the color data, and unmap
+		// Using Map/Unmap for dynamic updates with D3D11_USAGE_DEFAULT buffers
+
+		// Map usage explanation: D3D11_MAP_WRITE_DISCARD is used for buffers that are updated frequently (per-frame or per-draw) 
+        // and allows the GPU to discard the previous contents of the buffer, which can improve performance by avoiding stalls. 
+        // This is suitable for our color constants which may change every draw call.
+        
+		// Map the buffer to get a CPU pointer
+        D3D11_MAPPED_SUBRESOURCE mapped{};
+        HRESULT hr = m_dx.context->Map(m_cbColor.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+        if (FAILED(hr)) return;
+
+		// Copy the color data into the mapped memory
+        *reinterpret_cast<DirectX::XMFLOAT4*>(mapped.pData) = color;
+
+		// Unmap the buffer to upload the data to the GPU
+        m_dx.context->Unmap(m_cbColor.Get(), 0);
+
+        // Bind to PS at slot b4 (matches UnlitPS ColorConstants : register(b4))
+        ID3D11Buffer* cbs[] = { m_cbColor.Get() };
+        m_dx.context->PSSetConstantBuffers(4, 1, cbs);
+    }
+
+
     bool Renderer::CreateInitialResources()
     {
         // Rasterizer state
@@ -332,6 +376,22 @@ namespace Engine
         rsDesc.DepthClipEnable = TRUE;
         HRESULT hr = m_dx.device->CreateRasterizerState(&rsDesc, m_rasterState.GetAddressOf());
         if (FAILED(hr)) return false;
+
+        // Wireframe + solid states used for debug drawing
+        {
+            D3D11_RASTERIZER_DESC solidDesc = rsDesc;
+            solidDesc.FillMode = D3D11_FILL_SOLID;
+
+            hr = m_dx.device->CreateRasterizerState(&solidDesc, m_solidRasterizerState.GetAddressOf());
+            if (FAILED(hr)) return false;
+
+            D3D11_RASTERIZER_DESC wireDesc = rsDesc;
+            wireDesc.FillMode = D3D11_FILL_WIREFRAME;
+            wireDesc.CullMode = D3D11_CULL_NONE; // keep CullMode = NONE for debug visibility
+
+            hr = m_dx.device->CreateRasterizerState(&wireDesc, m_wireframeRasterizerState.GetAddressOf());
+            if (FAILED(hr)) return false;
+        }
 
         // Depth-stencil state
         D3D11_DEPTH_STENCIL_DESC dsDesc = {};
@@ -407,6 +467,22 @@ namespace Engine
             cb.ByteWidth = (cb.ByteWidth + 15) & ~15u;
 
             hr = m_dx.device->CreateBuffer(&cb, nullptr, m_cbMaterial.GetAddressOf());
+            if (FAILED(hr)) return false;
+        }
+
+        // Color constant buffer (PS b4) for UnlitPS
+        {
+            D3D11_BUFFER_DESC cb = {};
+            cb.Usage = D3D11_USAGE_DYNAMIC;
+            cb.ByteWidth = static_cast<UINT>(sizeof(DirectX::XMFLOAT4)); // 16 bytes
+            cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+            cb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+            cb.MiscFlags = 0;
+
+            // Ensure 16-byte multiple
+            cb.ByteWidth = (cb.ByteWidth + 15) & ~15u;
+
+            hr = m_dx.device->CreateBuffer(&cb, nullptr, m_cbColor.GetAddressOf());
             if (FAILED(hr)) return false;
         }
 

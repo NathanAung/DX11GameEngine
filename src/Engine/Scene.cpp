@@ -39,8 +39,9 @@ namespace Engine
     }
 
 
-    void Scene::SetDefaultAssets(int shaderID, int cubeID, int sphereID, int capsuleID) {
+    void Scene::SetDefaultAssets(int shaderID, int debugShaderID, int cubeID, int sphereID, int capsuleID) {
         m_defaultShaderID = shaderID;
+        m_debugShaderID = debugShaderID;
         m_cubeMeshID = cubeID;
         m_sphereMeshID = sphereID;
         m_capsuleMeshID = capsuleID;

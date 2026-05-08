@@ -119,6 +119,7 @@ namespace Engine
         DirectX::XMFLOAT3 halfExtent{ 0.5f, 0.5f, 0.5f };   // Box
         float radius = 0.5f;                                // Sphere/Capsule
         float height = 1.0f;                                // Capsule total height
+        DirectX::XMFLOAT3 colliderScale{ 1.0f, 1.0f, 1.0f }; // Mesh collider scale multiplier
 
         // Mesh collider binding (used when shape == Mesh)
         int meshID = 0;

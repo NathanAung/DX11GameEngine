@@ -82,6 +82,8 @@ public:
     void UpdateLightConstants(const LightConstants& data);
     // upload material constants to GPU
     void UpdateMaterialConstants(const MaterialConstants& material);
+    // upload color constants to GPU (Unlit PS b0)
+    void UpdateColorConstants(const DirectX::XMFLOAT4& color);
     // Binds shaders from ShaderManager
     void BindShader(const Engine::ShaderManager& shaderMan, int shaderID);
     // Submits mesh buffers for drawing
@@ -117,6 +119,9 @@ public:
     UINT GetWidth() const { return m_dx.width; }
     UINT GetHeight() const { return m_dx.height; }
 
+	// Debug draw mode toggle (wireframe vs solid)
+    void SetWireframeMode(bool enable);
+
 private:
     DX11Context m_dx;
 
@@ -129,6 +134,11 @@ private:
     Microsoft::WRL::ComPtr<ID3D11SamplerState> m_samplerState;
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbLight;    // light cbuffer (PS b3)
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbMaterial; // material cbuffer (PS b4)
+    Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbColor;    // color cbuffer (PS b0)
+
+    // Wireframe / solid rasterizer states for debug draw pass
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_solidRasterizerState;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_wireframeRasterizerState;
 
     // Off-screen framebuffer state (Editor Render-to-Texture)
     Microsoft::WRL::ComPtr<ID3D11Texture2D> m_framebufferTex;

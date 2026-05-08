@@ -17,6 +17,9 @@ namespace Engine
     {
         // pass Renderer to access context and sampler
         void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager);
+
+		// Debug draw system for physics colliders. Draws wireframe meshes for entities with ColliderComponent, using the debug shader. Highlights the selected entity's collider if applicable.
+        void DrawDebugColliders(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::ShaderManager& shaderManager, entt::entity selectedEntity);
     }
 
     // demo rotation logic

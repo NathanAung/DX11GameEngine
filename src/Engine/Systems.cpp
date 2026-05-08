@@ -297,6 +297,72 @@ namespace Engine
                 renderer.DrawIndexed(buffers.indexCount);
             }
         }
+
+        void DrawDebugColliders(Engine::Scene& scene, Engine::Renderer& renderer, MeshManager& meshManager, ShaderManager& shaderManager, entt::entity selectedEntity)
+        {
+            if (selectedEntity == entt::null || !scene.registry.valid(selectedEntity)) return;
+            if (!scene.registry.all_of<TransformComponent, RigidBodyComponent>(selectedEntity)) return;
+
+            auto& tc = scene.registry.get<TransformComponent>(selectedEntity);
+            auto& rb = scene.registry.get<RigidBodyComponent>(selectedEntity);
+            if (!rb.isActive) return;
+
+            // Enable Wireframe
+            renderer.SetWireframeMode(true);
+
+            // Bind the debug Unlit shader
+            renderer.BindShader(shaderManager, scene.GetDebugShaderID());
+
+            // Set bright green
+            renderer.UpdateColorConstants(DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 1.0f));
+
+            // Calculate Scale based purely on Physics dimensions
+            DirectX::XMFLOAT3 debugScale = {1.0f, 1.0f, 1.0f};
+            int debugMeshID = 0;
+
+            if (rb.shape == RBShape::Box) {
+                // Assuming base cube mesh is 1x1x1, scale by halfExtent * 2
+                debugScale = { rb.halfExtent.x * 2.0f, rb.halfExtent.y * 2.0f, rb.halfExtent.z * 2.0f };
+                debugMeshID = scene.GetCubeMeshID();
+            }
+            else if (rb.shape == RBShape::Sphere) {
+                // Assuming base sphere has diameter 1 (radius 0.5), scale by radius * 2
+                debugScale = { rb.radius * 2.0f, rb.radius * 2.0f, rb.radius * 2.0f };
+                debugMeshID = scene.GetSphereMeshID();
+            }
+            else if (rb.shape == RBShape::Capsule) {
+                // Map capsule radius and height to the capsule mesh bounds
+                debugScale = { rb.radius * 2.0f, rb.height, rb.radius * 2.0f };
+                debugMeshID = scene.GetCapsuleMeshID();
+            }
+            else if (rb.shape == Engine::RBShape::Mesh) {
+				// For mesh colliders, we can use the entity's transform scale multiplied by the collider scale to visualize the collider size. This assumes the base mesh is also 1x1x1.
+                debugScale = { tc.scale.x * rb.colliderScale.x,
+                   tc.scale.y * rb.colliderScale.y,
+                   tc.scale.z * rb.colliderScale.z };
+                debugMeshID = rb.meshID;
+            }
+
+            // Update World Matrix and Draw
+            if (debugMeshID != 0) {
+                DirectX::XMMATRIX world = 
+                    DirectX::XMMatrixScaling(debugScale.x, debugScale.y, debugScale.z) *
+                    DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&tc.rotation)) *
+                    DirectX::XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
+
+                renderer.UpdateWorldMatrix(world);
+
+                MeshBuffers buffers{};
+                if (meshManager.GetMesh(debugMeshID, buffers)) {
+                    ID3D11InputLayout* layout = shaderManager.GetInputLayout(scene.GetDebugShaderID());
+                    renderer.SubmitMesh(buffers, layout);
+                    renderer.DrawIndexed(buffers.indexCount);
+                }
+            }
+
+            // 5. Restore Solid Mode
+            renderer.SetWireframeMode(false);
+        }
     }
 
     // Helpers: convert Jolt types to DirectX

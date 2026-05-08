@@ -99,6 +99,32 @@ namespace Engine
         return 2;
     }
 
+    int ShaderManager::LoadUnlitShaders(ID3D11Device* device)
+    {
+        Microsoft::WRL::ComPtr<ID3DBlob> vsBytecode = Compile(L"shaders/UnlitVS.hlsl", "main", "vs_5_0");
+        Microsoft::WRL::ComPtr<ID3DBlob> psBytecode = Compile(L"shaders/UnlitPS.hlsl", "main", "ps_5_0");
+
+        ShaderData sd;
+        HRESULT hr = device->CreateVertexShader(vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), nullptr, sd.vs.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreateVertexShader failed (Unlit)");
+
+        hr = device->CreatePixelShader(psBytecode->GetBufferPointer(), psBytecode->GetBufferSize(), nullptr, sd.ps.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreatePixelShader failed (Unlit)");
+
+        D3D11_INPUT_ELEMENT_DESC layout[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,               D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float)*3, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float)*6, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+        };
+
+        hr = device->CreateInputLayout(layout, _countof(layout), vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), sd.inputLayout.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed (Unlit)");
+
+        m_shaders[3] = std::move(sd);
+        return 3;
+    }
+
     void ShaderManager::Bind(int shaderID, ID3D11DeviceContext* context) const
     {
         auto it = m_shaders.find(shaderID);
