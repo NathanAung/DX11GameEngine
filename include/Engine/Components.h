@@ -132,5 +132,7 @@ namespace Engine
         // Runtime (managed by physics system)
         JPH::BodyID bodyID;         // default invalid BodyID
         bool bodyCreated = false;   // whether registered in Jolt world
+
+		bool showWireframe = true; // Debug visualization toggle
     };
 }

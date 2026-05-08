@@ -675,6 +675,10 @@ namespace Engine
 
                             ImGui::TreePop();
                         }
+
+                        // Wireframe toggle
+						ImGui::Checkbox("Show Wireframe", &rb.showWireframe);
+
                         ImGui::PopID();
 
                         if (removeComponent)
