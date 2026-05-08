@@ -360,9 +360,9 @@ namespace Engine
 		// Unmap the buffer to upload the data to the GPU
         m_dx.context->Unmap(m_cbColor.Get(), 0);
 
-        // Bind to PS at slot b0 (matches UnlitPS ColorConstants : register(b0))
+        // Bind to PS at slot b4 (matches UnlitPS ColorConstants : register(b4))
         ID3D11Buffer* cbs[] = { m_cbColor.Get() };
-        m_dx.context->PSSetConstantBuffers(0, 1, cbs);
+        m_dx.context->PSSetConstantBuffers(4, 1, cbs);
     }
 
 
@@ -470,7 +470,7 @@ namespace Engine
             if (FAILED(hr)) return false;
         }
 
-        // Color constant buffer (PS b0) for UnlitPS
+        // Color constant buffer (PS b4) for UnlitPS
         {
             D3D11_BUFFER_DESC cb = {};
             cb.Usage = D3D11_USAGE_DYNAMIC;

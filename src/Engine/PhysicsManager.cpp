@@ -256,8 +256,14 @@ JPH::ShapeRefC PhysicsManager::CreatePhysicsShape(const TransformComponent& tc, 
         return nullptr;
     }
 
-    // Step 2: Apply Transform Scale (visual scaling only)
-    const JPH::Vec3 scale = ToJolt(tc.scale);
+    // Step 2: Apply Transform Scale combined with local Collider Scale
+    JPH::Vec3 scale = ToJolt(tc.scale);
+    if (rbc.shape == RBShape::Mesh) {
+        scale = JPH::Vec3(scale.GetX() * rbc.colliderScale.x,
+            scale.GetY() * rbc.colliderScale.y,
+            scale.GetZ() * rbc.colliderScale.z);
+    }
+
     JPH::ShapeRefC finalShape;
 
 	// check if the scale is nearly identical to (1,1,1)
@@ -296,6 +302,13 @@ void PhysicsManager::ResetBodyTransform(const TransformComponent& tc, RigidBodyC
     }
 
     JPH::Vec3 targetScale = ToJolt(tc.scale);
+
+	// If this is a mesh collider, we also need to factor in the colliderScale from the RigidBodyComponent
+    if (rbc.shape == RBShape::Mesh) {
+        targetScale = JPH::Vec3(targetScale.GetX() * rbc.colliderScale.x,
+            targetScale.GetY() * rbc.colliderScale.y,
+            targetScale.GetZ() * rbc.colliderScale.z);
+    }
 
     // Check for scale deviation
     bool scaleChanged = 

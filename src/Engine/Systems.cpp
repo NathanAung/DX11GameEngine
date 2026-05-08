@@ -335,6 +335,13 @@ namespace Engine
                 debugScale = { rb.radius * 2.0f, rb.height, rb.radius * 2.0f };
                 debugMeshID = scene.GetCapsuleMeshID();
             }
+            else if (rb.shape == Engine::RBShape::Mesh) {
+				// For mesh colliders, we can use the entity's transform scale multiplied by the collider scale to visualize the collider size. This assumes the base mesh is also 1x1x1.
+                debugScale = { tc.scale.x * rb.colliderScale.x,
+                   tc.scale.y * rb.colliderScale.y,
+                   tc.scale.z * rb.colliderScale.z };
+                debugMeshID = rb.meshID;
+            }
 
             // Update World Matrix and Draw
             if (debugMeshID != 0) {

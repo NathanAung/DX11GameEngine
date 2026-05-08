@@ -636,7 +636,9 @@ namespace Engine
                                 if (ImGui::DragFloat("Radius", &rb.radius, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
                                 if (ImGui::DragFloat("Height", &rb.height, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
                             }
-                            // implement mesh collider later
+                            else if (rb.shape == Engine::RBShape::Mesh) {
+                                if (ImGui::DragFloat3("Collider Scale", &rb.colliderScale.x, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                            }
 
                             // Force Jolt to rebuild the body with the new dimensions
                             if (shapeChanged && !rb.bodyID.IsInvalid()) {
