@@ -411,6 +411,9 @@ void Update(float deltaTime) {
 	if (g_editorUI.GetState() == Engine::EditorState::Edit)
         Engine::EditorCameraInputSystem(g_scene, g_input, deltaTime, g_editorUI.IsSceneFocused());
 
+    // Execute the transform hierarchy update after input/gizmo/physics changes
+    Engine::TransformSystem(g_scene);
+
     Engine::CameraMatrixSystem(g_scene, g_renderer);
     //Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
 }

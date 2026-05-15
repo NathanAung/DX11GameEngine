@@ -524,6 +524,7 @@ namespace Engine
                             if (selectionChanged || externallyChanged)
                             {
                                 s_cachedEuler = Engine::Math::QuaternionToEulerDegrees(tc.rotation);
+								tc.isDirty = true;
                             }
 
                             // 4. Draw the UI using the stable cached values
@@ -531,6 +532,7 @@ namespace Engine
                             {
                                 // 5. If the user drags the slider, push the new rotation to the component
                                 tc.rotation = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
+								tc.isDirty = true;
                             }
                         }
                     }

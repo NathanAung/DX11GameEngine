@@ -30,6 +30,7 @@ namespace Engine
         // Combine
         XMVECTOR q = XMQuaternionMultiply(qx, qy);
         XMStoreFloat4(&tc.rotation, q);
+        tc.isDirty = true; // Local transform changed; force world matrix recompute
     }
 
 
@@ -79,6 +80,7 @@ namespace Engine
                 XMVECTOR move = XMVectorScale(forward, scroll * scrollSpeed);
                 XMVECTOR pos = XMVectorAdd(XMLoadFloat3(&tf.position), move);
                 XMStoreFloat3(&tf.position, pos);
+                tf.isDirty = true; // moved
             }
 
             if (input.IsMouseCaptured() || (isSceneFocused && input.IsKeyDown(Key::LShift)))
@@ -100,6 +102,7 @@ namespace Engine
                     move = XMVectorScale(move, speed);
                     XMVECTOR pos = XMVectorAdd(XMLoadFloat3(&tf.position), move);
                     XMStoreFloat3(&tf.position, pos);
+                    tf.isDirty = true; // moved
                 }
             }
 
@@ -115,6 +118,7 @@ namespace Engine
             XMVECTOR q = XMQuaternionRotationMatrix(basis);
             q = XMQuaternionNormalize(q);
             XMStoreFloat4(&tf.rotation, q);
+            tf.isDirty = true; // rotated
         }
     }
 
@@ -148,6 +152,79 @@ namespace Engine
 		// Upload to renderer
         renderer.UpdateViewMatrix(view);
         renderer.UpdateProjectionMatrix(proj);
+    }
+
+
+    void TransformSystem(Engine::Scene& scene)
+    {
+        auto& registry = scene.registry;
+
+        const XMMATRIX identity = XMMatrixIdentity();
+
+        // recursive helper; parentChanged cascades down even if child isn't dirty
+        const auto Recurse = [&](auto&& self, entt::entity e, const XMMATRIX& parentWorld, bool parentChanged) -> void
+        {
+            if (!registry.valid(e) || !registry.all_of<TransformComponent>(e))
+                return;
+
+            auto& tc = registry.get<TransformComponent>(e);
+
+            const bool dirty = tc.isDirty || parentChanged;
+
+            // Local = Scale * Rotation * Translation.
+            const XMMATRIX S = XMMatrixScaling(tc.scale.x, tc.scale.y, tc.scale.z);
+            XMVECTOR qn = XMLoadFloat4(&tc.rotation);
+            qn = XMQuaternionNormalize(qn);
+            const XMMATRIX R = XMMatrixRotationQuaternion(qn);
+            const XMMATRIX T = XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
+            const XMMATRIX local = S * R * T;
+
+            // If the entity has a parent, World = Local * ParentWorld. Otherwise, World = Local.
+            XMMATRIX world = local;
+            if (registry.all_of<RelationshipComponent>(e))
+            {
+                const auto& rel = registry.get<RelationshipComponent>(e);
+                if (rel.parent != entt::null)
+                {
+                    world = local * parentWorld;
+                }
+            }
+
+            XMStoreFloat4x4(&tc.worldMatrix, world);
+            tc.isDirty = false;
+
+            if (registry.all_of<RelationshipComponent>(e))
+            {
+                const auto& rel = registry.get<RelationshipComponent>(e);
+                entt::entity child = rel.firstChild;
+
+                while (child != entt::null)
+                {
+                    self(self, child, world, dirty);
+
+                    if (!registry.valid(child) || !registry.all_of<RelationshipComponent>(child))
+                        break;
+
+                    child = registry.get<RelationshipComponent>(child).nextSibling;
+                }
+            }
+        };
+
+        // Iterate through all entities that have a TransformComponent.
+        // Filter for Roots: Only process entities that either DO NOT have a RelationshipComponent,
+        // OR have a RelationshipComponent where parent == entt::null.
+        auto view = registry.view<TransformComponent>();
+        for (auto e : view)
+        {
+            if (registry.all_of<RelationshipComponent>(e))
+            {
+                const auto& rel = registry.get<RelationshipComponent>(e);
+                if (rel.parent != entt::null)
+                    continue; // not a root
+            }
+
+            Recurse(Recurse, e, identity, false);
+        }
     }
 
 
@@ -252,16 +329,13 @@ namespace Engine
                 }
 
                 auto& mr = view.get<MeshRendererComponent>(entity);
-                auto& tr = view.get<TransformComponent>(entity);
+                auto& tc = view.get<TransformComponent>(entity);
 
                 // Respect component active toggle
                 if (!mr.isActive) continue;
 
-                // World matrix from transform (position, rotation, scale)
-                XMMATRIX world =
-                    XMMatrixScaling(tr.scale.x, tr.scale.y, tr.scale.z) *
-                    XMMatrixRotationQuaternion(XMLoadFloat4(&tr.rotation)) *
-                    XMMatrixTranslation(tr.position.x, tr.position.y, tr.position.z);
+                // World matrix from cached TransformComponent
+                DirectX::XMMATRIX world = DirectX::XMLoadFloat4x4(&tc.worldMatrix);
                 renderer.UpdateWorldMatrix(world);
 
                 // Fetch mesh buffers
