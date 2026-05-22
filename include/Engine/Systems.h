@@ -33,4 +33,7 @@ namespace Engine
 
     // physics update system: initialize bodies, step simulation, sync back transforms
     void PhysicsSystem(Engine::Scene& scene, Engine::PhysicsManager& physicsManager, const Engine::MeshManager& meshManager, float dt, bool isPlaying);
+
+    // transform update system: cascades local->world matrices down the relationship tree
+    void TransformSystem(Engine::Scene& scene);
 }

@@ -411,6 +411,9 @@ void Update(float deltaTime) {
 	if (g_editorUI.GetState() == Engine::EditorState::Edit)
         Engine::EditorCameraInputSystem(g_scene, g_input, deltaTime, g_editorUI.IsSceneFocused());
 
+    // Execute the transform hierarchy update after input/gizmo/physics changes
+    Engine::TransformSystem(g_scene);
+
     Engine::CameraMatrixSystem(g_scene, g_renderer);
     //Engine::DemoRotationSystem(g_scene, g_sampleEntity, deltaTime);
 }
@@ -440,9 +443,10 @@ void Render()
 
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
+    // UNCOMMENT THIS LATER
 	// Draw debug colliders if in Edit mode
-    if (g_editorUI.GetState() == Engine::EditorState::Edit)
-        Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
+    //if (g_editorUI.GetState() == Engine::EditorState::Edit)
+    Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
 
     // Draw skybox last: z=w ensures it renders only where nothing else drew
     if (g_scene.m_activeRenderCamera != entt::null &&

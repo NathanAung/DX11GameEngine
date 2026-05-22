@@ -4,6 +4,7 @@
 #include <DirectXMath.h>
 #include <d3d11.h> // Added for ID3D11ShaderResourceView*
 #include <Jolt/Physics/Body/BodyID.h> // Jolt BodyID
+#include <entt/entt.hpp>
 
 // Components class is used to define various components for ECS architecture
 
@@ -22,12 +23,29 @@ namespace Engine
         bool isActive = true; // Master entity toggle
     };
 
+    struct RelationshipComponent
+    {
+        entt::entity parent = entt::null;
+        entt::entity firstChild = entt::null;
+        entt::entity prevSibling = entt::null;
+        entt::entity nextSibling = entt::null;
+    };
+
     // Local transform (position, rotation as quaternion, scale)
     struct TransformComponent
     {
         DirectX::XMFLOAT3 position{ 0.0f, 0.0f, 0.0f };
         DirectX::XMFLOAT4 rotation{ 0.0f, 0.0f, 0.0f, 1.0f }; // identity quaternion
         DirectX::XMFLOAT3 scale{ 1.0f, 1.0f, 1.0f };
+
+        // Initialize to Identity Matrix
+        DirectX::XMFLOAT4X4 worldMatrix = {
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 1.0f
+        };
+        bool isDirty = true; // Flag to force recalculation
     };
 
     enum class MaterialType { LitColor, UnlitColor, Textured };
