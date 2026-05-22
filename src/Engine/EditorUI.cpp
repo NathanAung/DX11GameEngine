@@ -483,13 +483,17 @@ namespace Engine
                     }
                 }
 
-                // Make the empty window space a drop target to UNPARENT entities (make them roots)
-                if (ImGui::BeginDragDropTarget()) {
-                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_PAYLOAD")) {
-                        entt::entity droppedEntity = *(const entt::entity*)payload->Data;
-                        scene.UnparentEntity(droppedEntity);
+                // Fill the remaining vertical space with a dummy item to act as a drop zone for unparenting
+                ImVec2 availSpace = ImGui::GetContentRegionAvail();
+                if (availSpace.y > 0.0f) {
+                    ImGui::Dummy(availSpace);
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_PAYLOAD")) {
+                            entt::entity droppedEntity = *(const entt::entity*)payload->Data;
+                            scene.UnparentEntity(droppedEntity);
+                        }
+                        ImGui::EndDragDropTarget();
                     }
-                    ImGui::EndDragDropTarget();
                 }
 
                 // Safe deferred destruction

@@ -355,6 +355,7 @@ namespace Engine
             if (registry.all_of<CameraComponent>(entity)) m_backupRegistry.emplace<CameraComponent>(copy, registry.get<CameraComponent>(entity));
             if (registry.all_of<ViewportComponent>(entity)) m_backupRegistry.emplace<ViewportComponent>(copy, registry.get<ViewportComponent>(entity));
             if (registry.all_of<EditorCamControlComponent>(entity)) m_backupRegistry.emplace<EditorCamControlComponent>(copy, registry.get<EditorCamControlComponent>(entity));
+            if (registry.all_of<RelationshipComponent>(entity)) m_backupRegistry.emplace<RelationshipComponent>(copy, registry.get<RelationshipComponent>(entity));
         }
     }
 
@@ -390,6 +391,7 @@ namespace Engine
             if (m_backupRegistry.all_of<CameraComponent>(entity)) registry.emplace<CameraComponent>(restored, m_backupRegistry.get<CameraComponent>(entity));
             if (m_backupRegistry.all_of<ViewportComponent>(entity)) registry.emplace<ViewportComponent>(restored, m_backupRegistry.get<ViewportComponent>(entity));
             if (m_backupRegistry.all_of<EditorCamControlComponent>(entity)) registry.emplace<EditorCamControlComponent>(restored, m_backupRegistry.get<EditorCamControlComponent>(entity));
+            if (m_backupRegistry.all_of<RelationshipComponent>(entity)) registry.emplace<RelationshipComponent>(restored, m_backupRegistry.get<RelationshipComponent>(entity));
         }
 
         // NOTE: Bodies are rebuilt by PhysicsSystem on the next frame from restored ECS state.
