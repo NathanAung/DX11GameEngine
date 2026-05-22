@@ -256,12 +256,17 @@ JPH::ShapeRefC PhysicsManager::CreatePhysicsShape(const TransformComponent& tc, 
         return nullptr;
     }
 
-    // Step 2: Apply Transform Scale combined with local Collider Scale
-    JPH::Vec3 scale = ToJolt(tc.scale);
+    // Step 2: Apply Transform Scale combined with local Collider Scale (World Space)
+    DirectX::XMVECTOR s, r, t;
+    DirectX::XMMatrixDecompose(&s, &r, &t, DirectX::XMLoadFloat4x4(&tc.worldMatrix));
+    DirectX::XMFLOAT3 worldScale;
+    DirectX::XMStoreFloat3(&worldScale, s);
+
+    JPH::Vec3 scale = ToJolt(worldScale);
     if (rbc.shape == RBShape::Mesh) {
         scale = JPH::Vec3(scale.GetX() * rbc.colliderScale.x,
-            scale.GetY() * rbc.colliderScale.y,
-            scale.GetZ() * rbc.colliderScale.z);
+                          scale.GetY() * rbc.colliderScale.y,
+                          scale.GetZ() * rbc.colliderScale.z);
     }
 
     JPH::ShapeRefC finalShape;
@@ -293,6 +298,17 @@ void PhysicsManager::ResetBodyTransform(const TransformComponent& tc, RigidBodyC
     if (rbc.bodyID.IsInvalid()) return;
     JPH::BodyInterface& bi = m_physicsSystem->GetBodyInterface();
 
+    // Decompose cached World matrix so teleports happen in World Space
+    DirectX::XMVECTOR worldS, worldR, worldT;
+    DirectX::XMMatrixDecompose(&worldS, &worldR, &worldT, DirectX::XMLoadFloat4x4(&tc.worldMatrix));
+
+    DirectX::XMFLOAT3 worldScale{};
+    DirectX::XMFLOAT4 worldRot{};
+    DirectX::XMFLOAT3 worldPos{};
+    DirectX::XMStoreFloat3(&worldScale, worldS);
+    DirectX::XMStoreFloat4(&worldRot, worldR);
+    DirectX::XMStoreFloat3(&worldPos, worldT);
+
     // Evaluate Scale
     JPH::ShapeRefC currentShape = bi.GetShape(rbc.bodyID);
     JPH::Vec3 currentScale(1.0f, 1.0f, 1.0f);
@@ -301,13 +317,11 @@ void PhysicsManager::ResetBodyTransform(const TransformComponent& tc, RigidBodyC
         currentScale = static_cast<const JPH::ScaledShape*>(currentShape.GetPtr())->GetScale();
     }
 
-    JPH::Vec3 targetScale = ToJolt(tc.scale);
-
-	// If this is a mesh collider, we also need to factor in the colliderScale from the RigidBodyComponent
+    JPH::Vec3 targetScale = ToJolt(worldScale);
     if (rbc.shape == RBShape::Mesh) {
         targetScale = JPH::Vec3(targetScale.GetX() * rbc.colliderScale.x,
-            targetScale.GetY() * rbc.colliderScale.y,
-            targetScale.GetZ() * rbc.colliderScale.z);
+                                targetScale.GetY() * rbc.colliderScale.y,
+                                targetScale.GetZ() * rbc.colliderScale.z);
     }
 
     // Check for scale deviation
@@ -323,8 +337,8 @@ void PhysicsManager::ResetBodyTransform(const TransformComponent& tc, RigidBodyC
         return; // CreateRigidBody automatically positions it, so we can exit early
     }
 
-    // If scale hasn't changed, just teleport body and kill momentum
-    bi.SetPositionAndRotation(rbc.bodyID, ToJolt(tc.position), ToJolt(tc.rotation), JPH::EActivation::Activate);
+    // If scale hasn't changed, just teleport body and kill momentum (World Space)
+    bi.SetPositionAndRotation(rbc.bodyID, ToJolt(worldPos), ToJolt(worldRot), JPH::EActivation::Activate);
     bi.SetLinearAndAngularVelocity(rbc.bodyID, JPH::Vec3::sZero(), JPH::Vec3::sZero());
 }
 
@@ -332,14 +346,29 @@ void PhysicsManager::ResetBodyTransform(const TransformComponent& tc, RigidBodyC
 JPH::BodyID PhysicsManager::CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc, const MeshManager& meshManager) {
     if (!m_physicsSystem) return JPH::BodyID(); // invalid
 
-    JPH::ShapeRefC finalShape = CreatePhysicsShape(tc, rbc, meshManager);
+    // Decompose cached World matrix so bodies are spawned in World Space
+    DirectX::XMVECTOR worldS, worldR, worldT;
+    DirectX::XMMatrixDecompose(&worldS, &worldR, &worldT, DirectX::XMLoadFloat4x4(&tc.worldMatrix));
+
+    DirectX::XMFLOAT3 worldScale{};
+    DirectX::XMFLOAT4 worldRot{};
+    DirectX::XMFLOAT3 worldPos{};
+    DirectX::XMStoreFloat3(&worldScale, worldS);
+    DirectX::XMStoreFloat4(&worldRot, worldR);
+    DirectX::XMStoreFloat3(&worldPos, worldT);
+
+    // Feed world scale into CreatePhysicsShape (scaling should be evaluated in world space)
+    TransformComponent worldTc = tc;
+    worldTc.scale = worldScale;
+
+    JPH::ShapeRefC finalShape = CreatePhysicsShape(worldTc, rbc, meshManager);
     if (!finalShape) return JPH::BodyID();
 
     // Step 3: Instantiate Body
     BodyCreationSettings creation(
         finalShape,
-        ToJolt(tc.position),
-        ToJolt(tc.rotation),
+        ToJolt(worldPos),
+        ToJolt(worldRot),
         rbc.motionType == RBMotion::Static ? JPH::EMotionType::Static : JPH::EMotionType::Dynamic,
         rbc.motionType == RBMotion::Static ? Layers::NON_MOVING : Layers::MOVING
     );

@@ -321,17 +321,31 @@ namespace Engine
     {
         if (!registry.valid(entity)) return;
 
-        // Safely remove physics body from Jolt world before destroying the entity
-        if (registry.all_of<RigidBodyComponent>(entity))
-        {
-            auto& rb = registry.get<RigidBodyComponent>(entity);
-            if (!rb.bodyID.IsInvalid())
-            {
-                physicsManager.RemoveRigidBody(rb.bodyID);
+        // 1. Cascade delete to all children
+        if (registry.all_of<RelationshipComponent>(entity)) {
+            auto& rel = registry.get<RelationshipComponent>(entity);
+            entt::entity currentChild = rel.firstChild;
+            while (currentChild != entt::null) {
+                // Cache the next sibling before destroying the current child!
+                entt::entity next = registry.get<RelationshipComponent>(currentChild).nextSibling;
+
+                // Recursively destroy the child
+                DestroyEntity(currentChild, physicsManager);
+
+                currentChild = next;
             }
         }
 
-        // Destroy the entity and all its components in EnTT
+        // 2. Unparent this entity so its parent cleanly removes it from the linked list
+        UnparentEntity(entity);
+
+        // 3. Existing Physics Cleanup
+        if (registry.all_of<RigidBodyComponent>(entity)) {
+            auto& rbc = registry.get<RigidBodyComponent>(entity);
+            physicsManager.RemoveRigidBody(rbc.bodyID);
+        }
+
+        // 4. Destroy the entity
         registry.destroy(entity);
     }
 

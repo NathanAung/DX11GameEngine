@@ -476,10 +476,24 @@ namespace Engine
                 auto view = scene.registry.view<NameComponent>();
                 for (auto entity : view)
                 {
+					auto& nameComp = view.get<NameComponent>(entity);
+
+                    // Prevent editor camera from showing in the hierarchy
+                    if (scene.registry.all_of<Engine::EditorCamControlComponent>(entity)) continue;
+
+                    // Grey-out inactive entities in the list so state is obvious
+                    if (!nameComp.isActive) {
+                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                    }
+
                     auto* rel = scene.registry.try_get<RelationshipComponent>(entity);
                     // Only draw root nodes (no relationship comp, or parent is null)
                     if (!rel || rel->parent == entt::null) {
                         DrawEntityNode(scene, entity, entityToDestroy);
+                    }
+
+                    if (!nameComp.isActive) {
+                        ImGui::PopStyleColor();
                     }
                 }
 
@@ -515,6 +529,7 @@ namespace Engine
                         m_selectedEntity = entt::null;
                     }
                 }
+
             }
             ImGui::End();
 

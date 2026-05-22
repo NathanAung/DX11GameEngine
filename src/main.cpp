@@ -443,6 +443,7 @@ void Render()
 
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
+    // UNCOMMENT THIS LATER
 	// Draw debug colliders if in Edit mode
     //if (g_editorUI.GetState() == Engine::EditorState::Edit)
     Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
