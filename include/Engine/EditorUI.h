@@ -28,6 +28,8 @@ namespace Engine
         entt::entity GetSelectedEntity() const { return m_selectedEntity; }
 
     private:
+        void DrawEntityNode(Engine::Scene& scene, entt::entity entity, entt::entity& entityToDestroy);
+
         bool m_scenePanelFocused = false;
 
         entt::entity m_selectedEntity = entt::null;

@@ -461,12 +461,20 @@ namespace Engine
 
             // Update World Matrix and Draw
             if (debugMeshID != 0) {
-                DirectX::XMMATRIX world = 
+                DirectX::XMMATRIX local =
                     DirectX::XMMatrixScaling(debugScale.x, debugScale.y, debugScale.z) *
                     DirectX::XMMatrixRotationQuaternion(DirectX::XMLoadFloat4(&tc.rotation)) *
                     DirectX::XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
 
-                renderer.UpdateWorldMatrix(world);
+                DirectX::XMMATRIX parentWorld = DirectX::XMMatrixIdentity();
+                if (scene.registry.all_of<RelationshipComponent>(selectedEntity)) {
+                    entt::entity parent = scene.registry.get<RelationshipComponent>(selectedEntity).parent;
+                    if (parent != entt::null && scene.registry.all_of<TransformComponent>(parent)) {
+                        parentWorld = DirectX::XMLoadFloat4x4(&scene.registry.get<TransformComponent>(parent).worldMatrix);
+                    }
+                }
+
+                renderer.UpdateWorldMatrix(local * parentWorld);
 
                 MeshBuffers buffers{};
                 if (meshManager.GetMesh(debugMeshID, buffers)) {

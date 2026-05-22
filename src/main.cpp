@@ -444,8 +444,8 @@ void Render()
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
 	// Draw debug colliders if in Edit mode
-    if (g_editorUI.GetState() == Engine::EditorState::Edit)
-        Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
+    //if (g_editorUI.GetState() == Engine::EditorState::Edit)
+    Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
 
     // Draw skybox last: z=w ensures it renders only where nothing else drew
     if (g_scene.m_activeRenderCamera != entt::null &&

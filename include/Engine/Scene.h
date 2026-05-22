@@ -65,6 +65,10 @@ namespace Engine
 		int GetDefaultShaderID() const { return m_defaultShaderID; }
         int GetDebugShaderID() const { return m_debugShaderID; }
 
+        // Intrusive hierarchy helpers
+        void ParentEntity(entt::entity child, entt::entity parent);
+        void UnparentEntity(entt::entity child);
+
         // Safely destroy an entity and unregister any physics bodies (Jolt) first
         void DestroyEntity(entt::entity entity, Engine::PhysicsManager& physicsManager);
 

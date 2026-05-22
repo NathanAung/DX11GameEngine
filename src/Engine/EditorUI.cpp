@@ -10,6 +10,60 @@
 
 namespace Engine
 {
+    void EditorUI::DrawEntityNode(Engine::Scene& scene, entt::entity entity, entt::entity& entityToDestroy)
+    {
+        auto& nameComp = scene.registry.get<NameComponent>(entity);
+        auto* relComp = scene.registry.try_get<RelationshipComponent>(entity);
+
+        ImGuiTreeNodeFlags flags = ((m_selectedEntity == entity) ? ImGuiTreeNodeFlags_Selected : 0) | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+
+        bool isLeaf = !relComp || relComp->firstChild == entt::null;
+        if (isLeaf) flags |= ImGuiTreeNodeFlags_Leaf;
+
+        bool opened = ImGui::TreeNodeEx((void*)(uint64_t)(uint32_t)entity, flags, "%s", nameComp.name.c_str());
+
+        // Selection logic
+        if (ImGui::IsItemClicked()) m_selectedEntity = entity;
+
+        // Right-click menu for deletion
+        if (ImGui::BeginPopupContextItem()) {
+            if (ImGui::MenuItem("Delete Entity")) {
+                if (m_selectedEntity == entity) m_selectedEntity = entt::null;
+                entityToDestroy = entity;
+            }
+            ImGui::EndPopup();
+        }
+
+        // DRAG SOURCE (Picking this entity up)
+        if (ImGui::BeginDragDropSource()) {
+            ImGui::SetDragDropPayload("ENTITY_PAYLOAD", &entity, sizeof(entt::entity));
+            ImGui::Text("Move %s", nameComp.name.c_str());
+            ImGui::EndDragDropSource();
+        }
+
+        // DROP TARGET (Dropping another entity ONTO this one to make it a child)
+        if (ImGui::BeginDragDropTarget()) {
+            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_PAYLOAD")) {
+                entt::entity droppedEntity = *(const entt::entity*)payload->Data;
+                scene.ParentEntity(droppedEntity, entity);
+            }
+            ImGui::EndDragDropTarget();
+        }
+
+        // Recursively draw children
+        if (opened) {
+            if (!isLeaf) {
+                entt::entity currentChild = relComp->firstChild;
+                while (currentChild != entt::null) {
+                    entt::entity next = scene.registry.get<RelationshipComponent>(currentChild).nextSibling;
+                    DrawEntityNode(scene, currentChild, entityToDestroy);
+                    currentChild = next;
+                }
+            }
+            ImGui::TreePop();
+        }
+    }
+
     void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
     {
         // Cache the Editor Camera so we can always revert to it
@@ -321,29 +375,51 @@ namespace Engine
             if (m_gizmoType == 1) op = ImGuizmo::ROTATE;
             if (m_gizmoType == 2) op = ImGuizmo::SCALE;
 
-            // Build the selected entity's world matrix
-            DirectX::XMMATRIX S = DirectX::XMMatrixScaling(tc.scale.x, tc.scale.y, tc.scale.z);
-            DirectX::XMVECTOR qn = DirectX::XMQuaternionNormalize(DirectX::XMLoadFloat4(&tc.rotation));
-            DirectX::XMMATRIX R = DirectX::XMMatrixRotationQuaternion(qn);
-            DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(tc.position.x, tc.position.y, tc.position.z);
-            DirectX::XMMATRIX world = S * R * T;
+            // 1. Get the current World Matrix from the TransformComponent
+            DirectX::XMMATRIX worldMat = DirectX::XMLoadFloat4x4(&tc.worldMatrix);
+            DirectX::XMFLOAT4X4 worldMatFloat;
+            DirectX::XMStoreFloat4x4(&worldMatFloat, worldMat);
 
-            DirectX::XMFLOAT4X4 world4x4;
-            DirectX::XMStoreFloat4x4(&world4x4, world);
+            // 2. Pass the World Matrix to ImGuizmo
+            ImGuizmo::Manipulate(
+                &view4x4.m[0][0],
+                &proj4x4.m[0][0],
+                op,
+                ImGuizmo::LOCAL,
+                &worldMatFloat.m[0][0]
+            );
 
-            // Draw the Gizmo and manipulate the matrix
-            ImGuizmo::Manipulate(&view4x4.m[0][0], &proj4x4.m[0][0], op, ImGuizmo::LOCAL, &world4x4.m[0][0]);
-
+            // 3. If the user is dragging the Gizmo, convert the new World Matrix back to Local Space
             if (ImGuizmo::IsUsing())
             {
-                // Use DirectX native decomposition to avoid ImGuizmo's Euler angle bugs
-                DirectX::XMMATRIX modifiedWorld = DirectX::XMLoadFloat4x4(&world4x4);
-                DirectX::XMVECTOR vScale, vRotQuat, vTrans;
-                DirectX::XMMatrixDecompose(&vScale, &vRotQuat, &vTrans, modifiedWorld);
+                DirectX::XMMATRIX modifiedWorld = DirectX::XMLoadFloat4x4(&worldMatFloat);
+                DirectX::XMMATRIX parentWorld = DirectX::XMMatrixIdentity();
 
-                DirectX::XMStoreFloat3(&tc.position, vTrans);
-                DirectX::XMStoreFloat3(&tc.scale, vScale);
-                DirectX::XMStoreFloat4(&tc.rotation, vRotQuat);
+                // Check if the entity has a parent
+                if (scene.registry.all_of<RelationshipComponent>(m_selectedEntity)) {
+                    entt::entity parent = scene.registry.get<RelationshipComponent>(m_selectedEntity).parent;
+                    if (parent != entt::null && scene.registry.all_of<TransformComponent>(parent)) {
+                        parentWorld = DirectX::XMLoadFloat4x4(&scene.registry.get<TransformComponent>(parent).worldMatrix);
+                    }
+                }
+
+                // Convert Modified World -> New Local 
+                // Math: Local = World * Inverse(ParentWorld)
+                DirectX::XMVECTOR det;
+                DirectX::XMMATRIX parentInv = DirectX::XMMatrixInverse(&det, parentWorld);
+                DirectX::XMMATRIX newLocal = modifiedWorld * parentInv;
+
+                // 4. Decompose the new Local Matrix back into the TransformComponent
+                DirectX::XMVECTOR s, r, t;
+                DirectX::XMMatrixDecompose(&s, &r, &t, newLocal);
+
+                // Check for gimbal lock / Euler conversion if Euler angles are being cached for the UI here
+
+                DirectX::XMStoreFloat3(&tc.scale, s);
+                DirectX::XMStoreFloat4(&tc.rotation, r);
+                DirectX::XMStoreFloat3(&tc.position, t);
+
+                tc.isDirty = true; // Force the TransformSystem to recalculate matrices next frame
             }
         }
 
@@ -393,59 +469,32 @@ namespace Engine
                     ImGui::EndPopup();
                 }
 
-				// We cannot destroy entities while iterating over the view, so we defer destruction until after the loop
+				// We cannot destroy entities while iterating, so we defer destruction until after the loop
                 entt::entity entityToDestroy = entt::null;
 
-                // List all entities with a NameComponent in the hierarchy
-                auto view = scene.registry.view<Engine::NameComponent>();
+                // Find all roots (every entity has a NameComponent)
+                auto view = scene.registry.view<NameComponent>();
                 for (auto entity : view)
                 {
-                    auto& nameComp = view.get<Engine::NameComponent>(entity);
-
-                    // Prevent editor camera from showing in the hierarchy
-                    if (scene.registry.all_of<Engine::EditorCamControlComponent>(entity))
-                        continue;
-
-                    // Grey-out inactive entities in the list so state is obvious
-                    if (!nameComp.isActive) {
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                    auto* rel = scene.registry.try_get<RelationshipComponent>(entity);
+                    // Only draw root nodes (no relationship comp, or parent is null)
+                    if (!rel || rel->parent == entt::null) {
+                        DrawEntityNode(scene, entity, entityToDestroy);
                     }
-
-                    // Set tree node flags: leaf because parent-child relationships are not implemented yet, and span width for better clickability
-                    ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_SpanAvailWidth;
-                    // Note: Leaf because entities do not have children yet
-                    if (m_selectedEntity == entity)
-                        flags |= ImGuiTreeNodeFlags_Selected;
-
-                    // Use the entity ID as the ImGui tree node ID to ensure uniqueness
-                    bool opened = ImGui::TreeNodeEx((void*)(uint32_t)entity, flags, "%s", nameComp.name.c_str());
-                    // Handle selection: clicking on the item selects it
-                    if (ImGui::IsItemClicked()) { m_selectedEntity = entity; }
-
-                    if (!nameComp.isActive) {
-                        ImGui::PopStyleColor();
-                    }
-
-                    if (ImGui::BeginPopupContextItem())
-                    {
-                        if (ImGui::MenuItem("Delete Entity"))
-                        {
-                            if (m_selectedEntity == entity) m_selectedEntity = entt::null;
-                            // Defer the destruction until after the view loop completes
-                            entityToDestroy = entity;
-                        }
-                        ImGui::EndPopup();
-                    }
-
-                    // No child nodes for now, but they would go here
-                    if (opened) { ImGui::TreePop(); }
                 }
 
-                // Safely destroy the flagged entity now that iterators are no longer in use
-                if (entityToDestroy != entt::null)
-                {
+                // Make the empty window space a drop target to UNPARENT entities (make them roots)
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_PAYLOAD")) {
+                        entt::entity droppedEntity = *(const entt::entity*)payload->Data;
+                        scene.UnparentEntity(droppedEntity);
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
+                // Safe deferred destruction
+                if (entityToDestroy != entt::null) {
                     scene.DestroyEntity(entityToDestroy, physicsManager);
-                    entityToDestroy = entt::null;
                 }
 
                 // Deselection: click empty space in the window to clear selection

@@ -34,6 +34,7 @@ namespace Engine
         /*XMVECTOR qy = XMQuaternionRotationAxis(XMVectorSet(0,0,1,0), XM_PIDIV2);
 		XMStoreFloat4(&tf.rotation, qy);*/
 		tf.scale = DirectX::XMFLOAT3{ 0.1f, 0.1f, 0.1f };   // temporary scale down since model is huge
+        tf.isDirty = true;
 
         return e;
     }
@@ -81,6 +82,7 @@ namespace Engine
         tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, -10.0f };
         tf.rotation = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
         tf.scale    = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+        tf.isDirty = true;
 
         // Attach camera, viewport, editor cam control
         registry.emplace<CameraComponent>(e, CameraComponent{});
@@ -101,6 +103,7 @@ namespace Engine
         tf.position = DirectX::XMFLOAT3{ 0.0f, 0.0f, -10.0f };
         tf.rotation = DirectX::XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
         tf.scale    = DirectX::XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+        tf.isDirty = true;
 
         // Attach camera and viewport
         registry.emplace<CameraComponent>(e, CameraComponent{});
@@ -121,6 +124,7 @@ namespace Engine
         XMVECTOR qx = XMQuaternionRotationAxis(XMVectorSet(1,0,0,0), XM_PIDIV4);
         XMStoreFloat4(&tc.rotation, qx);
         tc.position = XMFLOAT3(0, 0, 0);
+        tc.isDirty = true;
         registry.emplace<TransformComponent>(e, tc);
 
         // White light, intensity 5.0
@@ -147,6 +151,7 @@ namespace Engine
         tc.position = position;
         tc.rotation = XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
         tc.scale    = XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+        tc.isDirty = true;
         registry.emplace<TransformComponent>(e, tc);
 
         LightComponent lc{};
@@ -195,6 +200,7 @@ namespace Engine
         tc.position = position;
         XMStoreFloat4(&tc.rotation, q);
         tc.scale = XMFLOAT3{ 1.0f, 1.0f, 1.0f };
+        tc.isDirty = true;
         registry.emplace<TransformComponent>(e, tc);
 
         LightComponent lc{};
@@ -206,6 +212,108 @@ namespace Engine
         registry.emplace<LightComponent>(e, lc);
 
         return e;
+    }
+
+
+    void Scene::UnparentEntity(entt::entity child)
+    {
+        if (!registry.valid(child) || !registry.all_of<RelationshipComponent>(child)) return;
+        auto& childRel = registry.get<RelationshipComponent>(child);
+        if (childRel.parent == entt::null) return; // Already a root
+
+        auto& parentRel = registry.get<RelationshipComponent>(childRel.parent);
+
+        // Remove from parent's child list
+        if (parentRel.firstChild == child) {
+            parentRel.firstChild = childRel.nextSibling;
+        }
+
+        // Repair sibling chain
+        if (childRel.prevSibling != entt::null) {
+            registry.get<RelationshipComponent>(childRel.prevSibling).nextSibling = childRel.nextSibling;
+        }
+        if (childRel.nextSibling != entt::null) {
+            registry.get<RelationshipComponent>(childRel.nextSibling).prevSibling = childRel.prevSibling;
+        }
+
+        // Preserve World Transform
+        if (registry.all_of<TransformComponent>(child)) {
+            auto& tc = registry.get<TransformComponent>(child);
+            DirectX::XMMATRIX world = DirectX::XMLoadFloat4x4(&tc.worldMatrix);
+            DirectX::XMVECTOR s, r, t;
+            DirectX::XMMatrixDecompose(&s, &r, &t, world);
+            DirectX::XMStoreFloat3(&tc.scale, s);
+            DirectX::XMStoreFloat4(&tc.rotation, r);
+            DirectX::XMStoreFloat3(&tc.position, t);
+            tc.isDirty = true;
+        }
+
+        // Clear child's links
+        childRel.parent = entt::null;
+        childRel.prevSibling = entt::null;
+        childRel.nextSibling = entt::null;
+
+        // Force matrix recalculation
+        if (registry.all_of<TransformComponent>(child)) registry.get<TransformComponent>(child).isDirty = true;
+    }
+
+    void Scene::ParentEntity(entt::entity child, entt::entity parent)
+    {
+        if (child == parent || !registry.valid(child) || !registry.valid(parent)) return;
+
+        // 1. Check for cycles (is the new parent actually a descendant of the child?)
+        entt::entity ancestor = parent;
+        while (ancestor != entt::null) {
+            if (ancestor == child) return; // Cycle detected, abort!
+            if (!registry.all_of<RelationshipComponent>(ancestor)) break;
+            ancestor = registry.get<RelationshipComponent>(ancestor).parent;
+        }
+
+        // 2. Unparent from current parent
+        UnparentEntity(child);
+
+        // Convert World to Local relative to new parent
+        if (registry.all_of<TransformComponent>(child) && registry.all_of<TransformComponent>(parent)) {
+            auto& childTc = registry.get<TransformComponent>(child);
+            auto& parentTc = registry.get<TransformComponent>(parent);
+
+            DirectX::XMMATRIX childWorld = DirectX::XMLoadFloat4x4(&childTc.worldMatrix);
+            DirectX::XMMATRIX parentWorld = DirectX::XMLoadFloat4x4(&parentTc.worldMatrix);
+
+            DirectX::XMVECTOR det;
+            DirectX::XMMATRIX parentInv = DirectX::XMMatrixInverse(&det, parentWorld);
+
+            // New Local = Child World * Inverse(Parent World)
+            DirectX::XMMATRIX newLocal = childWorld * parentInv;
+
+            DirectX::XMVECTOR s, r, t;
+            DirectX::XMMatrixDecompose(&s, &r, &t, newLocal);
+            DirectX::XMStoreFloat3(&childTc.scale, s);
+            DirectX::XMStoreFloat4(&childTc.rotation, r);
+            DirectX::XMStoreFloat3(&childTc.position, t);
+            childTc.isDirty = true;
+        }
+
+        // 3. Ensure both have RelationshipComponents
+        auto& childRel = registry.get_or_emplace<RelationshipComponent>(child);
+        auto& parentRel = registry.get_or_emplace<RelationshipComponent>(parent);
+
+        // 4. Attach to new parent
+        childRel.parent = parent;
+        if (parentRel.firstChild == entt::null) {
+            parentRel.firstChild = child;
+        } else {
+            // Find the last sibling and append
+            entt::entity current = parentRel.firstChild;
+            while (registry.get<RelationshipComponent>(current).nextSibling != entt::null) {
+                current = registry.get<RelationshipComponent>(current).nextSibling;
+            }
+            registry.get<RelationshipComponent>(current).nextSibling = child;
+            childRel.prevSibling = current;
+        }
+
+        // Force matrix recalculation
+        if (registry.all_of<TransformComponent>(child)) registry.get<TransformComponent>(child).isDirty = true;
     }
 
 
