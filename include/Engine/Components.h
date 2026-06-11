@@ -5,6 +5,7 @@
 #include <d3d11.h> // Added for ID3D11ShaderResourceView*
 #include <Jolt/Physics/Body/BodyID.h> // Jolt BodyID
 #include <entt/entt.hpp>
+#include <sol/sol.hpp>
 
 // Components class is used to define various components for ECS architecture
 
@@ -152,5 +153,17 @@ namespace Engine
         bool bodyCreated = false;   // whether registered in Jolt world
 
 		bool showWireframe = true; // Debug visualization toggle
+    };
+
+    struct LuaScriptComponent
+    {
+        std::string filepath = "";
+        sol::environment env;
+
+        sol::function OnCreate;
+        sol::function OnUpdate;
+        sol::function OnDestroy;
+
+        bool isInitialized = false;
     };
 }

@@ -349,6 +349,8 @@ int main(int argc, char** argv)
     g_perfFreq = SDL_GetPerformanceFrequency();
     g_lastCounter = SDL_GetPerformanceCounter();
 
+    g_scene.InitializeLuaBindings(&g_input, &g_physicsManager);
+
     while (g_running)
     {
         // Begin input frame

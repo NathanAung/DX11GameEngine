@@ -59,6 +59,7 @@ set(ENGINE_HEADER_FILES
     include/Engine/ImGuiManager.h
     include/Engine/MathUtils.h
     include/Engine/EditorUI.h
+    include/Engine/ScriptEntity.h
     external/imguizmo/ImGuizmo.h
 )
 
@@ -96,6 +97,14 @@ target_link_libraries(DX11GameEngine PRIVATE imgui::imgui)
 # Jolt Physics
 find_package(Jolt CONFIG REQUIRED)
 target_link_libraries(DX11GameEngine PRIVATE Jolt::Jolt)
+
+# Lua
+find_package(lua CONFIG REQUIRED)
+target_link_libraries(DX11GameEngine PRIVATE lua)
+
+# sol2 (header-only, but sets up correct include paths)
+find_package(sol2 CONFIG REQUIRED)
+target_link_libraries(DX11GameEngine PRIVATE sol2::sol2)
 
 # --------------------------------------------------------------
 # DirectX system libraries

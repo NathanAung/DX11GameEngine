@@ -8,6 +8,8 @@
     "entt",
     "rapidjson",
     "joltphysics",
+    "lua",
+    "sol2",
     {
       "name": "imgui",
       "features": [

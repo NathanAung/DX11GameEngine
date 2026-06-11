@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <entt/entt.hpp>
+#include <sol/sol.hpp>
 #include "Engine/Components.h"
 
 // Scene class manages entities and components using EnTT ECS
@@ -8,6 +9,7 @@
 namespace Engine
 {
     class PhysicsManager;
+    class InputManager;
 
     class Scene
     {
@@ -20,6 +22,10 @@ namespace Engine
 
         // Active camera entity used for rendering
         entt::entity m_activeRenderCamera = entt::null;
+
+        sol::state m_lua;
+
+        Engine::PhysicsManager* GetPhysicsManager() const { return m_physicsManager; }
 
         // Create a generic entity with ID, Name and default Transform
         entt::entity CreateEntity(const std::string& name);
@@ -76,6 +82,8 @@ namespace Engine
         void CopyToBackup();
         void RestoreFromBackup(Engine::PhysicsManager& physicsManager);
 
+        void InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager);
+
     private:
 		// Cache default asset IDs for editor-spawned primitives
         int m_defaultShaderID = 0;
@@ -83,5 +91,7 @@ namespace Engine
         int m_cubeMeshID = 0;
         int m_sphereMeshID = 0;
         int m_capsuleMeshID = 0;
+
+        Engine::PhysicsManager* m_physicsManager = nullptr;
     };
 }

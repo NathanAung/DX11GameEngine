@@ -1,6 +1,8 @@
 #include "Engine/Scene.h"
 #include "Engine/Components.h"
 #include "Engine/PhysicsManager.h"
+#include "Engine/ScriptEntity.h"
+#include "Engine/InputManager.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
@@ -409,5 +411,67 @@ namespace Engine
         }
 
         // NOTE: Bodies are rebuilt by PhysicsSystem on the next frame from restored ECS state.
+    }
+
+    void Scene::InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager)
+    {
+        m_physicsManager = physicsManager;
+
+        m_lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string);
+
+        // Bind DirectX::XMFLOAT3 as Vector3
+        m_lua.new_usertype<DirectX::XMFLOAT3>("Vector3",
+            sol::constructors<DirectX::XMFLOAT3(), DirectX::XMFLOAT3(float, float, float)>(),
+            "x", &DirectX::XMFLOAT3::x,
+            "y", &DirectX::XMFLOAT3::y,
+            "z", &DirectX::XMFLOAT3::z
+        );
+
+        // Bind TransformComponent
+        m_lua.new_usertype<TransformComponent>("TransformComponent",
+            "position", sol::property(
+                [](TransformComponent& tc) -> DirectX::XMFLOAT3 { return tc.position; },
+                [](TransformComponent& tc, const DirectX::XMFLOAT3& pos) { tc.position = pos; tc.isDirty = true; }
+            ),
+            "scale", sol::property(
+                [](TransformComponent& tc) -> DirectX::XMFLOAT3 { return tc.scale; },
+                [](TransformComponent& tc, const DirectX::XMFLOAT3& scl) { tc.scale = scl; tc.isDirty = true; }
+            ),
+            "SetPosition", [](TransformComponent& tc, float x, float y, float z) {
+                tc.position = DirectX::XMFLOAT3(x, y, z);
+                tc.isDirty = true;
+            },
+            "SetScale", [](TransformComponent& tc, float x, float y, float z) {
+                tc.scale = DirectX::XMFLOAT3(x, y, z);
+                tc.isDirty = true;
+            }
+        );
+
+        // Bind ScriptEntity wrapper
+        m_lua.new_usertype<ScriptEntity>("Entity",
+            sol::constructors<ScriptEntity(entt::entity, Engine::Scene*)>(),
+            "GetTransform", &ScriptEntity::GetTransform,
+            "GetName", &ScriptEntity::GetName,
+            "ApplyLinearImpulse", &ScriptEntity::ApplyLinearImpulse
+        );
+
+        // Expose Engine::Key Enum 
+        m_lua.new_enum<Engine::Key>("Key", {
+            { "W", Engine::Key::W },
+            { "A", Engine::Key::A },
+            { "S", Engine::Key::S },
+            { "D", Engine::Key::D },
+            { "LShift", Engine::Key::LShift },
+            { "Space", Engine::Key::Space },
+            { "Esc", Engine::Key::Esc }
+        });
+
+        // Bind InputManager
+        m_lua.new_usertype<Engine::InputManager>("InputManager",
+            "IsKeyDown", &Engine::InputManager::IsKeyDown
+        );
+
+        // Register Global Input Pointer
+        m_lua["Input"] = inputManager;
     }
 }
