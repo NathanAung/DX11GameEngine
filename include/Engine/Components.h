@@ -155,6 +155,8 @@ namespace Engine
 		bool showWireframe = true; // Debug visualization toggle
     };
 
+	// Lua scripting component
+	// Stores Lua environment and function references for entity scripting
     struct LuaScriptComponent
     {
         std::string filepath = "";

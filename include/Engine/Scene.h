@@ -23,6 +23,7 @@ namespace Engine
         // Active camera entity used for rendering
         entt::entity m_activeRenderCamera = entt::null;
 
+		// Lua state for scripting
         sol::state m_lua;
 
         Engine::PhysicsManager* GetPhysicsManager() const { return m_physicsManager; }
@@ -82,6 +83,7 @@ namespace Engine
         void CopyToBackup();
         void RestoreFromBackup(Engine::PhysicsManager& physicsManager);
 
+		// Initialize Lua bindings for scene manipulation and scripting
         void InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager);
 
     private:

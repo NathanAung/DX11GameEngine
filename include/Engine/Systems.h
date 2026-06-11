@@ -36,4 +36,9 @@ namespace Engine
 
     // transform update system: cascades local->world matrices down the relationship tree
     void TransformSystem(Engine::Scene& scene);
+
+    // script lifecycle systems
+    void ScriptSystemInit(Engine::Scene& scene);
+    void ScriptSystemUpdate(Engine::Scene& scene, float dt);
+    void ScriptSystemShutdown(Engine::Scene& scene);
 }

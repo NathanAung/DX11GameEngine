@@ -372,6 +372,7 @@ namespace Engine
             if (registry.all_of<ViewportComponent>(entity)) m_backupRegistry.emplace<ViewportComponent>(copy, registry.get<ViewportComponent>(entity));
             if (registry.all_of<EditorCamControlComponent>(entity)) m_backupRegistry.emplace<EditorCamControlComponent>(copy, registry.get<EditorCamControlComponent>(entity));
             if (registry.all_of<RelationshipComponent>(entity)) m_backupRegistry.emplace<RelationshipComponent>(copy, registry.get<RelationshipComponent>(entity));
+			if (registry.all_of<LuaScriptComponent>(entity)) m_backupRegistry.emplace<LuaScriptComponent>(copy, registry.get<LuaScriptComponent>(entity));
         }
     }
 
@@ -408,6 +409,7 @@ namespace Engine
             if (m_backupRegistry.all_of<ViewportComponent>(entity)) registry.emplace<ViewportComponent>(restored, m_backupRegistry.get<ViewportComponent>(entity));
             if (m_backupRegistry.all_of<EditorCamControlComponent>(entity)) registry.emplace<EditorCamControlComponent>(restored, m_backupRegistry.get<EditorCamControlComponent>(entity));
             if (m_backupRegistry.all_of<RelationshipComponent>(entity)) registry.emplace<RelationshipComponent>(restored, m_backupRegistry.get<RelationshipComponent>(entity));
+			if (m_backupRegistry.all_of<LuaScriptComponent>(entity)) registry.emplace<LuaScriptComponent>(restored, m_backupRegistry.get<LuaScriptComponent>(entity));
         }
 
         // NOTE: Bodies are rebuilt by PhysicsSystem on the next frame from restored ECS state.
@@ -417,6 +419,7 @@ namespace Engine
     {
         m_physicsManager = physicsManager;
 
+		// Open basic Lua libraries
         m_lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string);
 
         // Bind DirectX::XMFLOAT3 as Vector3
@@ -429,6 +432,7 @@ namespace Engine
 
         // Bind TransformComponent
         m_lua.new_usertype<TransformComponent>("TransformComponent",
+			// Expose position and scale as properties that mark the component dirty when set
             "position", sol::property(
                 [](TransformComponent& tc) -> DirectX::XMFLOAT3 { return tc.position; },
                 [](TransformComponent& tc, const DirectX::XMFLOAT3& pos) { tc.position = pos; tc.isDirty = true; }
@@ -437,6 +441,7 @@ namespace Engine
                 [](TransformComponent& tc) -> DirectX::XMFLOAT3 { return tc.scale; },
                 [](TransformComponent& tc, const DirectX::XMFLOAT3& scl) { tc.scale = scl; tc.isDirty = true; }
             ),
+			// Alternatively, expose explicit setter methods for position and scale
             "SetPosition", [](TransformComponent& tc, float x, float y, float z) {
                 tc.position = DirectX::XMFLOAT3(x, y, z);
                 tc.isDirty = true;

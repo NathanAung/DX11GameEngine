@@ -349,6 +349,7 @@ int main(int argc, char** argv)
     g_perfFreq = SDL_GetPerformanceFrequency();
     g_lastCounter = SDL_GetPerformanceCounter();
 
+	// Initialize Lua bindings with access to input and physics manager
     g_scene.InitializeLuaBindings(&g_input, &g_physicsManager);
 
     while (g_running)
@@ -406,8 +407,14 @@ int main(int argc, char** argv)
 }
 
 void Update(float deltaTime) {
+    bool isPlaying = g_editorUI.GetState() == Engine::EditorState::Play;
+
     // Physics step and sync (Play: simulate + pull. Edit: push gizmo transforms to colliders)
-    Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime, g_editorUI.GetState() == Engine::EditorState::Play);
+    Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime, isPlaying);
+
+    if (isPlaying) {
+        Engine::ScriptSystemUpdate(g_scene, deltaTime);
+    }
 
     // only process editor camera in Edit mode
 	if (g_editorUI.GetState() == Engine::EditorState::Edit)
