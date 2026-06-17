@@ -897,6 +897,17 @@ namespace Engine
                                 ImGui::EndCombo();
                             }
 
+                            if (ImGui::BeginDragDropTarget())
+                            {
+                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
+                                {
+                                    // Cast the payload data back to a string and assign it
+                                    const char* droppedPath = (const char*)payload->Data;
+                                    scriptComp.filepath = droppedPath;
+                                }
+                                ImGui::EndDragDropTarget();
+                            }
+
                             ImGui::TreePop();
                         }
                         ImGui::PopID();
@@ -966,8 +977,27 @@ namespace Engine
                     }
                     else
                     {
-                        // Files: display only for now (drag/drop & open actions later)
-                        ImGui::Text("[FILE] %s", filenameString.c_str());
+                        // Files: display as selectable so it highlights on hover
+                        ImGui::Selectable(("[FILE] " + filenameString).c_str());
+
+                        // If the file is a Lua script, make it a Drag Source
+                        if (path.extension() == ".lua")
+                        {
+                            if (ImGui::BeginDragDropSource())
+                            {
+                                // Get path and normalize Windows backslashes to forward slashes
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+
+                                // Attach the string path as the payload
+                                ImGui::SetDragDropPayload("SCRIPT_FILE", relativePath.c_str(), relativePath.size() + 1);
+
+                                // Tooltip next to the cursor while dragging
+                                ImGui::Text("Assign %s", filenameString.c_str());
+
+                                ImGui::EndDragDropSource();
+                            }
+                        }
                     }
                 }
             }

@@ -462,18 +462,30 @@ namespace Engine
 
         // Expose Engine::Key Enum 
         m_lua.new_enum<Engine::Key>("Key", {
-            { "W", Engine::Key::W },
-            { "A", Engine::Key::A },
-            { "S", Engine::Key::S },
-            { "D", Engine::Key::D },
-            { "LShift", Engine::Key::LShift },
-            { "Space", Engine::Key::Space },
-            { "Esc", Engine::Key::Esc }
-        });
+            { "A", Engine::Key::A }, { "B", Engine::Key::B }, { "C", Engine::Key::C }, { "D", Engine::Key::D },
+            { "E", Engine::Key::E }, { "F", Engine::Key::F }, { "G", Engine::Key::G }, { "H", Engine::Key::H },
+            { "I", Engine::Key::I }, { "J", Engine::Key::J }, { "K", Engine::Key::K }, { "L", Engine::Key::L },
+            { "M", Engine::Key::M }, { "N", Engine::Key::N }, { "O", Engine::Key::O }, { "P", Engine::Key::P },
+            { "Q", Engine::Key::Q }, { "R", Engine::Key::R }, { "S", Engine::Key::S }, { "T", Engine::Key::T },
+            { "U", Engine::Key::U }, { "V", Engine::Key::V }, { "W", Engine::Key::W }, { "X", Engine::Key::X },
+            { "Y", Engine::Key::Y }, { "Z", Engine::Key::Z },
+            { "Num0", Engine::Key::Num0 }, { "Num1", Engine::Key::Num1 }, { "Num2", Engine::Key::Num2 },
+            { "Num3", Engine::Key::Num3 }, { "Num4", Engine::Key::Num4 }, { "Num5", Engine::Key::Num5 },
+            { "Num6", Engine::Key::Num6 }, { "Num7", Engine::Key::Num7 }, { "Num8", Engine::Key::Num8 },
+            { "Num9", Engine::Key::Num9 },
+            { "Up", Engine::Key::Up }, { "Down", Engine::Key::Down }, { "Left", Engine::Key::Left }, { "Right", Engine::Key::Right },
+            { "Space", Engine::Key::Space }, { "Escape", Engine::Key::Escape }, { "Enter", Engine::Key::Enter },
+            { "Tab", Engine::Key::Tab }, { "Backspace", Engine::Key::Backspace },
+            { "LShift", Engine::Key::LShift }, { "RShift", Engine::Key::RShift },
+            { "LControl", Engine::Key::LControl }, { "RControl", Engine::Key::RControl },
+            { "LAlt", Engine::Key::LAlt }, { "RAlt", Engine::Key::RAlt }
+            });
 
         // Bind InputManager
         m_lua.new_usertype<Engine::InputManager>("InputManager",
-            "IsKeyDown", &Engine::InputManager::IsKeyDown
+            "IsKeyDown", &Engine::InputManager::IsKeyDown,
+            "IsKeyPressed", &Engine::InputManager::IsKeyPressed,
+            "IsKeyReleased", &Engine::InputManager::IsKeyReleased
         );
 
         // Register Global Input Pointer
