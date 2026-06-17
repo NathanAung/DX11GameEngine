@@ -1,6 +1,8 @@
 #include "Engine/Scene.h"
 #include "Engine/Components.h"
 #include "Engine/PhysicsManager.h"
+#include "Engine/ScriptEntity.h"
+#include "Engine/InputManager.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
@@ -370,6 +372,7 @@ namespace Engine
             if (registry.all_of<ViewportComponent>(entity)) m_backupRegistry.emplace<ViewportComponent>(copy, registry.get<ViewportComponent>(entity));
             if (registry.all_of<EditorCamControlComponent>(entity)) m_backupRegistry.emplace<EditorCamControlComponent>(copy, registry.get<EditorCamControlComponent>(entity));
             if (registry.all_of<RelationshipComponent>(entity)) m_backupRegistry.emplace<RelationshipComponent>(copy, registry.get<RelationshipComponent>(entity));
+			if (registry.all_of<LuaScriptComponent>(entity)) m_backupRegistry.emplace<LuaScriptComponent>(copy, registry.get<LuaScriptComponent>(entity));
         }
     }
 
@@ -406,8 +409,131 @@ namespace Engine
             if (m_backupRegistry.all_of<ViewportComponent>(entity)) registry.emplace<ViewportComponent>(restored, m_backupRegistry.get<ViewportComponent>(entity));
             if (m_backupRegistry.all_of<EditorCamControlComponent>(entity)) registry.emplace<EditorCamControlComponent>(restored, m_backupRegistry.get<EditorCamControlComponent>(entity));
             if (m_backupRegistry.all_of<RelationshipComponent>(entity)) registry.emplace<RelationshipComponent>(restored, m_backupRegistry.get<RelationshipComponent>(entity));
+			if (m_backupRegistry.all_of<LuaScriptComponent>(entity)) registry.emplace<LuaScriptComponent>(restored, m_backupRegistry.get<LuaScriptComponent>(entity));
         }
 
         // NOTE: Bodies are rebuilt by PhysicsSystem on the next frame from restored ECS state.
+    }
+
+
+    void Scene::SubmitForDestruction(entt::entity entity)
+    {
+        // Add to queue if not already queued
+        if (std::find(m_entitiesToDestroy.begin(), m_entitiesToDestroy.end(), entity) == m_entitiesToDestroy.end()) {
+            m_entitiesToDestroy.push_back(entity);
+        }
+    }
+
+    void Scene::ProcessDestructionQueue(Engine::PhysicsManager& physicsManager)
+    {
+        for (auto entity : m_entitiesToDestroy) {
+            DestroyEntity(entity, physicsManager);
+        }
+        m_entitiesToDestroy.clear();
+    }
+
+
+    void Scene::InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager)
+    {
+        m_physicsManager = physicsManager;
+
+		// Open basic Lua libraries
+        m_lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string);
+
+        // Bind DirectX::XMFLOAT3 as Vector3
+        m_lua.new_usertype<DirectX::XMFLOAT3>("Vector3",
+            sol::constructors<DirectX::XMFLOAT3(), DirectX::XMFLOAT3(float, float, float)>(),
+            "x", &DirectX::XMFLOAT3::x,
+            "y", &DirectX::XMFLOAT3::y,
+            "z", &DirectX::XMFLOAT3::z
+        );
+
+        // Bind TransformComponent
+        m_lua.new_usertype<TransformComponent>("TransformComponent",
+			// Expose position and scale as properties that mark the component dirty when set
+            "position", sol::property(
+                [](TransformComponent& tc) -> DirectX::XMFLOAT3 { return tc.position; },
+                [](TransformComponent& tc, const DirectX::XMFLOAT3& pos) { tc.position = pos; tc.isDirty = true; }
+            ),
+            "scale", sol::property(
+                [](TransformComponent& tc) -> DirectX::XMFLOAT3 { return tc.scale; },
+                [](TransformComponent& tc, const DirectX::XMFLOAT3& scl) { tc.scale = scl; tc.isDirty = true; }
+            ),
+			// Alternatively, expose explicit setter methods for position and scale
+            "SetPosition", [](TransformComponent& tc, float x, float y, float z) {
+                tc.position = DirectX::XMFLOAT3(x, y, z);
+                tc.isDirty = true;
+            },
+            "SetScale", [](TransformComponent& tc, float x, float y, float z) {
+                tc.scale = DirectX::XMFLOAT3(x, y, z);
+                tc.isDirty = true;
+            }
+        );
+
+        // Bind Component Enums
+        m_lua.new_enum<Engine::MeshType>("MeshType", {
+            { "Cube", Engine::MeshType::Cube },
+            { "Sphere", Engine::MeshType::Sphere },
+            { "Capsule", Engine::MeshType::Capsule },
+            { "Custom", Engine::MeshType::Custom }
+        });
+
+        m_lua.new_enum<Engine::RBShape>("RBShape", {
+            { "Box", Engine::RBShape::Box },
+            { "Sphere", Engine::RBShape::Sphere },
+            { "Capsule", Engine::RBShape::Capsule },
+            { "Mesh", Engine::RBShape::Mesh }
+        });
+
+        m_lua.new_enum<Engine::RBMotion>("RBMotion", {
+            { "Static", Engine::RBMotion::Static },
+            { "Dynamic", Engine::RBMotion::Dynamic }
+        });
+
+        // Bind ScriptEntity wrapper
+        m_lua.new_usertype<ScriptEntity>("Entity",
+            sol::constructors<ScriptEntity(entt::entity, Engine::Scene*)>(),
+            "GetTransform", &ScriptEntity::GetTransform,
+            "GetName", &ScriptEntity::GetName,
+            "ApplyLinearImpulse", &ScriptEntity::ApplyLinearImpulse,
+            "Instantiate", &ScriptEntity::Instantiate,
+            "InstantiateCube", &ScriptEntity::InstantiateCube,
+            "InstantiateSphere", &ScriptEntity::InstantiateSphere,
+            "Destroy", &ScriptEntity::Destroy,
+            "AddMeshRenderer", &ScriptEntity::AddMeshRenderer,
+            "AddRigidBody", &ScriptEntity::AddRigidBody,
+            "AddLuaScript", &ScriptEntity::AddLuaScript
+        );
+
+        // Expose Engine::Key Enum 
+        m_lua.new_enum<Engine::Key>("Key", {
+            { "A", Engine::Key::A }, { "B", Engine::Key::B }, { "C", Engine::Key::C }, { "D", Engine::Key::D },
+            { "E", Engine::Key::E }, { "F", Engine::Key::F }, { "G", Engine::Key::G }, { "H", Engine::Key::H },
+            { "I", Engine::Key::I }, { "J", Engine::Key::J }, { "K", Engine::Key::K }, { "L", Engine::Key::L },
+            { "M", Engine::Key::M }, { "N", Engine::Key::N }, { "O", Engine::Key::O }, { "P", Engine::Key::P },
+            { "Q", Engine::Key::Q }, { "R", Engine::Key::R }, { "S", Engine::Key::S }, { "T", Engine::Key::T },
+            { "U", Engine::Key::U }, { "V", Engine::Key::V }, { "W", Engine::Key::W }, { "X", Engine::Key::X },
+            { "Y", Engine::Key::Y }, { "Z", Engine::Key::Z },
+            { "Num0", Engine::Key::Num0 }, { "Num1", Engine::Key::Num1 }, { "Num2", Engine::Key::Num2 },
+            { "Num3", Engine::Key::Num3 }, { "Num4", Engine::Key::Num4 }, { "Num5", Engine::Key::Num5 },
+            { "Num6", Engine::Key::Num6 }, { "Num7", Engine::Key::Num7 }, { "Num8", Engine::Key::Num8 },
+            { "Num9", Engine::Key::Num9 },
+            { "Up", Engine::Key::Up }, { "Down", Engine::Key::Down }, { "Left", Engine::Key::Left }, { "Right", Engine::Key::Right },
+            { "Space", Engine::Key::Space }, { "Escape", Engine::Key::Escape }, { "Enter", Engine::Key::Enter },
+            { "Tab", Engine::Key::Tab }, { "Backspace", Engine::Key::Backspace },
+            { "LShift", Engine::Key::LShift }, { "RShift", Engine::Key::RShift },
+            { "LControl", Engine::Key::LControl }, { "RControl", Engine::Key::RControl },
+            { "LAlt", Engine::Key::LAlt }, { "RAlt", Engine::Key::RAlt }
+            });
+
+        // Bind InputManager
+        m_lua.new_usertype<Engine::InputManager>("InputManager",
+            "IsKeyDown", &Engine::InputManager::IsKeyDown,
+            "IsKeyPressed", &Engine::InputManager::IsKeyPressed,
+            "IsKeyReleased", &Engine::InputManager::IsKeyReleased
+        );
+
+        // Register Global Input Pointer
+        m_lua["Input"] = inputManager;
     }
 }

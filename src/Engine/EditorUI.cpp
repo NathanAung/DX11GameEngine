@@ -2,6 +2,7 @@
 #include "Engine/Components.h"
 #include "Engine/MathUtils.h"
 #include "Engine/PhysicsManager.h"
+#include "Engine/Systems.h"
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <ImGuizmo.h>
@@ -169,6 +170,7 @@ namespace Engine
 
                 // Snapshot the scene before simulation starts
                 scene.CopyToBackup();
+                Engine::ScriptSystemInit(scene);
 
                 // Switch to Game Camera
                 auto camView = scene.registry.view<Engine::CameraComponent>();
@@ -186,6 +188,7 @@ namespace Engine
             {
                 m_state = EditorState::Edit;
 
+                Engine::ScriptSystemShutdown(scene);
                 // Restore the original scene state and reset all physics bodies
                 scene.RestoreFromBackup(physicsManager);
 
@@ -828,6 +831,132 @@ namespace Engine
                         }
                     }
 
+                    // LuaScriptComponent UI
+                    if (scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity))
+                    {
+                        auto& scriptComp = scene.registry.get<Engine::LuaScriptComponent>(m_selectedEntity);
+
+                        ImGui::PushID("LuaScript");
+                        bool treeOpen = ImGui::TreeNodeEx("Lua Scripts", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                        bool removeComponent = false;
+                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                            ImGui::EndPopup();
+                        }
+
+                        if (treeOpen)
+                        {
+                            // Scan assets/scripts for .lua files
+                            std::vector<std::string> scriptFiles;
+                            scriptFiles.push_back("None");  // Option to clear script
+
+                            std::string scriptsPath = "assets/scripts";
+
+                            // Ensure directory exists to prevent crashes
+                            if (!std::filesystem::exists(scriptsPath)) {
+                                std::filesystem::create_directories(scriptsPath);
+                            }
+
+                            for (const auto& entry : std::filesystem::directory_iterator(scriptsPath)) {
+                                if (entry.path().extension() == ".lua") {
+                                    scriptFiles.push_back(entry.path().filename().string());
+                                }
+                            }
+
+							// Display each script slot with a dropdown and remove button
+                            int scriptToRemove = -1;
+
+							// Iterate through each script slot in the LuaScriptComponent
+                            for (size_t s = 0; s < scriptComp.scripts.size(); ++s)
+                            {
+                                ImGui::PushID(static_cast<int>(s));
+                                auto& script = scriptComp.scripts[s];
+
+                                // Find current active script index in the dropdown
+
+                                int currentIndex = 0;
+                                std::string currentFilename = "";
+                                if (!script.filepath.empty()) {
+                                    currentFilename = std::filesystem::path(script.filepath).filename().string();
+                                    for (int i = 1; i < scriptFiles.size(); ++i) {
+                                        if (scriptFiles[i] == currentFilename) {
+                                            currentIndex = i;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30.0f);
+
+								// Dropdown for selecting a script file
+                                if (ImGui::BeginCombo("##ScriptFile", scriptFiles[currentIndex].c_str()))
+                                {
+                                    for (int i = 0; i < scriptFiles.size(); i++)
+                                    {
+                                        bool isSelected = (currentIndex == i);
+                                        if (ImGui::Selectable(scriptFiles[i].c_str(), isSelected))
+                                        {
+                                            if (i == 0) script.filepath = "";
+                                            else script.filepath = scriptsPath + "/" + scriptFiles[i];
+                                        }
+                                        if (isSelected) ImGui::SetItemDefaultFocus();
+                                    }
+                                    ImGui::EndCombo();
+                                }
+
+								// Drag-and-drop support for assigning scripts directly from the Content Browser
+                                if (ImGui::BeginDragDropTarget())
+                                {
+                                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
+                                    {
+                                        const char* droppedPath = (const char*)payload->Data;
+                                        script.filepath = droppedPath;
+                                    }
+                                    ImGui::EndDragDropTarget();
+                                }
+
+                                ImGui::SameLine();
+
+								// Remove button for the script slot
+                                if (ImGui::Button("X")) {
+                                    scriptToRemove = static_cast<int>(s);
+                                }
+                                ImGui::PopID();
+                            }
+
+							// Remove the script slot if the "X" button was clicked
+                            if (scriptToRemove >= 0) {
+                                scriptComp.scripts.erase(scriptComp.scripts.begin() + scriptToRemove);
+                            }
+
+							// Button to add a new script slot
+                            if (ImGui::Button("Add Script Slot", ImVec2(-1, 0))) {
+                                scriptComp.scripts.push_back(Engine::ScriptInstance{});
+                            }
+                            // Allow dropping directly onto the "Add" button to quickly append
+                            if (ImGui::BeginDragDropTarget())
+                            {
+                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
+                                {
+                                    const char* droppedPath = (const char*)payload->Data;
+                                    Engine::ScriptInstance newScript;
+                                    newScript.filepath = droppedPath;
+                                    scriptComp.scripts.push_back(newScript);
+                                }
+                                ImGui::EndDragDropTarget();
+                            }
+
+                            ImGui::TreePop();
+                        }
+                        ImGui::PopID();
+
+                        if (removeComponent)
+                        {
+                            scene.registry.remove<Engine::LuaScriptComponent>(m_selectedEntity);
+                        }
+                    }
+
 					// Add Component (only show what the entity doesn't currently have)
                     ImGui::Separator();
                     ImGui::Spacing();
@@ -845,6 +974,9 @@ namespace Engine
                         }
                         if (!scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
                             if (ImGui::MenuItem("Rigidbody")) scene.registry.emplace<Engine::RigidBodyComponent>(m_selectedEntity);
+                        }
+                        if (!scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity)) {
+                            if (ImGui::MenuItem("Lua Script")) scene.registry.emplace<Engine::LuaScriptComponent>(m_selectedEntity);
                         }
                         // Add other components like CameraComponent, etc.
                         ImGui::EndPopup();
@@ -884,8 +1016,27 @@ namespace Engine
                     }
                     else
                     {
-                        // Files: display only for now (drag/drop & open actions later)
-                        ImGui::Text("[FILE] %s", filenameString.c_str());
+                        // Files: display as selectable so it highlights on hover
+                        ImGui::Selectable(("[FILE] " + filenameString).c_str());
+
+                        // If the file is a Lua script, make it a Drag Source
+                        if (path.extension() == ".lua")
+                        {
+                            if (ImGui::BeginDragDropSource())
+                            {
+                                // Get path and normalize Windows backslashes to forward slashes
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+
+                                // Attach the string path as the payload
+                                ImGui::SetDragDropPayload("SCRIPT_FILE", relativePath.c_str(), relativePath.size() + 1);
+
+                                // Tooltip next to the cursor while dragging
+                                ImGui::Text("Assign %s", filenameString.c_str());
+
+                                ImGui::EndDragDropSource();
+                            }
+                        }
                     }
                 }
             }

@@ -5,6 +5,7 @@
 #include <d3d11.h> // Added for ID3D11ShaderResourceView*
 #include <Jolt/Physics/Body/BodyID.h> // Jolt BodyID
 #include <entt/entt.hpp>
+#include <sol/sol.hpp>
 
 // Components class is used to define various components for ECS architecture
 
@@ -48,6 +49,7 @@ namespace Engine
         bool isDirty = true; // Flag to force recalculation
     };
 
+	enum class MeshType { Cube, Sphere, Capsule, Custom };
     enum class MaterialType { LitColor, UnlitColor, Textured };
 
     // Placeholder renderer bindings
@@ -152,5 +154,25 @@ namespace Engine
         bool bodyCreated = false;   // whether registered in Jolt world
 
 		bool showWireframe = true; // Debug visualization toggle
+    };
+
+	// Lua scripting
+	// Stores Lua environment and function references for entity scripting
+    struct ScriptInstance
+    {
+        std::string filepath = "";
+        sol::environment env;
+
+        sol::function OnCreate;
+        sol::function OnUpdate;
+        sol::function OnDestroy;
+
+        bool isInitialized = false;
+    };
+
+	// Component to hold multiple Lua scripts for an entity
+    struct LuaScriptComponent
+    {
+        std::vector<ScriptInstance> scripts;
     };
 }
