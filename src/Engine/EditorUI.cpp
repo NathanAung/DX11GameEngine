@@ -837,7 +837,7 @@ namespace Engine
                         auto& scriptComp = scene.registry.get<Engine::LuaScriptComponent>(m_selectedEntity);
 
                         ImGui::PushID("LuaScript");
-                        bool treeOpen = ImGui::TreeNodeEx("Lua Script", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+                        bool treeOpen = ImGui::TreeNodeEx("Lua Scripts", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
 
                         bool removeComponent = false;
                         if (ImGui::BeginPopupContextItem("RemoveMenu")) {
@@ -849,7 +849,7 @@ namespace Engine
                         {
                             // Scan assets/scripts for .lua files
                             std::vector<std::string> scriptFiles;
-                            scriptFiles.push_back("None"); // Option to clear script
+                            scriptFiles.push_back("None");  // Option to clear script
 
                             std::string scriptsPath = "assets/scripts";
 
@@ -864,46 +864,85 @@ namespace Engine
                                 }
                             }
 
-                            // Find current active script index in the dropdown
-                            int currentIndex = 0;
-                            std::string currentFilename = "";
-                            if (!scriptComp.filepath.empty()) {
-                                currentFilename = std::filesystem::path(scriptComp.filepath).filename().string();
-                                for (int i = 1; i < scriptFiles.size(); ++i) {
-                                    if (scriptFiles[i] == currentFilename) {
-                                        currentIndex = i;
-                                        break;
-                                    }
-                                }
-                            }
+							// Display each script slot with a dropdown and remove button
+                            int scriptToRemove = -1;
 
-                            // Draw Combo Dropdown
-                            if (ImGui::BeginCombo("Script File", scriptFiles[currentIndex].c_str()))
+							// Iterate through each script slot in the LuaScriptComponent
+                            for (size_t s = 0; s < scriptComp.scripts.size(); ++s)
                             {
-                                for (int i = 0; i < scriptFiles.size(); i++)
-                                {
-                                    bool isSelected = (currentIndex == i);
-                                    if (ImGui::Selectable(scriptFiles[i].c_str(), isSelected))
-                                    {
-                                        if (i == 0) {
-                                            scriptComp.filepath = ""; // Clear script
-                                        }
-                                        else {
-                                            scriptComp.filepath = scriptsPath + "/" + scriptFiles[i];
+                                ImGui::PushID(static_cast<int>(s));
+                                auto& script = scriptComp.scripts[s];
+
+                                // Find current active script index in the dropdown
+
+                                int currentIndex = 0;
+                                std::string currentFilename = "";
+                                if (!script.filepath.empty()) {
+                                    currentFilename = std::filesystem::path(script.filepath).filename().string();
+                                    for (int i = 1; i < scriptFiles.size(); ++i) {
+                                        if (scriptFiles[i] == currentFilename) {
+                                            currentIndex = i;
+                                            break;
                                         }
                                     }
-                                    if (isSelected) ImGui::SetItemDefaultFocus();
                                 }
-                                ImGui::EndCombo();
+
+                                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30.0f);
+
+								// Dropdown for selecting a script file
+                                if (ImGui::BeginCombo("##ScriptFile", scriptFiles[currentIndex].c_str()))
+                                {
+                                    for (int i = 0; i < scriptFiles.size(); i++)
+                                    {
+                                        bool isSelected = (currentIndex == i);
+                                        if (ImGui::Selectable(scriptFiles[i].c_str(), isSelected))
+                                        {
+                                            if (i == 0) script.filepath = "";
+                                            else script.filepath = scriptsPath + "/" + scriptFiles[i];
+                                        }
+                                        if (isSelected) ImGui::SetItemDefaultFocus();
+                                    }
+                                    ImGui::EndCombo();
+                                }
+
+								// Drag-and-drop support for assigning scripts directly from the Content Browser
+                                if (ImGui::BeginDragDropTarget())
+                                {
+                                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
+                                    {
+                                        const char* droppedPath = (const char*)payload->Data;
+                                        script.filepath = droppedPath;
+                                    }
+                                    ImGui::EndDragDropTarget();
+                                }
+
+                                ImGui::SameLine();
+
+								// Remove button for the script slot
+                                if (ImGui::Button("X")) {
+                                    scriptToRemove = static_cast<int>(s);
+                                }
+                                ImGui::PopID();
                             }
 
+							// Remove the script slot if the "X" button was clicked
+                            if (scriptToRemove >= 0) {
+                                scriptComp.scripts.erase(scriptComp.scripts.begin() + scriptToRemove);
+                            }
+
+							// Button to add a new script slot
+                            if (ImGui::Button("Add Script Slot", ImVec2(-1, 0))) {
+                                scriptComp.scripts.push_back(Engine::ScriptInstance{});
+                            }
+                            // Allow dropping directly onto the "Add" button to quickly append
                             if (ImGui::BeginDragDropTarget())
                             {
                                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
                                 {
-                                    // Cast the payload data back to a string and assign it
                                     const char* droppedPath = (const char*)payload->Data;
-                                    scriptComp.filepath = droppedPath;
+                                    Engine::ScriptInstance newScript;
+                                    newScript.filepath = droppedPath;
+                                    scriptComp.scripts.push_back(newScript);
                                 }
                                 ImGui::EndDragDropTarget();
                             }

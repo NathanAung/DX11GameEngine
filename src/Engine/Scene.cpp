@@ -415,6 +415,24 @@ namespace Engine
         // NOTE: Bodies are rebuilt by PhysicsSystem on the next frame from restored ECS state.
     }
 
+
+    void Scene::SubmitForDestruction(entt::entity entity)
+    {
+        // Add to queue if not already queued
+        if (std::find(m_entitiesToDestroy.begin(), m_entitiesToDestroy.end(), entity) == m_entitiesToDestroy.end()) {
+            m_entitiesToDestroy.push_back(entity);
+        }
+    }
+
+    void Scene::ProcessDestructionQueue(Engine::PhysicsManager& physicsManager)
+    {
+        for (auto entity : m_entitiesToDestroy) {
+            DestroyEntity(entity, physicsManager);
+        }
+        m_entitiesToDestroy.clear();
+    }
+
+
     void Scene::InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager)
     {
         m_physicsManager = physicsManager;
@@ -452,12 +470,39 @@ namespace Engine
             }
         );
 
+        // Bind Component Enums
+        m_lua.new_enum<Engine::MeshType>("MeshType", {
+            { "Cube", Engine::MeshType::Cube },
+            { "Sphere", Engine::MeshType::Sphere },
+            { "Capsule", Engine::MeshType::Capsule },
+            { "Custom", Engine::MeshType::Custom }
+        });
+
+        m_lua.new_enum<Engine::RBShape>("RBShape", {
+            { "Box", Engine::RBShape::Box },
+            { "Sphere", Engine::RBShape::Sphere },
+            { "Capsule", Engine::RBShape::Capsule },
+            { "Mesh", Engine::RBShape::Mesh }
+        });
+
+        m_lua.new_enum<Engine::RBMotion>("RBMotion", {
+            { "Static", Engine::RBMotion::Static },
+            { "Dynamic", Engine::RBMotion::Dynamic }
+        });
+
         // Bind ScriptEntity wrapper
         m_lua.new_usertype<ScriptEntity>("Entity",
             sol::constructors<ScriptEntity(entt::entity, Engine::Scene*)>(),
             "GetTransform", &ScriptEntity::GetTransform,
             "GetName", &ScriptEntity::GetName,
-            "ApplyLinearImpulse", &ScriptEntity::ApplyLinearImpulse
+            "ApplyLinearImpulse", &ScriptEntity::ApplyLinearImpulse,
+            "Instantiate", &ScriptEntity::Instantiate,
+            "InstantiateCube", &ScriptEntity::InstantiateCube,
+            "InstantiateSphere", &ScriptEntity::InstantiateSphere,
+            "Destroy", &ScriptEntity::Destroy,
+            "AddMeshRenderer", &ScriptEntity::AddMeshRenderer,
+            "AddRigidBody", &ScriptEntity::AddRigidBody,
+            "AddLuaScript", &ScriptEntity::AddLuaScript
         );
 
         // Expose Engine::Key Enum 

@@ -414,6 +414,9 @@ void Update(float deltaTime) {
 
     if (isPlaying) {
         Engine::ScriptSystemUpdate(g_scene, deltaTime);
+
+        // Safely destroy any entities that scripts asked to kill this frame
+        g_scene.ProcessDestructionQueue(g_physicsManager);
     }
 
     // only process editor camera in Edit mode

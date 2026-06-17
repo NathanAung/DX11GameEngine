@@ -49,6 +49,7 @@ namespace Engine
         bool isDirty = true; // Flag to force recalculation
     };
 
+	enum class MeshType { Cube, Sphere, Capsule, Custom };
     enum class MaterialType { LitColor, UnlitColor, Textured };
 
     // Placeholder renderer bindings
@@ -155,9 +156,9 @@ namespace Engine
 		bool showWireframe = true; // Debug visualization toggle
     };
 
-	// Lua scripting component
+	// Lua scripting
 	// Stores Lua environment and function references for entity scripting
-    struct LuaScriptComponent
+    struct ScriptInstance
     {
         std::string filepath = "";
         sol::environment env;
@@ -167,5 +168,11 @@ namespace Engine
         sol::function OnDestroy;
 
         bool isInitialized = false;
+    };
+
+	// Component to hold multiple Lua scripts for an entity
+    struct LuaScriptComponent
+    {
+        std::vector<ScriptInstance> scripts;
     };
 }

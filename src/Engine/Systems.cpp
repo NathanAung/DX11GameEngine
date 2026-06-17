@@ -644,48 +644,120 @@ namespace Engine
         }
     }
 
+
+	// Script System: Initialize, Update, Shutdown
+
     void ScriptSystemInit(Engine::Scene& scene) {
         auto view = scene.registry.view<LuaScriptComponent>();
-        for (auto entity : view) {
-            auto& script = view.get<LuaScriptComponent>(entity);
-            if (script.filepath.empty()) continue;
 
-            try {
-                // 1. Create an isolated Lua environment for this specific entity
-                script.env = sol::environment(scene.m_lua, sol::create, scene.m_lua.globals());
+        // Cache entities to a vector to prevent iterator invalidation if scripts spawn entities during OnCreate
+        std::vector<entt::entity> activeEntities(view.begin(), view.end());
 
-                // 2. Inject the 'self' wrapper so the script knows which entity it belongs to
-                script.env["self"] = ScriptEntity(entity, &scene);
+        for (auto entity : activeEntities) {
+            if (!scene.registry.valid(entity)) continue;
 
-                // 3. Compile and run the file into this environment
-                scene.m_lua.script_file(script.filepath, script.env);
+			// Iterate through each script for this entity
+            size_t count = scene.registry.get<LuaScriptComponent>(entity).scripts.size();
+            for (size_t i = 0; i < count; ++i) {
 
-                // 4. Cache lifecycle functions to avoid string lookups per frame
-                script.OnCreate = script.env["OnCreate"];
-                script.OnUpdate = script.env["OnUpdate"];
-                script.OnDestroy = script.env["OnDestroy"];
+                // Block scope to limit reference lifespan
+                {
+					// Re-fetch the script reference to ensure we have the latest data in case of memory reallocations
+                    auto& script = scene.registry.get<LuaScriptComponent>(entity).scripts[i];
+                    if (script.filepath.empty() || script.isInitialized) continue;
 
-                // 5. Trigger OnCreate
-                if (script.OnCreate.valid()) {
-                    script.OnCreate();
+                    try {
+						// Create an isolated Lua environment for this specific entity
+                        script.env = sol::environment(scene.m_lua, sol::create, scene.m_lua.globals());
+
+						// Inject the 'self' wrapper so the script knows which entity it belongs to
+                        script.env["self"] = ScriptEntity(entity, &scene);
+
+						// Compile and run the file into this environment
+                        scene.m_lua.script_file(script.filepath, script.env);
+
+						// Cache lifecycle functions to avoid string lookups per frame
+                        script.OnCreate = script.env["OnCreate"];
+                        script.OnUpdate = script.env["OnUpdate"];
+                        script.OnDestroy = script.env["OnDestroy"];
+
+                        if (script.OnCreate.valid()) {
+							// Copy to stack before execution (in case OnCreate spawns new entities or scripts and causes reallocations)
+                            sol::function createFunc = script.OnCreate;
+                            createFunc();
+                        }
+                    }
+                    catch (const sol::error& e) {
+                        std::fprintf(stderr, "Lua Init Error in %s: %s\n", scene.registry.get<LuaScriptComponent>(entity).scripts[i].filepath.c_str(), e.what());
+                    }
                 }
-                script.isInitialized = true;
 
-            } catch (const sol::error& e) {
-                std::fprintf(stderr, "Lua Init Error in %s: %s\n", script.filepath.c_str(), e.what());
+                // Safely update initialization state after potential memory reallocations
+                scene.registry.get<LuaScriptComponent>(entity).scripts[i].isInitialized = true;
             }
         }
     }
 
     void ScriptSystemUpdate(Engine::Scene& scene, float dt) {
         auto view = scene.registry.view<LuaScriptComponent>();
-        for (auto entity : view) {
-            auto& script = view.get<LuaScriptComponent>(entity);
-            if (script.isInitialized && script.OnUpdate.valid()) {
-                try {
-                    script.OnUpdate(dt);
-                } catch (const sol::error& e) {
-                    std::fprintf(stderr, "Lua Update Error in %s: %s\n", script.filepath.c_str(), e.what());
+
+		// Cache entities to prevent iterator invalidation if scripts spawn new entities during OnUpdate
+        std::vector<entt::entity> activeEntities(view.begin(), view.end());
+
+        for (auto entity : activeEntities) {
+            if (!scene.registry.valid(entity)) continue;
+
+			// Use an index loop and re-fetch the component reference each iteration.
+			// This ensures we survive EnTT pool memory reallocations caused by runtime instantiation.
+            size_t scriptCount = scene.registry.get<LuaScriptComponent>(entity).scripts.size();
+            for (size_t i = 0; i < scriptCount; ++i) {
+
+                // ON-THE-FLY INITIALIZATION
+				// allows scripts to be attached at runtime and still have their OnCreate called before the first OnUpdate
+                {
+                    auto& script = scene.registry.get<LuaScriptComponent>(entity).scripts[i];
+                    if (!script.isInitialized && !script.filepath.empty()) {
+                        try {
+                            script.env = sol::environment(scene.m_lua, sol::create, scene.m_lua.globals());
+                            script.env["self"] = ScriptEntity(entity, &scene);
+                            scene.m_lua.script_file(script.filepath, script.env);
+
+                            script.OnCreate = script.env["OnCreate"];
+                            script.OnUpdate = script.env["OnUpdate"];
+                            script.OnDestroy = script.env["OnDestroy"];
+
+                            if (script.OnCreate.valid()) {
+                                sol::function createFunc = script.OnCreate;
+                                createFunc();
+                            }
+                        }
+                        catch (const sol::error& e) {
+                            std::fprintf(stderr, "Lua Init Error in %s: %s\n", scene.registry.get<LuaScriptComponent>(entity).scripts[i].filepath.c_str(), e.what());
+							scene.registry.get<LuaScriptComponent>(entity).scripts[i].filepath = "";    // Clear to prevent infinite error spam
+                            continue;
+                        }
+                        scene.registry.get<LuaScriptComponent>(entity).scripts[i].isInitialized = true;
+                    }
+                }
+
+                // UPDATE LOOP
+				// Re-fetch reference in case OnCreate spawned something and reallocated memory
+                {
+                    auto& safeScript = scene.registry.get<LuaScriptComponent>(entity).scripts[i];
+                    if (safeScript.isInitialized && safeScript.OnUpdate.valid()) {
+
+                        // Copy the Lua function and filepath to the C++ stack before executing
+                        // This guarantees safety even if the EnTT pool is deleted/moved mid-execution.
+                        sol::function updateFunc = safeScript.OnUpdate;
+                        std::string filepath = safeScript.filepath;
+
+                        try {
+                            updateFunc(dt);
+                        }
+                        catch (const sol::error& e) {
+                            std::fprintf(stderr, "Lua Update Error in %s: %s\n", filepath.c_str(), e.what());
+                        }
+                    }
                 }
             }
         }
@@ -693,22 +765,38 @@ namespace Engine
 
     void ScriptSystemShutdown(Engine::Scene& scene) {
         auto view = scene.registry.view<LuaScriptComponent>();
-        for (auto entity : view) {
-            auto& script = view.get<LuaScriptComponent>(entity);
-            if (script.isInitialized) {
-                if (script.OnDestroy.valid()) {
-                    try {
-                        script.OnDestroy();
-                    } catch (const sol::error& e) {
-                        std::fprintf(stderr, "Lua Destroy Error in %s: %s\n", script.filepath.c_str(), e.what());
+        std::vector<entt::entity> activeEntities(view.begin(), view.end());
+
+        for (auto entity : activeEntities) {
+            if (!scene.registry.valid(entity)) continue;
+
+            size_t count = scene.registry.get<LuaScriptComponent>(entity).scripts.size();
+            for (size_t i = 0; i < count; ++i) {
+
+				// Block scope to limit reference lifespan
+                {
+                    auto& script = scene.registry.get<LuaScriptComponent>(entity).scripts[i];
+                    if (script.isInitialized) {
+                        if (script.OnDestroy.valid()) {
+                            sol::function destroyFunc = script.OnDestroy;
+                            std::string filepath = script.filepath;
+                            try {
+                                destroyFunc();
+                            }
+                            catch (const sol::error& e) {
+                                std::fprintf(stderr, "Lua Destroy Error in %s: %s\n", filepath.c_str(), e.what());
+                            }
+                        }
                     }
                 }
-                // Reset state so it cleanly reloads next time Play is pressed
-                script.isInitialized = false;
-                script.env = sol::environment(); 
-                script.OnCreate = sol::function();
-                script.OnUpdate = sol::function();
-                script.OnDestroy = sol::function();
+
+				// Reset state so it cleanly reloads next time Play is pressed
+                auto& resetScript = scene.registry.get<LuaScriptComponent>(entity).scripts[i];
+                resetScript.isInitialized = false;
+                resetScript.env = sol::environment();
+                resetScript.OnCreate = sol::function();
+                resetScript.OnUpdate = sol::function();
+                resetScript.OnDestroy = sol::function();
             }
         }
     }

@@ -45,6 +45,85 @@ namespace Engine
             }
         }
 
+        // Spawning API
+        ScriptEntity Instantiate(const std::string& name)
+        {
+            if (m_scene) return ScriptEntity(m_scene->CreateEntity(name), m_scene);
+            return ScriptEntity(entt::null, nullptr);
+        }
+
+        ScriptEntity InstantiateCube(const std::string& name)
+        {
+            if (m_scene) return ScriptEntity(m_scene->CreateCube(name), m_scene);
+            return ScriptEntity(entt::null, nullptr);
+        }
+
+        ScriptEntity InstantiateSphere(const std::string& name)
+        {
+            if (m_scene) return ScriptEntity(m_scene->CreateSphere(name), m_scene);
+            return ScriptEntity(entt::null, nullptr);
+        }
+
+        // Destruction API
+        void Destroy()
+        {
+            if (m_scene) m_scene->SubmitForDestruction(m_entity);
+        }
+
+        // Component Addition API
+        void AddMeshRenderer(MeshType type)
+        {
+            if (m_scene && m_scene->registry.valid(m_entity)) {
+                auto& mr = m_scene->registry.get_or_emplace<MeshRendererComponent>(m_entity);
+
+                if (type == MeshType::Cube) mr.meshID = m_scene->GetCubeMeshID();
+                else if (type == MeshType::Sphere) mr.meshID = m_scene->GetSphereMeshID();
+                else if (type == MeshType::Capsule) mr.meshID = m_scene->GetCapsuleMeshID();
+
+                mr.matType = MaterialType::LitColor;
+            }
+        }
+
+        void AddRigidBody(RBShape shape, RBMotion motion, float size, float mass, float restitution)
+        {
+            if (m_scene && m_scene->registry.valid(m_entity)) {
+                auto& rb = m_scene->registry.get_or_emplace<RigidBodyComponent>(m_entity);
+                rb.shape = shape;
+                rb.motionType = motion;
+                rb.mass = mass;
+                rb.restitution = restitution;
+
+                // Map the 'size' parameter appropriately based on the selected shape
+                if (shape == RBShape::Sphere) {
+                    rb.radius = size;
+                }
+                else if (shape == RBShape::Box) {
+                    rb.halfExtent = { size, size, size };
+                }
+                else if (shape == RBShape::Capsule) {
+                    rb.radius = size;
+                    rb.height = size * 2.0f; // Calculate a sensible default height based on radius
+                }
+
+                // If it already had a body, remove it so Jolt generates a fresh one next frame
+                if (!rb.bodyID.IsInvalid() && m_scene->GetPhysicsManager()) {
+                    m_scene->GetPhysicsManager()->RemoveRigidBody(rb.bodyID);
+                }
+                rb.bodyID = JPH::BodyID();
+                rb.bodyCreated = false;
+            }
+        }
+
+        void AddLuaScript(const std::string& filepath)
+        {
+            if (m_scene && m_scene->registry.valid(m_entity)) {
+                auto& scriptComp = m_scene->registry.get_or_emplace<LuaScriptComponent>(m_entity);
+                ScriptInstance newScript;
+                newScript.filepath = filepath;
+                scriptComp.scripts.push_back(newScript);
+            }
+        }
+
     private:
 		entt::entity m_entity;  // The EnTT entity ID that this ScriptEntity wraps
 		Scene* m_scene;         // Pointer to the scene for accessing the registry and physics manager

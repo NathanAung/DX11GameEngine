@@ -86,6 +86,11 @@ namespace Engine
 		// Initialize Lua bindings for scene manipulation and scripting
         void InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager);
 
+        // Deferred Destruction Queue
+        std::vector<entt::entity> m_entitiesToDestroy;
+        void SubmitForDestruction(entt::entity entity);
+        void ProcessDestructionQueue(Engine::PhysicsManager& physicsManager);
+
     private:
 		// Cache default asset IDs for editor-spawned primitives
         int m_defaultShaderID = 0;
