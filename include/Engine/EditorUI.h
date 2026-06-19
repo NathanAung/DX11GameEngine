@@ -1,9 +1,6 @@
 #pragma once
 #include <filesystem>
 #include <entt/entt.hpp>
-#include "Engine/Scene.h"
-#include "Engine/Renderer.h"
-#include "Engine/InputManager.h"
 
 struct SDL_Window;
 
@@ -12,6 +9,9 @@ struct SDL_Window;
 namespace Engine
 {
     class PhysicsManager;
+	class InputManager;
+	class Scene;
+	class Renderer;
 
     // Editor state machine
     enum class EditorState { Edit, Play };

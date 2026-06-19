@@ -3,6 +3,8 @@
 #include <string>
 #include "Engine/Scene.h"
 #include "Engine/Components.h"
+#include "Engine/PhysicsManager.h"
+#include "Engine/AudioManager.h"
 
 // ScriptEntity is a wrapper around an EnTT entity that provides convenient access to components and scene context for scripting purposes. 
 // It allows Lua scripts to interact with entities without needing direct access to the registry or scene internals.
@@ -121,6 +123,49 @@ namespace Engine
                 ScriptInstance newScript;
                 newScript.filepath = filepath;
                 scriptComp.scripts.push_back(newScript);
+            }
+        }
+
+        void AddAudioComponent(const std::string& filepath, bool is3D, bool loop, bool playOnCreate)
+        {
+            if (m_scene && m_scene->registry.valid(m_entity)) {
+                auto& ac = m_scene->registry.get_or_emplace<AudioComponent>(m_entity);
+                ac.filepath = filepath;
+                ac.is3D = is3D;
+                ac.loop = loop;
+                ac.playOnCreate = playOnCreate;
+            }
+        }
+
+        void PlayAudio()
+        {
+            if (m_scene && m_scene->registry.valid(m_entity) && m_scene->registry.all_of<AudioComponent>(m_entity)) {
+                auto& ac = m_scene->registry.get<AudioComponent>(m_entity);
+                if (m_scene->GetAudioManager() && ac.soundHandle) {
+                    // Force restart if already playing
+                    if (ac.isPlaying) m_scene->GetAudioManager()->StopAudio(ac.soundHandle);
+                    m_scene->GetAudioManager()->PlayAudio(ac.soundHandle);
+                    ac.isPlaying = true;
+                }
+                else if (!ac.soundHandle && !ac.filepath.empty() && m_scene->GetAudioManager()) {
+                    // Load and play immediately if not loaded yet
+                    ac.soundHandle = m_scene->GetAudioManager()->LoadSound(ac.filepath, ac.is3D, ac.loop);
+                    if (ac.soundHandle) {
+                        m_scene->GetAudioManager()->PlayAudio(ac.soundHandle);
+                        ac.isPlaying = true;
+                    }
+                }
+            }
+        }
+
+        void StopAudio()
+        {
+            if (m_scene && m_scene->registry.valid(m_entity) && m_scene->registry.all_of<AudioComponent>(m_entity)) {
+                auto& ac = m_scene->registry.get<AudioComponent>(m_entity);
+                if (m_scene->GetAudioManager() && ac.soundHandle && ac.isPlaying) {
+                    m_scene->GetAudioManager()->StopAudio(ac.soundHandle);
+                    ac.isPlaying = false;
+                }
             }
         }
 

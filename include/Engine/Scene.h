@@ -10,6 +10,7 @@ namespace Engine
 {
     class PhysicsManager;
     class InputManager;
+    class AudioManager;
 
     class Scene
     {
@@ -27,6 +28,10 @@ namespace Engine
         sol::state m_lua;
 
         Engine::PhysicsManager* GetPhysicsManager() const { return m_physicsManager; }
+
+        // Audio Manager reference for lifecycle cleanup
+        void SetAudioManager(Engine::AudioManager* am) { m_audioManager = am; }
+        Engine::AudioManager* GetAudioManager() const { return m_audioManager; }
 
         // Create a generic entity with ID, Name and default Transform
         entt::entity CreateEntity(const std::string& name);
@@ -100,5 +105,7 @@ namespace Engine
         int m_capsuleMeshID = 0;
 
         Engine::PhysicsManager* m_physicsManager = nullptr;
+
+        Engine::AudioManager* m_audioManager = nullptr;
     };
 }

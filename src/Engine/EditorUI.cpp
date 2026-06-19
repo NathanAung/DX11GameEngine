@@ -2,6 +2,10 @@
 #include "Engine/Components.h"
 #include "Engine/MathUtils.h"
 #include "Engine/PhysicsManager.h"
+#include "Engine/AudioManager.h"
+#include "Engine/InputManager.h"
+#include "Engine/Scene.h"
+#include "Engine/Renderer.h"
 #include "Engine/Systems.h"
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -831,6 +835,103 @@ namespace Engine
                         }
                     }
 
+                    // AudioComponent UI
+                    if (scene.registry.all_of<Engine::AudioComponent>(m_selectedEntity))
+                    {
+                        auto& ac = scene.registry.get<Engine::AudioComponent>(m_selectedEntity);
+
+                        ImGui::PushID("AudioComponent");
+                        bool treeOpen = ImGui::TreeNodeEx("Audio Emitter", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                        bool removeComponent = false;
+                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                            ImGui::EndPopup();
+                        }
+
+                        if (treeOpen)
+                        {
+                            std::vector<std::string> audioFiles;
+                            audioFiles.push_back("None");
+
+                            std::string audioPath = "assets/audio";
+                            if (!std::filesystem::exists(audioPath)) std::filesystem::create_directories(audioPath);
+
+                            for (const auto& entry : std::filesystem::directory_iterator(audioPath)) {
+                                if (entry.path().extension() == ".wav" || entry.path().extension() == ".mp3") {
+                                    audioFiles.push_back(entry.path().filename().string());
+                                }
+                            }
+
+                            int currentIndex = 0;
+                            std::string currentFilename = "";
+                            if (!ac.filepath.empty()) {
+                                currentFilename = std::filesystem::path(ac.filepath).filename().string();
+                                for (int i = 1; i < audioFiles.size(); ++i) {
+                                    if (audioFiles[i] == currentFilename) { currentIndex = i; break; }
+                                }
+                            }
+
+                            if (ImGui::BeginCombo("Audio File", audioFiles[currentIndex].c_str()))
+                            {
+                                for (int i = 0; i < audioFiles.size(); i++) {
+                                    bool isSelected = (currentIndex == i);
+                                    if (ImGui::Selectable(audioFiles[i].c_str(), isSelected)) {
+                                        if (currentIndex != i) {
+                                            ac.filepath = (i == 0) ? "" : audioPath + "/" + audioFiles[i];
+                                            // Safely clear old handle so it reloads on Play
+                                            if (scene.GetAudioManager() && ac.soundHandle) {
+                                                scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                                                ac.soundHandle = nullptr;
+                                                ac.isPlaying = false;
+                                            }
+                                        }
+                                    }
+                                    if (isSelected) ImGui::SetItemDefaultFocus();
+                                }
+                                ImGui::EndCombo();
+                            }
+
+                            if (ImGui::BeginDragDropTarget()) {
+                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("AUDIO_FILE")) {
+                                    const char* droppedPath = (const char*)payload->Data;
+                                    if (ac.filepath != droppedPath) {
+                                        ac.filepath = droppedPath;
+                                        if (scene.GetAudioManager() && ac.soundHandle) {
+                                            scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                                            ac.soundHandle = nullptr;
+                                            ac.isPlaying = false;
+                                        }
+                                    }
+                                }
+                                ImGui::EndDragDropTarget();
+                            }
+
+                            bool is3dChanged = ImGui::Checkbox("Is 3D", &ac.is3D);
+                            bool loopChanged = ImGui::Checkbox("Looping", &ac.loop);
+                            ImGui::Checkbox("Play On Create", &ac.playOnCreate);
+
+                            // Rebuild handle if physical parameters change
+                            if (is3dChanged || loopChanged) {
+                                if (scene.GetAudioManager() && ac.soundHandle) {
+                                    scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                                    ac.soundHandle = nullptr;
+                                    ac.isPlaying = false;
+                                }
+                            }
+
+                            ImGui::TreePop();
+                        }
+                        ImGui::PopID();
+
+                        if (removeComponent) {
+                            if (scene.GetAudioManager() && ac.soundHandle) {
+                                scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                            }
+                            scene.registry.remove<Engine::AudioComponent>(m_selectedEntity);
+                        }
+                    }
+
                     // LuaScriptComponent UI
                     if (scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity))
                     {
@@ -975,6 +1076,9 @@ namespace Engine
                         if (!scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
                             if (ImGui::MenuItem("Rigidbody")) scene.registry.emplace<Engine::RigidBodyComponent>(m_selectedEntity);
                         }
+                        if (!scene.registry.all_of<Engine::AudioComponent>(m_selectedEntity)) {
+                            if (ImGui::MenuItem("Audio Component")) scene.registry.emplace<Engine::AudioComponent>(m_selectedEntity);
+                        }
                         if (!scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity)) {
                             if (ImGui::MenuItem("Lua Script")) scene.registry.emplace<Engine::LuaScriptComponent>(m_selectedEntity);
                         }
@@ -1034,6 +1138,17 @@ namespace Engine
                                 // Tooltip next to the cursor while dragging
                                 ImGui::Text("Assign %s", filenameString.c_str());
 
+                                ImGui::EndDragDropSource();
+                            }
+                        }
+						// If the file is an audio file, make it a Drag Source
+                        else if (path.extension() == ".wav" || path.extension() == ".mp3")
+                        {
+                            if (ImGui::BeginDragDropSource()) {
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                ImGui::SetDragDropPayload("AUDIO_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                ImGui::Text("Assign %s", filenameString.c_str());
                                 ImGui::EndDragDropSource();
                             }
                         }
