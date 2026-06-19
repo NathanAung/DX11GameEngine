@@ -1,3 +1,4 @@
+-- BallSpawner.lua
 function OnCreate()
     print("Spawner Ready! Press Space to spawn a bouncing sphere, or C to spawn a heavy cube.")
 end
@@ -12,6 +13,8 @@ function OnUpdate(dt)
         ball:AddMeshRenderer(MeshType.Sphere)
         ball:AddRigidBody(RBShape.Sphere, RBMotion.Dynamic, 0.5, 1.0, 0.8) 
         ball:AddLuaScript("assets/scripts/BallDestroy.lua")
+
+        ball:AddAudioComponent("assets/audio/spawn.mp3", true, false, true)
     end
 
     -- Spawn a Cube

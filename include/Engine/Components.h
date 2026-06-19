@@ -175,4 +175,17 @@ namespace Engine
     {
         std::vector<ScriptInstance> scripts;
     };
+
+	// Audio component to manage sound effects and music
+    struct AudioComponent
+    {
+        std::string filepath = "";
+        bool is3D = true;
+        bool loop = false;
+        bool playOnCreate = true;
+
+        // Runtime state (Managed by AudioSystem)
+        void* soundHandle = nullptr;
+        bool isPlaying = false;
+    };
 }

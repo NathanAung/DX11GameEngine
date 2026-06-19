@@ -800,4 +800,67 @@ namespace Engine
             }
         }
     }
+
+
+    void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager)
+    {
+        // Update Listener (Ears) using Active Camera
+        if (scene.m_activeRenderCamera != entt::null && scene.registry.valid(scene.m_activeRenderCamera))
+        {
+            if (scene.registry.all_of<TransformComponent>(scene.m_activeRenderCamera))
+            {
+                auto& camTc = scene.registry.get<TransformComponent>(scene.m_activeRenderCamera);
+
+                // Calculate Forward Vector from camera's rotation quaternion
+                DirectX::XMVECTOR q = DirectX::XMLoadFloat4(&camTc.rotation);
+                DirectX::XMVECTOR forward = DirectX::XMVector3Rotate(DirectX::XMVectorSet(0, 0, 1, 0), q);
+
+                audioManager.SetListenerPosition(
+                    camTc.position.x, camTc.position.y, camTc.position.z,
+                    DirectX::XMVectorGetX(forward), DirectX::XMVectorGetY(forward), DirectX::XMVectorGetZ(forward)
+                );
+            }
+        }
+
+        // Update Audio Emitters
+        auto view = scene.registry.view<AudioComponent, TransformComponent>();
+        for (auto entity : view)
+        {
+            auto& ac = view.get<AudioComponent>(entity);
+            auto& tc = view.get<TransformComponent>(entity);
+
+            bool isEntityActive = scene.registry.all_of<NameComponent>(entity) ? scene.registry.get<NameComponent>(entity).isActive : true;
+
+            // Stop playback if entity is disabled
+            if (!isEntityActive) {
+                if (ac.soundHandle && ac.isPlaying) {
+                    audioManager.StopAudio(ac.soundHandle);
+                    ac.isPlaying = false;
+                }
+                continue;
+            }
+
+            // Initialize sound handle dynamically
+            if (ac.soundHandle == nullptr && !ac.filepath.empty())
+            {
+                ac.soundHandle = audioManager.LoadSound(ac.filepath, ac.is3D, ac.loop);
+            }
+
+            // Play if requested
+            if (ac.soundHandle && ac.playOnCreate && !ac.isPlaying)
+            {
+                audioManager.PlayAudio(ac.soundHandle);
+                ac.isPlaying = true;
+            }
+
+            // Sync 3D Position
+            if (ac.soundHandle && ac.is3D)
+            {
+                // Decompose world matrix for true absolute world position
+                DirectX::XMVECTOR s, r, t;
+                DirectX::XMMatrixDecompose(&s, &r, &t, DirectX::XMLoadFloat4x4(&tc.worldMatrix));
+                audioManager.SetAudioPosition(ac.soundHandle, DirectX::XMVectorGetX(t), DirectX::XMVectorGetY(t), DirectX::XMVectorGetZ(t));
+            }
+        }
+    }
 }

@@ -7,6 +7,7 @@
 #include "Engine/Systems.h"
 #include "Engine/TextureManager.h"
 #include "Engine/ImGuiManager.h"
+#include "Engine/AudioManager.h"
 #include "Engine/EditorUI.h"
 
 // Common Usings
@@ -46,6 +47,9 @@ Engine::PhysicsManager g_physicsManager;
 
 // ImGui Manager
 Engine::ImGuiManager g_imGuiManager;
+
+// Audio
+Engine::AudioManager g_audioManager;
 
 // Editor UI
 Engine::EditorUI g_editorUI;
@@ -254,6 +258,9 @@ static void LoadContent()
         rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(capsule, rend);
     }
+
+    //g_audioManager.PlaySound2D("assets/Audio/game_clear.mp3");
+    //g_scene.registry.emplace<Engine::AudioComponent>(g_sampleEntity, Engine::AudioComponent{ "assets/Audio/game_clear.mp3", true, true });
 }
 
 // Main entry point
@@ -328,12 +335,28 @@ int main(int argc, char** argv)
         return -1;
     }
 
+    // Initialize Audio
+    if (!g_audioManager.Initialize())
+    {
+        std::fprintf(stderr, "AudioManager initialization failed\n");
+        g_physicsManager.Shutdown();
+        g_imGuiManager.Shutdown();
+        g_renderer.Shutdown();
+        if (g_SDLWindow) {
+            SDL_DestroyWindow(g_SDLWindow);
+            g_SDLWindow = nullptr;
+        }
+        SDL_Quit();
+        return -1;
+    }
+
     try {
         LoadContent();
     }
     catch (const std::exception& e)
     {
         std::fprintf(stderr, "Content load failed: %s\n", e.what());
+        g_audioManager.Shutdown();
         g_physicsManager.Shutdown();
         g_imGuiManager.Shutdown();
         g_renderer.Shutdown();
@@ -348,6 +371,8 @@ int main(int argc, char** argv)
     // Main loop
     g_perfFreq = SDL_GetPerformanceFrequency();
     g_lastCounter = SDL_GetPerformanceCounter();
+
+    g_scene.SetAudioManager(&g_audioManager);
 
 	// Initialize Lua bindings with access to input and physics manager
     g_scene.InitializeLuaBindings(&g_input, &g_physicsManager);
@@ -395,6 +420,7 @@ int main(int argc, char** argv)
     }
 
     // Shutdown and cleanup
+    g_audioManager.Shutdown();
     g_physicsManager.Shutdown();
     g_imGuiManager.Shutdown();
     g_renderer.Shutdown();
@@ -414,6 +440,8 @@ void Update(float deltaTime) {
 
     if (isPlaying) {
         Engine::ScriptSystemUpdate(g_scene, deltaTime);
+
+        Engine::AudioSystem(g_scene, g_audioManager);
 
         // Safely destroy any entities that scripts asked to kill this frame
         g_scene.ProcessDestructionQueue(g_physicsManager);
@@ -455,10 +483,9 @@ void Render()
 
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
-    // UNCOMMENT THIS LATER
 	// Draw debug colliders if in Edit mode
-    //if (g_editorUI.GetState() == Engine::EditorState::Edit)
-    Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
+    if (g_editorUI.GetState() == Engine::EditorState::Edit)
+        Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
 
     // Draw skybox last: z=w ensures it renders only where nothing else drew
     if (g_scene.m_activeRenderCamera != entt::null &&

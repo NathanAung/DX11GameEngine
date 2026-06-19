@@ -3,6 +3,7 @@
 #include "Engine/PhysicsManager.h"
 #include "Engine/ScriptEntity.h"
 #include "Engine/InputManager.h"
+#include "Engine/AudioManager.h"
 #include <DirectXMath.h>
 
 using namespace DirectX;
@@ -373,6 +374,7 @@ namespace Engine
             if (registry.all_of<EditorCamControlComponent>(entity)) m_backupRegistry.emplace<EditorCamControlComponent>(copy, registry.get<EditorCamControlComponent>(entity));
             if (registry.all_of<RelationshipComponent>(entity)) m_backupRegistry.emplace<RelationshipComponent>(copy, registry.get<RelationshipComponent>(entity));
 			if (registry.all_of<LuaScriptComponent>(entity)) m_backupRegistry.emplace<LuaScriptComponent>(copy, registry.get<LuaScriptComponent>(entity));
+            if (registry.all_of<AudioComponent>(entity)) m_backupRegistry.emplace<AudioComponent>(copy, registry.get<AudioComponent>(entity));
         }
     }
 
@@ -384,6 +386,15 @@ namespace Engine
         for (auto entity : physView)
         {
             physicsManager.RemoveRigidBody(physView.get<RigidBodyComponent>(entity).bodyID);
+        }
+
+        // Destroy all active audio handles before resetting
+        auto audioView = registry.view<AudioComponent>();
+        for (auto entity : audioView) {
+            if (m_audioManager) {
+                auto& ac = audioView.get<AudioComponent>(entity);
+                if (ac.soundHandle) m_audioManager->DestroyAudio(ac.soundHandle);
+            }
         }
 
 		// Clear main registry and copy all entities and core components from backup registry
@@ -410,6 +421,13 @@ namespace Engine
             if (m_backupRegistry.all_of<EditorCamControlComponent>(entity)) registry.emplace<EditorCamControlComponent>(restored, m_backupRegistry.get<EditorCamControlComponent>(entity));
             if (m_backupRegistry.all_of<RelationshipComponent>(entity)) registry.emplace<RelationshipComponent>(restored, m_backupRegistry.get<RelationshipComponent>(entity));
 			if (m_backupRegistry.all_of<LuaScriptComponent>(entity)) registry.emplace<LuaScriptComponent>(restored, m_backupRegistry.get<LuaScriptComponent>(entity));
+            if (m_backupRegistry.all_of<AudioComponent>(entity)) {
+                auto ac = m_backupRegistry.get<AudioComponent>(entity);
+                // Reset runtime handle so it dynamically reloads a fresh copy on Play
+                ac.soundHandle = nullptr;
+                ac.isPlaying = false;
+                registry.emplace<AudioComponent>(restored, ac);
+            }
         }
 
         // NOTE: Bodies are rebuilt by PhysicsSystem on the next frame from restored ECS state.
@@ -502,7 +520,10 @@ namespace Engine
             "Destroy", &ScriptEntity::Destroy,
             "AddMeshRenderer", &ScriptEntity::AddMeshRenderer,
             "AddRigidBody", &ScriptEntity::AddRigidBody,
-            "AddLuaScript", &ScriptEntity::AddLuaScript
+            "AddLuaScript", &ScriptEntity::AddLuaScript,
+            "AddAudioComponent", &ScriptEntity::AddAudioComponent,
+            "PlayAudio", &ScriptEntity::PlayAudio,
+            "StopAudio", &ScriptEntity::StopAudio
         );
 
         // Expose Engine::Key Enum 

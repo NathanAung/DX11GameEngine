@@ -10,6 +10,7 @@
     "joltphysics",
     "lua",
     "sol2",
+    "miniaudio",
     {
       "name": "imgui",
       "features": [

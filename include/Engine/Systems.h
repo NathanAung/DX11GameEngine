@@ -8,6 +8,7 @@
 #include "Engine/Renderer.h"
 #include "Engine/PhysicsManager.h"
 #include "Engine/TextureManager.h"
+#include "Engine/AudioManager.h"
 
 // Systems for the engine, including various update and rendering systems
 
@@ -41,4 +42,7 @@ namespace Engine
     void ScriptSystemInit(Engine::Scene& scene);
     void ScriptSystemUpdate(Engine::Scene& scene, float dt);
     void ScriptSystemShutdown(Engine::Scene& scene);
+
+    // audio update system: syncs listener and 3D sound emitters
+    void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager);
 }
