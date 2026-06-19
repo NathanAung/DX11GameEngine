@@ -3,6 +3,9 @@
 #include "Engine/MathUtils.h"
 #include "Engine/PhysicsManager.h"
 #include "Engine/AudioManager.h"
+#include "Engine/InputManager.h"
+#include "Engine/Scene.h"
+#include "Engine/Renderer.h"
 #include "Engine/Systems.h"
 #include <imgui.h>
 #include <imgui_internal.h>

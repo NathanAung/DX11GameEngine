@@ -3,6 +3,10 @@
 #include "Engine/Renderer.h"
 #include "Engine/MeshManager.h"
 #include "Engine/PhysicsManager.h"
+#include "Engine/ShaderManager.h"
+#include "Engine/InputManager.h"
+#include "Engine/AudioManager.h"
+#include "Engine/TextureManager.h"
 #include "Engine/ScriptEntity.h"
 #include <DirectXMath.h>
 #include <Jolt/Physics/Body/BodyInterface.h>

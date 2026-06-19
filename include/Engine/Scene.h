@@ -30,7 +30,6 @@ namespace Engine
         Engine::PhysicsManager* GetPhysicsManager() const { return m_physicsManager; }
 
         // Audio Manager reference for lifecycle cleanup
-        Engine::AudioManager* m_audioManager = nullptr;
         void SetAudioManager(Engine::AudioManager* am) { m_audioManager = am; }
         Engine::AudioManager* GetAudioManager() const { return m_audioManager; }
 
@@ -106,5 +105,7 @@ namespace Engine
         int m_capsuleMeshID = 0;
 
         Engine::PhysicsManager* m_physicsManager = nullptr;
+
+        Engine::AudioManager* m_audioManager = nullptr;
     };
 }

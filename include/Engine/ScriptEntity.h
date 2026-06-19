@@ -3,6 +3,7 @@
 #include <string>
 #include "Engine/Scene.h"
 #include "Engine/Components.h"
+#include "Engine/PhysicsManager.h"
 #include "Engine/AudioManager.h"
 
 // ScriptEntity is a wrapper around an EnTT entity that provides convenient access to components and scene context for scripting purposes. 

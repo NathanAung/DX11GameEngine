@@ -2,18 +2,19 @@
 #include <entt/entt.hpp>
 #include <d3d11.h>
 #include "Engine/Scene.h"
-#include "Engine/MeshManager.h"
-#include "Engine/ShaderManager.h"
-#include "Engine/InputManager.h"
 #include "Engine/Renderer.h"
-#include "Engine/PhysicsManager.h"
-#include "Engine/TextureManager.h"
-#include "Engine/AudioManager.h"
 
 // Systems for the engine, including various update and rendering systems
 
 namespace Engine
 {
+	class MeshManager;
+	class ShaderManager;
+	class InputManager;
+	class PhysicsManager;
+	class TextureManager;
+	class AudioManager;
+
     namespace RenderSystem
     {
         // pass Renderer to access context and sampler
