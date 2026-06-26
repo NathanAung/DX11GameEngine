@@ -116,6 +116,9 @@ namespace Engine
             }
         }
 
+
+		// SCRIPTING API
+
         void AddLuaScript(const std::string& filepath)
         {
             if (m_scene && m_scene->registry.valid(m_entity)) {
@@ -125,6 +128,9 @@ namespace Engine
                 scriptComp.scripts.push_back(newScript);
             }
         }
+
+
+		// AUDIO API
 
         void AddAudioComponent(const std::string& filepath, bool is3D, bool loop, bool playOnCreate)
         {
@@ -166,6 +172,15 @@ namespace Engine
                     m_scene->GetAudioManager()->StopAudio(ac.soundHandle);
                     ac.isPlaying = false;
                 }
+            }
+        }
+
+        void SetAudioVolume(float volume)
+        {
+            if (m_scene && m_scene->registry.valid(m_entity) && m_scene->registry.all_of<AudioComponent>(m_entity)) {
+                auto& ac = m_scene->registry.get<AudioComponent>(m_entity);
+                // Clamp mathematically to prevent script errors pushing negative volumes
+                ac.volume = std::max(0.0f, std::min(volume, 1.0f));
             }
         }
 

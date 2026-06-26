@@ -25,9 +25,12 @@ namespace Engine
         void PlayAudio(void* soundHandle);
         void StopAudio(void* soundHandle);
         void SetAudioPosition(void* soundHandle, float x, float y, float z);
+        void SetAudioVolume(void* soundHandle, float volume);
         void DestroyAudio(void* soundHandle);
 
 		// Listener control for 3D spatialization
+		// px, py, pz: Listener position in world space
+		// fx, fy, fz: Forward direction vector of the listener (should be normalized)
         void SetListenerPosition(float px, float py, float pz, float fx, float fy, float fz);
 
         // Expose engine pointer for future 3D spatialization and ECS integration

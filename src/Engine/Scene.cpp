@@ -523,7 +523,8 @@ namespace Engine
             "AddLuaScript", &ScriptEntity::AddLuaScript,
             "AddAudioComponent", &ScriptEntity::AddAudioComponent,
             "PlayAudio", &ScriptEntity::PlayAudio,
-            "StopAudio", &ScriptEntity::StopAudio
+            "StopAudio", &ScriptEntity::StopAudio,
+            "SetAudioVolume", &ScriptEntity::SetAudioVolume
         );
 
         // Expose Engine::Key Enum 

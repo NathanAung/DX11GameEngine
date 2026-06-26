@@ -911,6 +911,9 @@ namespace Engine
                             bool loopChanged = ImGui::Checkbox("Looping", &ac.loop);
                             ImGui::Checkbox("Play On Create", &ac.playOnCreate);
 
+                            // Slider clamps value between 0.0f (Mute) and 1.0f (Max)
+                            ImGui::SliderFloat("Volume", &ac.volume, 0.0f, 1.0f);
+
                             // Rebuild handle if physical parameters change
                             if (is3dChanged || loopChanged) {
                                 if (scene.GetAudioManager() && ac.soundHandle) {
