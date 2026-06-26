@@ -88,6 +88,14 @@ namespace Engine
         }
     }
 
+    void AudioManager::SetAudioVolume(void* soundHandle, float volume)
+    {
+        if (soundHandle) {
+            // miniaudio natively clamps and handles volume scaling
+            ma_sound_set_volume(static_cast<ma_sound*>(soundHandle), volume);
+        }
+    }
+
     void AudioManager::DestroyAudio(void* soundHandle)
     {
         if (soundHandle) {

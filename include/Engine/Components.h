@@ -183,6 +183,7 @@ namespace Engine
         bool is3D = true;
         bool loop = false;
         bool playOnCreate = true;
+        float volume = 1.0f; // default to max
 
         // Runtime state (Managed by AudioSystem)
         void* soundHandle = nullptr;

@@ -494,6 +494,9 @@ namespace Engine
         }
     }
 
+
+	// --- PHYSICS SYSTEM ---
+
     // Helpers: convert Jolt types to DirectX
     static inline XMFLOAT3 FromJolt(const JPH::Vec3& v) {
         return XMFLOAT3(v.GetX(), v.GetY(), v.GetZ());
@@ -649,7 +652,8 @@ namespace Engine
     }
 
 
-	// Script System: Initialize, Update, Shutdown
+	// --- SCRIPT SYSTEM ---
+    // Initialize, Update, Shutdown
 
     void ScriptSystemInit(Engine::Scene& scene) {
         auto view = scene.registry.view<LuaScriptComponent>();
@@ -806,6 +810,8 @@ namespace Engine
     }
 
 
+	// --- AUDIO SYSTEM ---
+
     void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager)
     {
         // Update Listener (Ears) using Active Camera
@@ -864,6 +870,12 @@ namespace Engine
                 DirectX::XMVECTOR s, r, t;
                 DirectX::XMMatrixDecompose(&s, &r, &t, DirectX::XMLoadFloat4x4(&tc.worldMatrix));
                 audioManager.SetAudioPosition(ac.soundHandle, DirectX::XMVectorGetX(t), DirectX::XMVectorGetY(t), DirectX::XMVectorGetZ(t));
+            }
+
+            // Sync Volume
+            if (ac.soundHandle)
+            {
+                audioManager.SetAudioVolume(ac.soundHandle, ac.volume);
             }
         }
     }
