@@ -4,35 +4,38 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "Engine/UUID.h"
 
 // TextureManager class handles loading and caching of textures from files using the stb_image library.
 
 namespace Engine
 {
+	class AssetManager;
+
     class TextureManager
     {
     public:
-        // Loads a texture and returns an SRV raw pointer. Cached by filename.
-        // Returns nullptr on failure. Manager retains ownership via ComPtr.
-        ID3D11ShaderResourceView* LoadTexture(ID3D11Device* device, const std::string& filename);
+        TextureManager() = default;
+        ~TextureManager();
 
-        // Loads a cubemap from 6 images: order = +X, -X, +Y, -Y, +Z, -Z
-        // Returns SRV raw pointer for TextureCube, or nullptr on failure.
-        ID3D11ShaderResourceView* LoadCubemap(ID3D11Device* device, const std::vector<std::string>& filenames);
-
+        // Core Loaders
         // Creates a 1x1 white default texture
-        void CreateDefaultTexture(ID3D11Device* device);
+        UUID CreateDefaultTexture(ID3D11Device* device, Engine::AssetManager& assetManager);
+        // Loads a texture and returns an SRV raw pointer. Cached by filename.
+        UUID LoadTexture(ID3D11Device* device, Engine::AssetManager& assetManager, const std::string& filepath);
+        // Loads a cubemap from 6 images: order = +X, -X, +Y, -Y, +Z, -Z
+        UUID LoadCubemap(ID3D11Device* device, Engine::AssetManager& assetManager, const std::vector<std::string>& filepaths);
 
-        // Retrieves the default texture
-        ID3D11ShaderResourceView* GetDefaultTexture() const { return m_defaultTexture.Get(); }
+		// Fetching uses the UUID to retrieve the corresponding SRV from the cache
+        ID3D11ShaderResourceView* GetTexture(UUID uuid) const;
+        ID3D11ShaderResourceView* GetDefaultTexture() const { return m_defaultSRV; }
 
     private:
-        // Cache of loaded 2D textures: filename -> SRV
-        std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> m_textureCache;
+        // The master memory pool for textures
+        std::unordered_map<UUID, ID3D11ShaderResourceView*> m_textures;
 
-        // Cache of cubemaps by concatenated key of 6 filenames
-        std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> m_cubemapCache;
-
-        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_defaultTexture;
+		// Cache mapping filenames to UUIDs for quick lookup
+        ID3D11ShaderResourceView* m_defaultSRV = nullptr;
+        UUID m_defaultUUID = 0;
     };
 }

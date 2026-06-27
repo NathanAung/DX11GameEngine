@@ -2,29 +2,45 @@
 #include "stb_image.h"
 
 #include "Engine/TextureManager.h"
+#include "Engine/AssetManager.h"
 #include <vector>
 #include <sstream>
+#include <iostream>
 
 using Microsoft::WRL::ComPtr;
 
 namespace Engine
 {
-    ID3D11ShaderResourceView* TextureManager::LoadTexture(ID3D11Device* device, const std::string& filename)
+    TextureManager::~TextureManager()
     {
-		// Check Cache, return if found
-        auto it = m_textureCache.find(filename);
-        if (it != m_textureCache.end())
+        // Safely release all GPU memory when the manager is destroyed
+        for (auto& pair : m_textures)
         {
-            return it->second.Get();
+            if (pair.second)
+            {
+                pair.second->Release();
+            }
         }
+        m_textures.clear();
+    }
+
+
+    UUID TextureManager::LoadTexture(ID3D11Device* device, Engine::AssetManager& assetManager, const std::string& filepath)
+    {
+        // Register file to get its UUID
+        UUID assetID = assetManager.ImportAsset(filepath, Engine::AssetType::Texture);
+
+        // Memory Pool Check (Bypass disk I/O if already loaded)
+        if (m_textures.find(assetID) != m_textures.end()) return assetID;
 
         // Load Image Data (force RGBA)
         int width = 0, height = 0, channels = 0;
-        stbi_uc* pixels = stbi_load(filename.c_str(), &width, &height, &channels, 4);
-		if (!pixels || width <= 0 || height <= 0)   // failed to load
+        stbi_set_flip_vertically_on_load(true); // Flip for DirectX UVs
+        unsigned char* imgData = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
+        if (!imgData)
         {
-            if (pixels) stbi_image_free(pixels);
-            return nullptr;
+            std::cerr << "TextureManager Failed to load: " << filepath << std::endl;
+			return m_defaultUUID; // fallback to white pixel if loading fails
         }
 
 		// D3D11 Texture Description
@@ -43,23 +59,19 @@ namespace Engine
 
 		// Initialize with image data
         D3D11_SUBRESOURCE_DATA initData{};
-        initData.pSysMem = pixels;
+        initData.pSysMem = imgData;
 		initData.SysMemPitch = static_cast<UINT>(width * 4);    // 4 bytes per pixel (RGBA)
 		initData.SysMemSlicePitch = 0;  // the size of one depth slice for 3D textures, not used here since it's 2D
 
 		// Create Texture2D
-        ComPtr<ID3D11Texture2D> texture;
-        HRESULT hr = device->CreateTexture2D(&texDesc, &initData, texture.GetAddressOf());
-
-        // Cleanup image data as soon as GPU resource is created (or on failure)
-        stbi_image_free(pixels);
-
+        ID3D11Texture2D* texture = nullptr;
+        HRESULT hr = device->CreateTexture2D(&texDesc, &initData, &texture);
         if (FAILED(hr))
         {
-            return nullptr;
+			return m_defaultUUID; // fallback to white pixel if creation fails
         }
 
-		// Shader Resource View (SRV) Description
+        // Shader Resource View (SRV) Description
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
         srvDesc.Format = texDesc.Format;
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
@@ -67,27 +79,38 @@ namespace Engine
         srvDesc.Texture2D.MipLevels = 1;
 
         // Create the SRV for the texture
-        ComPtr<ID3D11ShaderResourceView> srv;
-        hr = device->CreateShaderResourceView(texture.Get(), &srvDesc, srv.GetAddressOf());
+        ID3D11ShaderResourceView* srv = nullptr;
+        hr = device->CreateShaderResourceView(texture, &srvDesc, &srv);
         if (FAILED(hr))
         {
-            return nullptr;
+			return m_defaultUUID; // fallback to white pixel if SRV creation fails
         }
 
-        // Store in cache and return raw pointer
-        m_textureCache.emplace(filename, srv);
-        return srv.Get();
+        // Cleanup staging resources
+        texture->Release();
+        stbi_image_free(imgData);
+
+        // Register in memory pool
+		m_textures[assetID] = srv;
+        assetManager.SetAssetLoaded(assetID, true);
+
+        return assetID;
     }
 
 
-    void TextureManager::CreateDefaultTexture(ID3D11Device* device)
+    UUID TextureManager::CreateDefaultTexture(ID3D11Device* device, Engine::AssetManager& assetManager)
     {
-        // Skip if already created
-        if (m_defaultTexture) return;
+        // Register a virtual path for the primitive texture
+		// a primitive path is used to avoid conflicts with real file paths
+        UUID assetID = assetManager.ImportAsset("primitive://default_texture", Engine::AssetType::Texture);
+
+        // Memory Pool Check
+        if (m_textures.find(assetID) != m_textures.end()) return assetID;
 
         // 1x1 White Pixel (RGBA: 255, 255, 255, 255)
         const uint32_t pixel = 0xFFFFFFFF;
 
+        // Texture Description
         D3D11_TEXTURE2D_DESC texDesc{};
         texDesc.Width = 1;
         texDesc.Height = 1;
@@ -99,135 +122,140 @@ namespace Engine
         texDesc.Usage = D3D11_USAGE_DEFAULT;
         texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
+		// Initialize with the white pixel data
         D3D11_SUBRESOURCE_DATA initData{};
         initData.pSysMem = &pixel;
         initData.SysMemPitch = sizeof(uint32_t); // 4 bytes for 1 pixel
         initData.SysMemSlicePitch = 0;
 
-        Microsoft::WRL::ComPtr<ID3D11Texture2D> texture;
-        HRESULT hr = device->CreateTexture2D(&texDesc, &initData, texture.GetAddressOf());
-
-        if (SUCCEEDED(hr))
+		// Create Texture2D
+        ID3D11Texture2D* texture = nullptr;
+        HRESULT hr = device->CreateTexture2D(&texDesc, &initData, &texture);
+        if(FAILED(hr))
         {
-            D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-            srvDesc.Format = texDesc.Format;
-            srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-            srvDesc.Texture2D.MostDetailedMip = 0;
-            srvDesc.Texture2D.MipLevels = 1;
+            std::cerr << "Failed to create default texture." << std::endl;
+			return 0; // fallback to invalid UUID if creation fails
+		}
+        
+		// Create Shader Resource View (SRV) for the texture
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = texDesc.Format;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MostDetailedMip = 0;
+        srvDesc.Texture2D.MipLevels = 1;
 
-            device->CreateShaderResourceView(texture.Get(), &srvDesc, m_defaultTexture.GetAddressOf());
+		// Create the SRV for the texture
+        ID3D11ShaderResourceView* srv = nullptr;
+        HRESULT hr = device->CreateShaderResourceView(texture, &srvDesc, &srv);
+        if (FAILED(hr))
+        {
+            std::cerr << "Failed to create default texture SRV." << std::endl;
+			return 0; // fallback to invalid UUID if SRV creation fails
         }
+
+		// Cleanup staging resources
+        texture->Release();
+
+		// Register in memory pool
+		m_textures[assetID] = srv;
+		m_defaultSRV = srv;
+        m_defaultUUID = assetID;
+
+        assetManager.SetAssetLoaded(assetID, true);
+        
+        return assetID;
     }
 
 
-    ID3D11ShaderResourceView* TextureManager::LoadCubemap(ID3D11Device* device, const std::vector<std::string>& filenames)
+    UUID TextureManager::LoadCubemap(ID3D11Device* device, Engine::AssetManager& assetManager, const std::vector<std::string>& filepaths)
     {
         // Expect exactly 6 faces: +X, -X, +Y, -Y, +Z, -Z
-        if (filenames.size() != 6)
-            return nullptr;
+        if (filepaths.size() != 6) return m_defaultUUID;
 
-        // Build cache key from filenames
-        std::ostringstream oss;
-        for (const auto& f : filenames) { oss << f << "|"; }
-        const std::string key = oss.str();
+        // Use the first face's path as the identifier for the whole cubemap
+        std::string virtualPath = "cubemap://" + filepaths[0];
+        UUID assetID = assetManager.ImportAsset(virtualPath, Engine::AssetType::Texture);
 
-        // Check cubemap cache
-        if (auto it = m_cubemapCache.find(key); it != m_cubemapCache.end())
-        {
-            return it->second.Get();
-        }
+        // Memory Pool Check
+        if (m_textures.find(assetID) != m_textures.end()) return assetID;
 
-        // Load all 6 faces
-        stbi_uc* faces[6] = {};
-        int width = 0, height = 0, channels = 0;
+        // Load from Disk
+        stbi_set_flip_vertically_on_load(false); // Cubemaps don't flip
 
+		// D3D11 Texture Description for Cubemap
+        D3D11_TEXTURE2D_DESC desc{};
+		// subresource data array for each face of the cubemap
+        D3D11_SUBRESOURCE_DATA data[6];
+		// Array to hold the loaded image data for each face
+        unsigned char* images[6] = { nullptr };
+
+		// Load each face of the cubemap
         for (int i = 0; i < 6; ++i)
         {
-            int w = 0, h = 0, c = 0;
-            faces[i] = stbi_load(filenames[i].c_str(), &w, &h, &c, 4);
-            if (!faces[i] || w <= 0 || h <= 0)
+            int w, h, c;
+            images[i] = stbi_load(filepaths[i].c_str(), &w, &h, &c, 4);
+            if (!images[i])
             {
-                // Cleanup any loaded faces
-                for (int j = 0; j < 6; ++j)
-                {
-                    if (faces[j]) stbi_image_free(faces[j]);
-                }
-                return nullptr;
+                std::cerr << "TextureManager Failed to load cubemap face: " << filepaths[i] << std::endl;
+                for (int j = 0; j < i; ++j) stbi_image_free(images[j]); // Cleanup previous faces
+                return m_defaultUUID;
             }
 
-			// On first face, record dimensions
+			// Set the texture description only once, using the dimensions of the first face
             if (i == 0)
             {
-                width = w; height = h; channels = 4;
+                desc.Width = w;
+                desc.Height = h;
+                desc.MipLevels = 1;
+                desc.ArraySize = 6;
+                desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+                desc.SampleDesc.Count = 1;
+                desc.Usage = D3D11_USAGE_IMMUTABLE;
+                desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+                desc.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE; // Crucial for Skyboxes
             }
-            else
-            {
-                // Ensure consistent dimensions
-                if (w != width || h != height)
-                {
-                    for (int j = 0; j < 6; ++j)
-                    {
-                        if (faces[j]) stbi_image_free(faces[j]);
-                    }
-                    return nullptr;
-                }
-            }
+
+			// Initialize subresource data for each face
+            data[i].pSysMem = images[i];
+            data[i].SysMemPitch = desc.Width * 4;
+            data[i].SysMemSlicePitch = 0;
         }
 
-        // Describe TextureCube (2D array with 6 slices)
-        D3D11_TEXTURE2D_DESC texDesc{};
-        texDesc.Width = static_cast<UINT>(width);
-        texDesc.Height = static_cast<UINT>(height);
-        texDesc.MipLevels = 1;
-        texDesc.ArraySize = 6;
-        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        texDesc.SampleDesc.Count = 1;
-        texDesc.SampleDesc.Quality = 0;
-        texDesc.Usage = D3D11_USAGE_DEFAULT;
-        texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-        texDesc.CPUAccessFlags = 0;
-        texDesc.MiscFlags = D3D11_RESOURCE_MISC_TEXTURECUBE;
+        // Hardware Creation
+		ID3D11Texture2D* texture = nullptr;
+        device->CreateTexture2D(&desc, data, &texture);
 
-        // Subresource data for 6 faces
-        D3D11_SUBRESOURCE_DATA initData[6]{};
-        for (int i = 0; i < 6; ++i)
-        {
-            initData[i].pSysMem = faces[i];
-            initData[i].SysMemPitch = static_cast<UINT>(width * 4);
-            initData[i].SysMemSlicePitch = 0;
-        }
-
-        // Create Texture2D with 6 subresources
-        ComPtr<ID3D11Texture2D> texCube;
-        HRESULT hr = device->CreateTexture2D(&texDesc, initData, texCube.GetAddressOf());
-
-        // Free pixel data
-        for (int i = 0; i < 6; ++i)
-        {
-            if (faces[i]) stbi_image_free(faces[i]);
-        }
-
-        if (FAILED(hr))
-        {
-            return nullptr;
-        }
-
-        // Create SRV for TextureCube
+		// Shader Resource View (SRV) Description for Cubemap
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = texDesc.Format;
+        srvDesc.Format = desc.Format;
         srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURECUBE;
         srvDesc.TextureCube.MostDetailedMip = 0;
         srvDesc.TextureCube.MipLevels = 1;
 
-        ComPtr<ID3D11ShaderResourceView> srv;
-        hr = device->CreateShaderResourceView(texCube.Get(), &srvDesc, srv.GetAddressOf());
-        if (FAILED(hr))
-        {
-            return nullptr;
-        }
+		// Create the SRV for the cubemap texture
+        ID3D11ShaderResourceView* srv = nullptr;
+        device->CreateShaderResourceView(texture, &srvDesc, &srv);
 
-        // Cache and return
-        m_cubemapCache.emplace(key, srv);
-        return srv.Get();
+		// Cleanup staging resources
+        texture->Release();
+        for (int i = 0; i < 6; ++i) stbi_image_free(images[i]);
+
+        // Register in memory pool
+        m_textures[assetID] = srv;
+        assetManager.SetAssetLoaded(assetID, true);
+
+        return assetID;
+    }
+
+
+    ID3D11ShaderResourceView* TextureManager::GetTexture(UUID uuid) const
+    {
+        // Simple hash map lookup
+        auto it = m_textures.find(uuid);
+        if (it != m_textures.end())
+        {
+            return it->second;
+        }
+        return m_defaultSRV;
     }
 }

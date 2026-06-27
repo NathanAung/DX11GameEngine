@@ -1,6 +1,7 @@
 #include "Engine/Systems.h"
 #include "Engine/Components.h"
 #include "Engine/Renderer.h"
+#include "Engine/Scene.h"
 #include "Engine/MeshManager.h"
 #include "Engine/PhysicsManager.h"
 #include "Engine/ShaderManager.h"

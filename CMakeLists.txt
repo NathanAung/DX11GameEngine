@@ -32,6 +32,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(ENGINE_SOURCE_FILES
     src/main.cpp
+    src/Engine/UUID.cpp
+    src/Engine/AssetManager.cpp
     src/Engine/Renderer.cpp
     src/Engine/InputManager.cpp
     src/Engine/Scene.cpp
@@ -48,6 +50,8 @@ set(ENGINE_SOURCE_FILES
 
 set(ENGINE_HEADER_FILES
     include/Engine/Core.h
+    include/Engine/UUID.h
+    include/Engine/AssetManager.h
     include/Engine/Renderer.h
     include/Engine/InputManager.h
     include/Engine/Components.h

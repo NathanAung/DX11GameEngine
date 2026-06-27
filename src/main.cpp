@@ -1,4 +1,5 @@
 #include "Engine/Core.h"
+#include "Engine/AssetManager.h"
 #include "Engine/Renderer.h"
 #include "Engine/InputManager.h"
 #include "Engine/Scene.h"
@@ -27,29 +28,22 @@ Uint64 g_lastCounter = 0;
 bool g_running = true;
 bool g_vSync = true; // can toggle later
 
-// Input manager
+// Managers
+Engine::AssetManager g_assetManager;
 Engine::InputManager g_input;
+Engine::MeshManager g_meshManager;
+Engine::ShaderManager g_shaderManager;
+Engine::TextureManager g_textureManager;
+Engine::PhysicsManager g_physicsManager;
+Engine::ImGuiManager g_imGuiManager;
+Engine::AudioManager g_audioManager;
 
 // ECS: Scene and a sample 3d entity
 Engine::Scene g_scene;
 entt::entity g_sampleEntity = entt::null;
 
-// Managers
-Engine::MeshManager g_meshManager;
-Engine::ShaderManager g_shaderManager;
-Engine::TextureManager g_textureManager; // global texture manager instance
-
 // Renderer
 Engine::Renderer g_renderer;
-
-// Physics
-Engine::PhysicsManager g_physicsManager;
-
-// ImGui Manager
-Engine::ImGuiManager g_imGuiManager;
-
-// Audio
-Engine::AudioManager g_audioManager;
 
 // Editor UI
 Engine::EditorUI g_editorUI;

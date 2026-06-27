@@ -1,8 +1,6 @@
 #pragma once
 #include <entt/entt.hpp>
 #include <d3d11.h>
-#include "Engine/Scene.h"
-#include "Engine/Renderer.h"
 
 // Systems for the engine, including various update and rendering systems
 
@@ -14,6 +12,8 @@ namespace Engine
 	class PhysicsManager;
 	class TextureManager;
 	class AudioManager;
+	class Renderer;
+	class Scene;
 
     namespace RenderSystem
     {
