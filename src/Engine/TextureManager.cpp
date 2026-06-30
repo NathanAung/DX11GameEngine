@@ -7,7 +7,6 @@
 #include <sstream>
 #include <iostream>
 
-using Microsoft::WRL::ComPtr;
 
 namespace Engine
 {
