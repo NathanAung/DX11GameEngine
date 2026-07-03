@@ -3,6 +3,7 @@
 #include <entt/entt.hpp>
 #include <sol/sol.hpp>
 #include "Engine/Components.h"
+#include "Engine/UUID.h"
 
 // Scene class manages entities and components using EnTT ECS
 
@@ -11,6 +12,7 @@ namespace Engine
     class PhysicsManager;
     class InputManager;
     class AudioManager;
+	class AssetManager;
 
     class Scene
     {
@@ -32,6 +34,11 @@ namespace Engine
         // Audio Manager reference for lifecycle cleanup
         void SetAudioManager(Engine::AudioManager* am) { m_audioManager = am; }
         Engine::AudioManager* GetAudioManager() const { return m_audioManager; }
+
+		// Asset Manager reference for asset lookups and spawning
+        Engine::AssetManager* m_assetManager = nullptr;
+        void SetAssetManager(Engine::AssetManager* am) { m_assetManager = am; }
+        Engine::AssetManager* GetAssetManager() const { return m_assetManager; }
 
         // Create a generic entity with ID, Name and default Transform
         entt::entity CreateEntity(const std::string& name);
@@ -65,15 +72,15 @@ namespace Engine
                                      float spotAngleRadians);
 
         // Cached default assets so the editor can autonomously spawn primitives
-        void SetDefaultAssets(int shaderID, int debugShaderID, int cubeID, int sphereID, int capsuleID);
+        void SetDefaultAssets(int shaderID, int debugShaderID, UUID cubeID, UUID sphereID, UUID capsuleID);
         entt::entity CreateCube(const std::string& name);
         entt::entity CreateSphere(const std::string& name);
         entt::entity CreateCapsule(const std::string& name);
 
         // Expose default primitive mesh IDs for editor dropdowns
-        int GetCubeMeshID() const { return m_cubeMeshID; }
-        int GetSphereMeshID() const { return m_sphereMeshID; }
-        int GetCapsuleMeshID() const { return m_capsuleMeshID; }
+        UUID GetCubeMeshID() const { return m_cubeMeshID; }
+        UUID GetSphereMeshID() const { return m_sphereMeshID; }
+        UUID GetCapsuleMeshID() const { return m_capsuleMeshID; }
 		int GetDefaultShaderID() const { return m_defaultShaderID; }
         int GetDebugShaderID() const { return m_debugShaderID; }
 
@@ -100,9 +107,9 @@ namespace Engine
 		// Cache default asset IDs for editor-spawned primitives
         int m_defaultShaderID = 0;
         int m_debugShaderID = 0;
-        int m_cubeMeshID = 0;
-        int m_sphereMeshID = 0;
-        int m_capsuleMeshID = 0;
+        UUID m_cubeMeshID = 0;
+        UUID m_sphereMeshID = 0;
+        UUID m_capsuleMeshID = 0;
 
         Engine::PhysicsManager* m_physicsManager = nullptr;
 

@@ -2,6 +2,7 @@
 #include "Engine/Components.h"
 #include "Engine/Renderer.h"
 #include "Engine/Scene.h"
+#include "Engine/AssetManager.h"
 #include "Engine/MeshManager.h"
 #include "Engine/PhysicsManager.h"
 #include "Engine/ShaderManager.h"
@@ -390,10 +391,11 @@ namespace Engine
                     // Bind the PBR Shader
                     renderer.BindShader(shaderManager, scene.GetDefaultShaderID());
 
-                    // Bind mesh.texture (if valid, else bind default white texture).
-                    if (mr.texture)
+					// Bind the texture if available, otherwise bind a default 1x1 white texture (now looks up the texture dynamically using a UUID)
+                    if (mr.textureID != 0)
                     {
-                        context->PSSetShaderResources(0, 1, &mr.texture);
+                        ID3D11ShaderResourceView* tex = textureManager.GetTexture(mr.textureID);
+                        context->PSSetShaderResources(0, 1, &tex);
                     }
                     else
                     {
@@ -440,7 +442,7 @@ namespace Engine
 
             // Calculate Scale based purely on Physics dimensions
             DirectX::XMFLOAT3 debugScale = {1.0f, 1.0f, 1.0f};
-            int debugMeshID = 0;
+            UUID debugMeshID = 0;
 
             if (rb.shape == RBShape::Box) {
                 // Assuming base cube mesh is 1x1x1, scale by halfExtent * 2
@@ -813,7 +815,7 @@ namespace Engine
 
 	// --- AUDIO SYSTEM ---
 
-    void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager)
+    void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager, Engine::AssetManager& assetManager)
     {
         // Update Listener (Ears) using Active Camera
         if (scene.m_activeRenderCamera != entt::null && scene.registry.valid(scene.m_activeRenderCamera))
@@ -852,9 +854,9 @@ namespace Engine
             }
 
             // Initialize sound handle dynamically
-            if (ac.soundHandle == nullptr && !ac.filepath.empty())
+            if (ac.soundHandle == nullptr && ac.audioID != 0)
             {
-                ac.soundHandle = audioManager.LoadSound(ac.filepath, ac.is3D, ac.loop);
+                ac.soundHandle = audioManager.LoadSound(ac.audioID, assetManager, ac.is3D, ac.loop);
             }
 
             // Play if requested

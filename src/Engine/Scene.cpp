@@ -3,6 +3,7 @@
 #include "Engine/PhysicsManager.h"
 #include "Engine/InputManager.h"
 #include "Engine/AudioManager.h"
+#include "Engine/AssetManager.h"
 #include "Engine/ScriptEntity.h"
 #include <DirectXMath.h>
 
@@ -43,7 +44,7 @@ namespace Engine
     }
 
 
-    void Scene::SetDefaultAssets(int shaderID, int debugShaderID, int cubeID, int sphereID, int capsuleID) {
+    void Scene::SetDefaultAssets(int shaderID, int debugShaderID, UUID cubeID, UUID sphereID, UUID capsuleID) {
         m_defaultShaderID = shaderID;
         m_debugShaderID = debugShaderID;
         m_cubeMeshID = cubeID;
@@ -264,7 +265,7 @@ namespace Engine
     {
         if (child == parent || !registry.valid(child) || !registry.valid(parent)) return;
 
-        // 1. Check for cycles (is the new parent actually a descendant of the child?)
+        // Check for cycles (is the new parent actually a descendant of the child?)
         entt::entity ancestor = parent;
         while (ancestor != entt::null) {
             if (ancestor == child) return; // Cycle detected, abort!
@@ -272,7 +273,7 @@ namespace Engine
             ancestor = registry.get<RelationshipComponent>(ancestor).parent;
         }
 
-        // 2. Unparent from current parent
+        // Unparent from current parent
         UnparentEntity(child);
 
         // Convert World to Local relative to new parent
@@ -324,7 +325,7 @@ namespace Engine
     {
         if (!registry.valid(entity)) return;
 
-        // 1. Cascade delete to all children
+        // Cascade delete to all children
         if (registry.all_of<RelationshipComponent>(entity)) {
             auto& rel = registry.get<RelationshipComponent>(entity);
             entt::entity currentChild = rel.firstChild;
@@ -339,16 +340,16 @@ namespace Engine
             }
         }
 
-        // 2. Unparent this entity so its parent cleanly removes it from the linked list
+        // Unparent this entity so its parent cleanly removes it from the linked list
         UnparentEntity(entity);
 
-        // 3. Existing Physics Cleanup
+        // Existing Physics Cleanup
         if (registry.all_of<RigidBodyComponent>(entity)) {
             auto& rbc = registry.get<RigidBodyComponent>(entity);
             physicsManager.RemoveRigidBody(rbc.bodyID);
         }
 
-        // 4. Destroy the entity
+        // Destroy the entity
         registry.destroy(entity);
     }
 

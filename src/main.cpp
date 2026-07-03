@@ -1,4 +1,5 @@
 #include "Engine/Core.h"
+#include "Engine/UUID.h"
 #include "Engine/AssetManager.h"
 #include "Engine/Renderer.h"
 #include "Engine/InputManager.h"
@@ -11,8 +12,10 @@
 #include "Engine/AudioManager.h"
 #include "Engine/EditorUI.h"
 
+
 // Common Usings
 using namespace DirectX;
+using Engine::UUID;
 
 // GLOBALS (app level)
 SDL_Window* g_SDLWindow = nullptr;
@@ -56,7 +59,7 @@ void Render();
 static void LoadContent()
 {
     // Create the default 1x1 fallback texture
-    g_textureManager.CreateDefaultTexture(g_renderer.GetDevice());
+    g_textureManager.CreateDefaultTexture(g_renderer.GetDevice(), g_assetManager);
 
     // Create resources with renderer device
     const int shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
@@ -66,14 +69,14 @@ static void LoadContent()
 
     // Ensure skybox cube mesh (ID 101) always exists for DrawSkybox
     // Note: keep this unconditional to guarantee Mesh 101 availability
-    const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice()); // temporary ID 101
+    const UUID cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice(), g_assetManager); // temporary ID 101
 
     // Compile & load skybox shaders (assign temporary ID 2 inside ShaderManager implementation)
     const int skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice());
 
     // Create shared primitive meshes for editor-spawned entities
-    const int sphereMeshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), 0.5f, 32, 32);
-    const int capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), 0.5f, 1.0f, 32, 32);
+    const UUID sphereMeshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), g_assetManager, 0.5f, 32, 32);
+    const UUID capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), g_assetManager, 0.5f, 1.0f, 32, 32);
 
     // Cache default assets on the Scene so EditorUI can autonomously spawn primitives
     g_scene.SetDefaultAssets(shaderID, unlitShaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
@@ -116,7 +119,7 @@ static void LoadContent()
         );
     }
 
-    auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");
+    auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), g_assetManager, "assets/Models/MyModel.obj");
     // Create the sample entity
     {
         g_sampleEntity = g_scene.CreateSampleEntity("Sample 3D Model");
@@ -132,9 +135,9 @@ static void LoadContent()
             throw std::runtime_error("Failed to load model meshes.");
         }
 
-        // example texture loading via texture manager and keep SRV
-        ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture.png");
-        mr.texture = tex; // assign texture to component
+		// example texture loading via TextureManager and AssetManager
+        UUID texID = g_textureManager.LoadTexture(g_renderer.GetDevice(), g_assetManager, "assets/Textures/MyTexture.png");
+        mr.textureID = texID; // assign texture to component
 		mr.matType = Engine::MaterialType::Textured; // switch to textured shader path
         // PBR value testing
         mr.roughness = 0.3f; // shiny
@@ -158,14 +161,10 @@ static void LoadContent()
             "assets/Textures/Skybox/front.png",  // +Z
             "assets/Textures/Skybox/back.png"    // -Z
         };
-        if (ID3D11ShaderResourceView* skySRV = g_textureManager.LoadCubemap(g_renderer.GetDevice(), faces))
-        {
-            g_renderer.SetSkybox(skySRV);
-			//std::printf("Skybox cubemap loaded successfully.\n");
-        }
-        else {
-			throw std::runtime_error("Failed to load skybox cubemap textures.");
-        }
+		// Load the cubemap via TextureManager, which handles AssetManager registration and returns a UUID
+        UUID skyID = g_textureManager.LoadCubemap(g_renderer.GetDevice(), g_assetManager, faces);
+        if (skyID != 0) g_renderer.SetSkybox(g_textureManager.GetTexture(skyID));
+        else throw std::runtime_error("Failed to load skybox cubemap textures.");
     }
 
 
@@ -366,7 +365,10 @@ int main(int argc, char** argv)
     g_perfFreq = SDL_GetPerformanceFrequency();
     g_lastCounter = SDL_GetPerformanceCounter();
 
+	// Set the AudioManager reference in the Scene for audio playback and ECS integration
     g_scene.SetAudioManager(&g_audioManager);
+	// Set the AssetManager reference in the Scene for asset lookups and spawning
+    g_scene.SetAssetManager(&g_assetManager);
 
 	// Initialize Lua bindings with access to input and physics manager
     g_scene.InitializeLuaBindings(&g_input, &g_physicsManager);
@@ -435,7 +437,7 @@ void Update(float deltaTime) {
     if (isPlaying) {
         Engine::ScriptSystemUpdate(g_scene, deltaTime);
 
-        Engine::AudioSystem(g_scene, g_audioManager);
+        Engine::AudioSystem(g_scene, g_audioManager, g_assetManager);
 
         // Safely destroy any entities that scripts asked to kill this frame
         g_scene.ProcessDestructionQueue(g_physicsManager);

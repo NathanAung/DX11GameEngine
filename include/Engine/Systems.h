@@ -12,6 +12,7 @@ namespace Engine
 	class PhysicsManager;
 	class TextureManager;
 	class AudioManager;
+    class AssetManager;
 	class Renderer;
 	class Scene;
 
@@ -45,5 +46,5 @@ namespace Engine
     void ScriptSystemShutdown(Engine::Scene& scene);
 
     // audio update system: syncs listener and 3D sound emitters
-    void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager);
+    void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager, Engine::AssetManager& assetManager);
 }
