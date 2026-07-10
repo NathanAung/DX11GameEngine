@@ -128,7 +128,7 @@ static void LoadContent()
         auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_sampleEntity);
         if (!meshIDs.empty())
         {
-            int firstMeshID = meshIDs[0];
+            UUID firstMeshID = meshIDs[0];
             mr.meshID = firstMeshID;
         }
         else {

@@ -1,6 +1,7 @@
 #pragma once
 #include <entt/entt.hpp>
 #include <string>
+#include "Engine/AssetManager.h"
 #include "Engine/Scene.h"
 #include "Engine/Components.h"
 #include "Engine/PhysicsManager.h"
@@ -136,7 +137,12 @@ namespace Engine
         {
             if (m_scene && m_scene->registry.valid(m_entity)) {
                 auto& ac = m_scene->registry.get_or_emplace<AudioComponent>(m_entity);
-                ac.filepath = filepath;
+
+                // Translate the human-readable string into a UUID 
+                if (m_scene->GetAssetManager()) {
+                    ac.audioID = m_scene->GetAssetManager()->ImportAsset(filepath, Engine::AssetType::Audio);
+                }
+
                 ac.is3D = is3D;
                 ac.loop = loop;
                 ac.playOnCreate = playOnCreate;
@@ -153,9 +159,9 @@ namespace Engine
                     m_scene->GetAudioManager()->PlayAudio(ac.soundHandle);
                     ac.isPlaying = true;
                 }
-                else if (!ac.soundHandle && !ac.filepath.empty() && m_scene->GetAudioManager()) {
-                    // Load and play immediately if not loaded yet
-                    ac.soundHandle = m_scene->GetAudioManager()->LoadSound(ac.filepath, ac.is3D, ac.loop);
+                else if (!ac.soundHandle && ac.audioID != 0 && m_scene->GetAudioManager() && m_scene->GetAssetManager()) {
+                    // Load and play immediately if not loaded yet (Pass AssetManager for UUID lookup)
+                    ac.soundHandle = m_scene->GetAudioManager()->LoadSound(ac.audioID, *m_scene->GetAssetManager(), ac.is3D, ac.loop);
                     if (ac.soundHandle) {
                         m_scene->GetAudioManager()->PlayAudio(ac.soundHandle);
                         ac.isPlaying = true;

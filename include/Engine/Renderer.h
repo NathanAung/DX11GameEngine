@@ -3,6 +3,7 @@
 #include <dxgi.h>
 #include <wrl/client.h> // For ComPtr
 #include <DirectXMath.h>
+#include "Engine/UUID.h"
 
 // The Renderer class encapsulates DirectX 11 rendering functionality
 // Flow of operations: InitD3D11 -> BeginFrame -> [Update... / Bind... / Submit...] -> DrawIndexed -> Present -> Shutdown
@@ -104,7 +105,7 @@ public:
 
     // Skybox
     void SetSkybox(ID3D11ShaderResourceView* srv) { m_skyboxSRV = srv; }
-    void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, int cubeMeshID);
+    void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, UUID cubeMeshID);
 
     // Resource Accessors (for Systems to use if needed)
     ID3D11Device* GetDevice() const { return m_dx.device.Get(); }

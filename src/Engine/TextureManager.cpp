@@ -21,7 +21,7 @@ namespace Engine
 
         // Load Image Data (force RGBA)
         int width = 0, height = 0, channels = 0;
-        stbi_set_flip_vertically_on_load(true); // Flip for DirectX UVs
+        //stbi_set_flip_vertically_on_load(true); // Flip for DirectX UVs
         unsigned char* imgData = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
         if (!imgData)
         {

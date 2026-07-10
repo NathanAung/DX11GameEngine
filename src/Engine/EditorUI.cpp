@@ -1,6 +1,7 @@
 #include "Engine/EditorUI.h"
 #include "Engine/Components.h"
 #include "Engine/MathUtils.h"
+#include "Engine/AssetManager.h"
 #include "Engine/PhysicsManager.h"
 #include "Engine/AudioManager.h"
 #include "Engine/InputManager.h"
@@ -788,7 +789,7 @@ namespace Engine
                         if (treeOpen)
                         {
                             // Fundamental mesh selection: choose from default primitive meshes
-                            const char* meshTypes[] = { "Cube", "Sphere", "Capsule" };
+                            const char* meshTypes[] = { "Cube", "Sphere", "Capsule", "Custom"};
                             int currentMeshIdx = -1;
                             if (mr.meshID == scene.GetCubeMeshID()) currentMeshIdx = 0;
                             else if (mr.meshID == scene.GetSphereMeshID()) currentMeshIdx = 1;
@@ -799,6 +800,7 @@ namespace Engine
                                 if (currentMeshIdx == 0) mr.meshID = scene.GetCubeMeshID();
                                 else if (currentMeshIdx == 1) mr.meshID = scene.GetSphereMeshID();
                                 else if (currentMeshIdx == 2) mr.meshID = scene.GetCapsuleMeshID();
+
                             }
 
                             // Material Type selector
@@ -863,12 +865,16 @@ namespace Engine
                                 }
                             }
 
+                            // Read the string filename back out of the UUID metadata so the UI can display it
                             int currentIndex = 0;
                             std::string currentFilename = "";
-                            if (!ac.filepath.empty()) {
-                                currentFilename = std::filesystem::path(ac.filepath).filename().string();
-                                for (int i = 1; i < audioFiles.size(); ++i) {
-                                    if (audioFiles[i] == currentFilename) { currentIndex = i; break; }
+                            if (ac.audioID != 0 && scene.GetAssetManager()) {
+                                const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(ac.audioID);
+                                if (meta) {
+                                    currentFilename = std::filesystem::path(meta->filepath).filename().string();
+                                    for (int i = 1; i < audioFiles.size(); ++i) {
+                                        if (audioFiles[i] == currentFilename) { currentIndex = i; break; }
+                                    }
                                 }
                             }
 
@@ -878,7 +884,16 @@ namespace Engine
                                     bool isSelected = (currentIndex == i);
                                     if (ImGui::Selectable(audioFiles[i].c_str(), isSelected)) {
                                         if (currentIndex != i) {
-                                            ac.filepath = (i == 0) ? "" : audioPath + "/" + audioFiles[i];
+                                            // Assign a UUID based on the dropdown selection
+                                            if (i == 0) {
+                                                ac.audioID = 0;
+                                            }
+                                            else {
+                                                std::string newPath = audioPath + "/" + audioFiles[i];
+                                                if (scene.GetAssetManager()) {
+                                                    ac.audioID = scene.GetAssetManager()->ImportAsset(newPath, Engine::AssetType::Audio);
+                                                }
+                                            }
                                             // Safely clear old handle so it reloads on Play
                                             if (scene.GetAudioManager() && ac.soundHandle) {
                                                 scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
@@ -895,12 +910,16 @@ namespace Engine
                             if (ImGui::BeginDragDropTarget()) {
                                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("AUDIO_FILE")) {
                                     const char* droppedPath = (const char*)payload->Data;
-                                    if (ac.filepath != droppedPath) {
-                                        ac.filepath = droppedPath;
-                                        if (scene.GetAudioManager() && ac.soundHandle) {
-                                            scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
-                                            ac.soundHandle = nullptr;
-                                            ac.isPlaying = false;
+                                    // Generate a UUID from the dropped file path
+                                    if (scene.GetAssetManager()) {
+                                        Engine::UUID newID = scene.GetAssetManager()->ImportAsset(droppedPath, Engine::AssetType::Audio);
+                                        if (ac.audioID != newID) {
+                                            ac.audioID = newID;
+                                            if (scene.GetAudioManager() && ac.soundHandle) {
+                                                scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                                                ac.soundHandle = nullptr;
+                                                ac.isPlaying = false;
+                                            }
                                         }
                                     }
                                 }

@@ -616,7 +616,7 @@ namespace Engine
     }
 
 
-    void Renderer::DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, int cubeMeshID)
+    void Renderer::DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, UUID cubeMeshID)
     {
         if (!m_skyboxSRV) return;
 
