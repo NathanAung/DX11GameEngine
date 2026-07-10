@@ -4,6 +4,7 @@
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <DirectXMath.h>
+#include "Engine/UUID.h"
 
 // Assimp - model importing
 #include <assimp/Importer.hpp>
@@ -15,6 +16,8 @@
 
 namespace Engine
 {
+	class AssetManager;
+
     // Vertex format used by BasicVS.hlsl
     struct Vertex
     {
@@ -38,20 +41,20 @@ namespace Engine
     public:
         // Procedural primitives
         // Creates a unit cube mesh
-        int InitializeCube(ID3D11Device* device);
-        int CreateSphere(ID3D11Device* device, float radius, int slices, int stacks);
+        UUID InitializeCube(ID3D11Device* device, Engine::AssetManager& assetManager);
+        UUID CreateSphere(ID3D11Device* device, Engine::AssetManager& assetManager, float radius, int slices, int stacks);
         // Capsule (Y-axis aligned). radius = sphere radius, cylinderHeight = straight section height (no caps).
-        int CreateCapsule(ID3D11Device* device, float radius, float cylinderHeight, int slices, int stacks);
+        UUID CreateCapsule(ID3D11Device* device, Engine::AssetManager& assetManager, float radius, float cylinderHeight, int slices, int stacks);
 
-        // Loads a model with Assimp and returns mesh IDs for all mesh parts
-        std::vector<int> LoadModel(ID3D11Device* device, const std::string& filename);
+        // Loads a model with Assimp and returns mesh UUIDs for all mesh parts
+        std::vector<UUID> LoadModel(ID3D11Device* device, Engine::AssetManager& assetManager, const std::string& filename);
 
         // Retrieves buffers for a mesh ID
-        bool GetMesh(int meshID, MeshBuffers& out) const;
+        bool GetMesh(UUID meshID, MeshBuffers& out) const;
 
         // Accessors for physics
-        const std::vector<DirectX::XMFLOAT3>& GetMeshPositions(int meshID) const;
-        const std::vector<uint32_t>& GetMeshIndices(int meshID) const;
+        const std::vector<DirectX::XMFLOAT3>& GetMeshPositions(UUID meshID) const;
+        const std::vector<uint32_t>& GetMeshIndices(UUID meshID) const;
 
     private:
         // Internal structure to hold mesh data
@@ -68,21 +71,22 @@ namespace Engine
             std::vector<uint32_t> indices;             // triangle indices
         };
 
-        // Create buffers and store MeshData; returns assigned mesh ID
-        int CreateMeshBuffers(ID3D11Device* device,
+		// Creates vertex and index buffers for a mesh and stores them in the mesh map
+        bool CreateMeshBuffers(ID3D11Device* device,
+                              UUID assetID,
                               const std::vector<Vertex>& vertices,
                               const std::vector<uint32_t>& indices);
 
         // Process Assimp node recursively
-        void ProcessNode(ID3D11Device* device, aiNode* node, const aiScene* scene, std::vector<int>& outMeshIDs);
+        void ProcessNode(ID3D11Device* device, Engine::AssetManager& assetManager, const std::string& filename, aiNode* node, const aiScene* scene, std::vector<UUID>& outMeshIDs);
 
-        // Convert Assimp mesh to internal buffers, store and return ID
-        int ProcessMesh(ID3D11Device* device, aiMesh* mesh, const aiScene* scene);
+        // Convert Assimp mesh to internal buffers, store and return UUID
+        UUID ProcessMesh(ID3D11Device* device, Engine::AssetManager& assetManager, const std::string& filename, aiMesh* mesh, const aiScene* scene, unsigned int meshIndex);
 
-        // Map of meshID to MeshData
-        std::unordered_map<int, MeshData> m_meshes;
+        // The master memory pool for meshes
+        std::unordered_map<UUID, MeshData> m_meshes;
 
-        // ID allocator
-        int m_nextMeshID = 1;
+        // Cache to prevent Assimp from re-parsing the same file multiple times
+        std::unordered_map<std::string, std::vector<UUID>> m_modelCache;
     };
 }

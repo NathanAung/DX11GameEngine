@@ -1,6 +1,7 @@
 #define MINIAUDIO_IMPLEMENTATION // This tells miniaudio to generate the implementation in this file. Only do this in one .cpp file.
 #include <miniaudio.h>
 #include "Engine/AudioManager.h"
+#include "Engine/AssetManager.h"
 #include <iostream>
 
 namespace Engine
@@ -28,6 +29,7 @@ namespace Engine
     {
         if (m_engine)
         {
+			// Uninitialize the miniaudio engine and free resources
             ma_engine_uninit(m_engine);
             delete m_engine;
             m_engine = nullptr;
@@ -35,19 +37,28 @@ namespace Engine
     }
 
 
-    void AudioManager::PlaySound2D(const std::string& filepath)
+    void AudioManager::PlaySound2D(UUID assetID, Engine::AssetManager& assetManager)
     {
         if (!m_engine) return;
 
-        // ma_engine_play_sound acts as a simple "fire-and-forget" function.
+        // Extract the filepath from the central asset ledger
+        const AssetMetadata* meta = assetManager.GetMetadata(assetID);
+        if (meta && !meta->filepath.empty())
+        {
+            // ma_engine_play_sound acts as a simple "fire-and-forget" function.
         // It streams or loads the file automatically and cleans up when finished.
-        ma_engine_play_sound(m_engine, filepath.c_str(), NULL);
+            ma_engine_play_sound(m_engine, meta->filepath.c_str(), NULL);
+        }
     }
 
 
-    void* AudioManager::LoadSound(const std::string& filepath, bool is3D, bool loop)
+    void* AudioManager::LoadSound(UUID assetID, Engine::AssetManager& assetManager, bool is3D, bool loop)
     {
         if (!m_engine) return nullptr;
+
+        // Extract the filepath from the central asset ledger
+        const AssetMetadata* meta = assetManager.GetMetadata(assetID);
+        if (!meta || meta->filepath.empty()) return nullptr;
 
         // Allocate the sound struct on the heap so it persists
         ma_sound* sound = new ma_sound();
@@ -57,7 +68,8 @@ namespace Engine
             flags |= MA_SOUND_FLAG_NO_SPATIALIZATION; // Play as standard 2D sound if requested
         }
 
-        ma_result result = ma_sound_init_from_file(m_engine, filepath.c_str(), flags, NULL, NULL, sound);
+        // Initialize the sound using the retrieved filepath
+        ma_result result = ma_sound_init_from_file(m_engine, meta->filepath.c_str(), flags, NULL, NULL, sound);
         if (result != MA_SUCCESS) {
             delete sound;
             return nullptr;
@@ -67,12 +79,14 @@ namespace Engine
         return sound; // Return as an opaque void* pointer
     }
 
+
     void AudioManager::PlayAudio(void* soundHandle)
     {
         if (soundHandle) {
             ma_sound_start(static_cast<ma_sound*>(soundHandle));
         }
     }
+
 
     void AudioManager::StopAudio(void* soundHandle)
     {
@@ -81,12 +95,14 @@ namespace Engine
         }
     }
 
+
     void AudioManager::SetAudioPosition(void* soundHandle, float x, float y, float z)
     {
         if (soundHandle) {
             ma_sound_set_position(static_cast<ma_sound*>(soundHandle), x, y, z);
         }
     }
+
 
     void AudioManager::SetAudioVolume(void* soundHandle, float volume)
     {
@@ -96,6 +112,7 @@ namespace Engine
         }
     }
 
+
     void AudioManager::DestroyAudio(void* soundHandle)
     {
         if (soundHandle) {
@@ -104,6 +121,7 @@ namespace Engine
             delete sound;           // Free heap memory
         }
     }
+
 
     void AudioManager::SetListenerPosition(float px, float py, float pz, float fx, float fy, float fz)
     {

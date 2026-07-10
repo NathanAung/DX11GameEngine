@@ -1,4 +1,6 @@
 #include "Engine/Core.h"
+#include "Engine/UUID.h"
+#include "Engine/AssetManager.h"
 #include "Engine/Renderer.h"
 #include "Engine/InputManager.h"
 #include "Engine/Scene.h"
@@ -10,8 +12,10 @@
 #include "Engine/AudioManager.h"
 #include "Engine/EditorUI.h"
 
+
 // Common Usings
 using namespace DirectX;
+using Engine::UUID;
 
 // GLOBALS (app level)
 SDL_Window* g_SDLWindow = nullptr;
@@ -27,29 +31,22 @@ Uint64 g_lastCounter = 0;
 bool g_running = true;
 bool g_vSync = true; // can toggle later
 
-// Input manager
+// Managers
+Engine::AssetManager g_assetManager;
 Engine::InputManager g_input;
+Engine::MeshManager g_meshManager;
+Engine::ShaderManager g_shaderManager;
+Engine::TextureManager g_textureManager;
+Engine::PhysicsManager g_physicsManager;
+Engine::ImGuiManager g_imGuiManager;
+Engine::AudioManager g_audioManager;
 
 // ECS: Scene and a sample 3d entity
 Engine::Scene g_scene;
 entt::entity g_sampleEntity = entt::null;
 
-// Managers
-Engine::MeshManager g_meshManager;
-Engine::ShaderManager g_shaderManager;
-Engine::TextureManager g_textureManager; // global texture manager instance
-
 // Renderer
 Engine::Renderer g_renderer;
-
-// Physics
-Engine::PhysicsManager g_physicsManager;
-
-// ImGui Manager
-Engine::ImGuiManager g_imGuiManager;
-
-// Audio
-Engine::AudioManager g_audioManager;
 
 // Editor UI
 Engine::EditorUI g_editorUI;
@@ -62,27 +59,26 @@ void Render();
 static void LoadContent()
 {
     // Create the default 1x1 fallback texture
-    g_textureManager.CreateDefaultTexture(g_renderer.GetDevice());
+    g_textureManager.CreateDefaultTexture(g_renderer.GetDevice(), g_assetManager);
 
     // Create resources with renderer device
-    const int shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
+    const UUID shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice(), g_assetManager);
 
-    // Compile & load Unlit shaders (assign temporary ID 3 inside ShaderManager implementation)
-    const int unlitShaderID = g_shaderManager.LoadUnlitShaders(g_renderer.GetDevice());
+    // Compile & load Unlit shaders
+    const UUID unlitShaderID = g_shaderManager.LoadUnlitShaders(g_renderer.GetDevice(), g_assetManager);
 
-    // Ensure skybox cube mesh (ID 101) always exists for DrawSkybox
-    // Note: keep this unconditional to guarantee Mesh 101 availability
-    const int cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice()); // temporary ID 101
+    // Ensure skybox cube mesh always exists for DrawSkybox
+    const UUID cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice(), g_assetManager);
 
-    // Compile & load skybox shaders (assign temporary ID 2 inside ShaderManager implementation)
-    const int skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice());
+    // Compile & load skybox shaders
+    const UUID skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice(), g_assetManager);
 
     // Create shared primitive meshes for editor-spawned entities
-    const int sphereMeshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), 0.5f, 32, 32);
-    const int capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), 0.5f, 1.0f, 32, 32);
+    const UUID sphereMeshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), g_assetManager, 0.5f, 32, 32);
+    const UUID capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), g_assetManager, 0.5f, 1.0f, 32, 32);
 
     // Cache default assets on the Scene so EditorUI can autonomously spawn primitives
-    g_scene.SetDefaultAssets(shaderID, unlitShaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
+    g_scene.SetDefaultAssets(shaderID, unlitShaderID, skyboxShaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
 
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
@@ -122,7 +118,7 @@ static void LoadContent()
         );
     }
 
-    auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), "assets/Models/MyModel.obj");
+    auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), g_assetManager, "assets/Models/MyModel.obj");
     // Create the sample entity
     {
         g_sampleEntity = g_scene.CreateSampleEntity("Sample 3D Model");
@@ -131,16 +127,16 @@ static void LoadContent()
         auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_sampleEntity);
         if (!meshIDs.empty())
         {
-            int firstMeshID = meshIDs[0];
+            UUID firstMeshID = meshIDs[0];
             mr.meshID = firstMeshID;
         }
         else {
             throw std::runtime_error("Failed to load model meshes.");
         }
 
-        // example texture loading via texture manager and keep SRV
-        ID3D11ShaderResourceView* tex = g_textureManager.LoadTexture(g_renderer.GetDevice(), "assets/Textures/MyTexture.png");
-        mr.texture = tex; // assign texture to component
+		// example texture loading via TextureManager and AssetManager
+        UUID texID = g_textureManager.LoadTexture(g_renderer.GetDevice(), g_assetManager, "assets/Textures/MyTexture.png");
+        mr.textureID = texID; // assign texture to component
 		mr.matType = Engine::MaterialType::Textured; // switch to textured shader path
         // PBR value testing
         mr.roughness = 0.3f; // shiny
@@ -164,14 +160,10 @@ static void LoadContent()
             "assets/Textures/Skybox/front.png",  // +Z
             "assets/Textures/Skybox/back.png"    // -Z
         };
-        if (ID3D11ShaderResourceView* skySRV = g_textureManager.LoadCubemap(g_renderer.GetDevice(), faces))
-        {
-            g_renderer.SetSkybox(skySRV);
-			//std::printf("Skybox cubemap loaded successfully.\n");
-        }
-        else {
-			throw std::runtime_error("Failed to load skybox cubemap textures.");
-        }
+		// Load the cubemap via TextureManager, which handles AssetManager registration and returns a UUID
+        UUID skyID = g_textureManager.LoadCubemap(g_renderer.GetDevice(), g_assetManager, faces);
+        if (skyID != 0) g_renderer.SetSkybox(g_textureManager.GetTexture(skyID));
+        else throw std::runtime_error("Failed to load skybox cubemap textures.");
     }
 
 
@@ -372,7 +364,10 @@ int main(int argc, char** argv)
     g_perfFreq = SDL_GetPerformanceFrequency();
     g_lastCounter = SDL_GetPerformanceCounter();
 
+	// Set the AudioManager reference in the Scene for audio playback and ECS integration
     g_scene.SetAudioManager(&g_audioManager);
+	// Set the AssetManager reference in the Scene for asset lookups and spawning
+    g_scene.SetAssetManager(&g_assetManager);
 
 	// Initialize Lua bindings with access to input and physics manager
     g_scene.InitializeLuaBindings(&g_input, &g_physicsManager);
@@ -441,7 +436,7 @@ void Update(float deltaTime) {
     if (isPlaying) {
         Engine::ScriptSystemUpdate(g_scene, deltaTime);
 
-        Engine::AudioSystem(g_scene, g_audioManager);
+        Engine::AudioSystem(g_scene, g_audioManager, g_assetManager);
 
         // Safely destroy any entities that scripts asked to kill this frame
         g_scene.ProcessDestructionQueue(g_physicsManager);
@@ -476,7 +471,7 @@ void Render()
     }
 
 	// Render the editor UI (ImGui panels, etc.) first to set up the framebuffer and any UI state
-    g_editorUI.Render(g_scene, g_renderer, g_input, g_physicsManager, g_SDLWindow);
+    g_editorUI.Render(g_scene, g_renderer, g_meshManager, g_textureManager, g_input, g_physicsManager, g_SDLWindow);
 
     // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
     g_renderer.BindFramebuffer();
@@ -494,7 +489,7 @@ void Render()
     {
         const auto& camTrans = g_scene.registry.get<Engine::TransformComponent>(g_scene.m_activeRenderCamera);
         const auto& camComp = g_scene.registry.get<Engine::CameraComponent>(g_scene.m_activeRenderCamera);
-        g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans, g_scene.GetCubeMeshID());
+        g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans, g_scene.GetCubeMeshID(), g_scene.GetSkyboxShaderID());
     }
 
     // Now bind the real swapchain back buffer.

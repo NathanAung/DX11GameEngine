@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include "Engine/UUID.h"
 
 // AudioManager is a simple wrapper around miniaudio's engine for basic sound playback.
 
@@ -8,6 +9,8 @@ struct ma_engine;
 
 namespace Engine
 {
+    class AssetManager;
+
     class AudioManager
     {
     public:
@@ -18,10 +21,10 @@ namespace Engine
         void Shutdown();
 
         // Basic 2D sound playback for testing (Fire-and-forget)
-        void PlaySound2D(const std::string& filepath);
+        void PlaySound2D(UUID assetID, Engine::AssetManager& assetManager);
 
         // 3D Audio & ECS Support
-		void* LoadSound(const std::string& filepath, bool is3D, bool loop); // Returns an opaque handle to the sound instance, void pointer to avoid exposing miniaudio types in the header
+		void* LoadSound(UUID assetID, Engine::AssetManager& assetManager, bool is3D, bool loop); // Returns an opaque handle to the sound instance, void pointer to avoid exposing miniaudio types in the header
         void PlayAudio(void* soundHandle);
         void StopAudio(void* soundHandle);
         void SetAudioPosition(void* soundHandle, float x, float y, float z);

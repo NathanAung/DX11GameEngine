@@ -1,6 +1,7 @@
 #include "Engine/ShaderManager.h"
 #include <d3dcompiler.h>
 #include <stdexcept>
+#include "Engine/AssetManager.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -32,8 +33,13 @@ namespace Engine
         return bytecode;
     }
 
-    int ShaderManager::LoadBasicShaders(ID3D11Device* device)
+
+    UUID ShaderManager::LoadBasicShaders(ID3D11Device* device, Engine::AssetManager& assetManager)
     {
+		// Register the shader set in the AssetManager and get its UUID
+        UUID assetID = assetManager.ImportAsset("shader://basic", Engine::AssetType::Shader);
+        if (m_shaders.find(assetID) != m_shaders.end()) return assetID;
+
         // Compile shaders
         ComPtr<ID3DBlob> vsBytecode = Compile(L"shaders/BasicVS.hlsl", "main", "vs_5_0");
         ComPtr<ID3DBlob> psBytecode = Compile(L"shaders/BasicPS.hlsl", "main", "ps_5_0");
@@ -49,8 +55,8 @@ namespace Engine
         D3D11_INPUT_ELEMENT_DESC layout[] =
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,                         D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float)*3,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float)*6,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float) * 3,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float) * 6,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
         };
 
         hr = device->CreateInputLayout(
@@ -60,13 +66,18 @@ namespace Engine
             sd.inputLayout.GetAddressOf());
         if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed (Basic)");
 
-        // Store under shaderID 1
-        m_shaders[1] = std::move(sd);
-        return 1;
+        m_shaders[assetID] = std::move(sd);
+        assetManager.SetAssetLoaded(assetID, true);
+        return assetID;
     }
 
-    int ShaderManager::LoadSkyboxShaders(ID3D11Device* device)
+
+    UUID ShaderManager::LoadSkyboxShaders(ID3D11Device* device, Engine::AssetManager& assetManager)
     {
+		// Register the shader set in the AssetManager and get its UUID
+        UUID assetID = assetManager.ImportAsset("shader://skybox", Engine::AssetType::Shader);
+        if (m_shaders.find(assetID) != m_shaders.end()) return assetID;
+
         // Compile Skybox VS/PS
         ComPtr<ID3DBlob> vsBytecode = Compile(L"shaders/SkyboxVS.hlsl", "main", "vs_5_0");
         ComPtr<ID3DBlob> psBytecode = Compile(L"shaders/SkyboxPS.hlsl", "main", "ps_5_0");
@@ -83,8 +94,8 @@ namespace Engine
         D3D11_INPUT_ELEMENT_DESC layout[] =
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,                         D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float)*3,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float)*6,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float) * 3,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float) * 6,           D3D11_INPUT_PER_VERTEX_DATA, 0 },
         };
 
         hr = device->CreateInputLayout(
@@ -94,16 +105,23 @@ namespace Engine
             sd.inputLayout.GetAddressOf());
         if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed (Skybox)");
 
-        // Store under shaderID 2
-        m_shaders[2] = std::move(sd);
-        return 2;
+        m_shaders[assetID] = std::move(sd);
+        assetManager.SetAssetLoaded(assetID, true);
+        return assetID;
     }
 
-    int ShaderManager::LoadUnlitShaders(ID3D11Device* device)
+
+    UUID ShaderManager::LoadUnlitShaders(ID3D11Device* device, Engine::AssetManager& assetManager)
     {
+		// Register the shader set in the AssetManager and get its UUID
+        UUID assetID = assetManager.ImportAsset("shader://unlit", Engine::AssetType::Shader);
+        if (m_shaders.find(assetID) != m_shaders.end()) return assetID;
+
+		// Compile Unlit VS/PS
         Microsoft::WRL::ComPtr<ID3DBlob> vsBytecode = Compile(L"shaders/UnlitVS.hlsl", "main", "vs_5_0");
         Microsoft::WRL::ComPtr<ID3DBlob> psBytecode = Compile(L"shaders/UnlitPS.hlsl", "main", "ps_5_0");
 
+		// Create shader objects
         ShaderData sd;
         HRESULT hr = device->CreateVertexShader(vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), nullptr, sd.vs.GetAddressOf());
         if (FAILED(hr)) throw std::runtime_error("CreateVertexShader failed (Unlit)");
@@ -111,21 +129,24 @@ namespace Engine
         hr = device->CreatePixelShader(psBytecode->GetBufferPointer(), psBytecode->GetBufferSize(), nullptr, sd.ps.GetAddressOf());
         if (FAILED(hr)) throw std::runtime_error("CreatePixelShader failed (Unlit)");
 
+		// Input layout must match Engine::Vertex (Position, Normal, TexCoord) with stride 32
         D3D11_INPUT_ELEMENT_DESC layout[] =
         {
             { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  0,               D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float)*3, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float)*6, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0,  sizeof(float) * 3, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0,  sizeof(float) * 6, D3D11_INPUT_PER_VERTEX_DATA, 0 },
         };
 
         hr = device->CreateInputLayout(layout, _countof(layout), vsBytecode->GetBufferPointer(), vsBytecode->GetBufferSize(), sd.inputLayout.GetAddressOf());
         if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed (Unlit)");
 
-        m_shaders[3] = std::move(sd);
-        return 3;
+        m_shaders[assetID] = std::move(sd);
+        assetManager.SetAssetLoaded(assetID, true);
+        return assetID;
     }
 
-    void ShaderManager::Bind(int shaderID, ID3D11DeviceContext* context) const
+
+    void ShaderManager::Bind(UUID shaderID, ID3D11DeviceContext* context) const
     {
         auto it = m_shaders.find(shaderID);
         if (it == m_shaders.end()) return;
@@ -136,7 +157,8 @@ namespace Engine
         if (sd.inputLayout) context->IASetInputLayout(sd.inputLayout.Get());
     }
 
-    ID3D11InputLayout* ShaderManager::GetInputLayout(int shaderID) const
+
+    ID3D11InputLayout* ShaderManager::GetInputLayout(UUID shaderID) const
     {
         auto it = m_shaders.find(shaderID);
         if (it == m_shaders.end()) return nullptr;

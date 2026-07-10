@@ -1,8 +1,6 @@
 #pragma once
 #include <entt/entt.hpp>
 #include <d3d11.h>
-#include "Engine/Scene.h"
-#include "Engine/Renderer.h"
 
 // Systems for the engine, including various update and rendering systems
 
@@ -14,6 +12,9 @@ namespace Engine
 	class PhysicsManager;
 	class TextureManager;
 	class AudioManager;
+    class AssetManager;
+	class Renderer;
+	class Scene;
 
     namespace RenderSystem
     {
@@ -45,5 +46,5 @@ namespace Engine
     void ScriptSystemShutdown(Engine::Scene& scene);
 
     // audio update system: syncs listener and 3D sound emitters
-    void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager);
+    void AudioSystem(Engine::Scene& scene, Engine::AudioManager& audioManager, Engine::AssetManager& assetManager);
 }

@@ -6,6 +6,7 @@
 #include <Jolt/Physics/Body/BodyID.h> // Jolt BodyID
 #include <entt/entt.hpp>
 #include <sol/sol.hpp>
+#include "Engine/UUID.h"
 
 // Components class is used to define various components for ECS architecture
 
@@ -57,8 +58,8 @@ namespace Engine
     {
         bool isActive = true;
 
-        int meshID = 0;
-        ID3D11ShaderResourceView* texture = nullptr; // texture SRV bound to PS t0
+		UUID meshID = 0;    // Mesh asset ID
+		UUID textureID = 0; // Texture asset ID (no longer using a direct pointer to the texture resource)
 
         // Material switching
         MaterialType matType = MaterialType::LitColor;
@@ -146,8 +147,8 @@ namespace Engine
         float height = 1.0f;                                // Capsule total height
         DirectX::XMFLOAT3 colliderScale{ 1.0f, 1.0f, 1.0f }; // Mesh collider scale multiplier
 
-        // Mesh collider binding (used when shape == Mesh)
-        int meshID = 0;
+		// Mesh collider asset ID used if shape is Mesh (no longer using a direct pointer to the mesh resource)
+        UUID meshID = 0;
 
         // Runtime (managed by physics system)
         JPH::BodyID bodyID;         // default invalid BodyID
@@ -179,7 +180,7 @@ namespace Engine
 	// Audio component to manage sound effects and music
     struct AudioComponent
     {
-        std::string filepath = "";
+		UUID audioID = 0; // Asset ID for the audio clip (no longer using a filepath string or direct pointer to the sound resource)
         bool is3D = true;
         bool loop = false;
         bool playOnCreate = true;
