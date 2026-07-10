@@ -1,6 +1,7 @@
 #include "Engine/MeshManager.h"
 #include <DirectXMath.h>
 #include <cmath>
+#include "Engine/AssetManager.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;

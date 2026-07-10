@@ -62,24 +62,23 @@ static void LoadContent()
     g_textureManager.CreateDefaultTexture(g_renderer.GetDevice(), g_assetManager);
 
     // Create resources with renderer device
-    const int shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice());
+    const UUID shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice(), g_assetManager);
 
-    // Compile & load Unlit shaders (assign temporary ID 3 inside ShaderManager implementation)
-    const int unlitShaderID = g_shaderManager.LoadUnlitShaders(g_renderer.GetDevice());
+    // Compile & load Unlit shaders
+    const UUID unlitShaderID = g_shaderManager.LoadUnlitShaders(g_renderer.GetDevice(), g_assetManager);
 
-    // Ensure skybox cube mesh (ID 101) always exists for DrawSkybox
-    // Note: keep this unconditional to guarantee Mesh 101 availability
-    const UUID cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice(), g_assetManager); // temporary ID 101
+    // Ensure skybox cube mesh always exists for DrawSkybox
+    const UUID cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice(), g_assetManager);
 
-    // Compile & load skybox shaders (assign temporary ID 2 inside ShaderManager implementation)
-    const int skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice());
+    // Compile & load skybox shaders
+    const UUID skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice(), g_assetManager);
 
     // Create shared primitive meshes for editor-spawned entities
     const UUID sphereMeshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), g_assetManager, 0.5f, 32, 32);
     const UUID capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), g_assetManager, 0.5f, 1.0f, 32, 32);
 
     // Cache default assets on the Scene so EditorUI can autonomously spawn primitives
-    g_scene.SetDefaultAssets(shaderID, unlitShaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
+    g_scene.SetDefaultAssets(shaderID, unlitShaderID, skyboxShaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
 
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
@@ -490,7 +489,7 @@ void Render()
     {
         const auto& camTrans = g_scene.registry.get<Engine::TransformComponent>(g_scene.m_activeRenderCamera);
         const auto& camComp = g_scene.registry.get<Engine::CameraComponent>(g_scene.m_activeRenderCamera);
-        g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans, g_scene.GetCubeMeshID());
+        g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans, g_scene.GetCubeMeshID(), g_scene.GetSkyboxShaderID());
     }
 
     // Now bind the real swapchain back buffer.

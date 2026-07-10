@@ -72,7 +72,7 @@ namespace Engine
                                      float spotAngleRadians);
 
         // Cached default assets so the editor can autonomously spawn primitives
-        void SetDefaultAssets(int shaderID, int debugShaderID, UUID cubeID, UUID sphereID, UUID capsuleID);
+        void SetDefaultAssets(UUID shaderID, UUID debugShaderID, UUID skyboxShaderID, UUID cubeID, UUID sphereID, UUID capsuleID);
         entt::entity CreateCube(const std::string& name);
         entt::entity CreateSphere(const std::string& name);
         entt::entity CreateCapsule(const std::string& name);
@@ -81,8 +81,9 @@ namespace Engine
         UUID GetCubeMeshID() const { return m_cubeMeshID; }
         UUID GetSphereMeshID() const { return m_sphereMeshID; }
         UUID GetCapsuleMeshID() const { return m_capsuleMeshID; }
-		int GetDefaultShaderID() const { return m_defaultShaderID; }
-        int GetDebugShaderID() const { return m_debugShaderID; }
+		UUID GetDefaultShaderID() const { return m_defaultShaderID; }
+        UUID GetDebugShaderID() const { return m_debugShaderID; }
+        UUID GetSkyboxShaderID() const { return m_skyboxShaderID; }
 
         // Intrusive hierarchy helpers
         void ParentEntity(entt::entity child, entt::entity parent);
@@ -105,8 +106,9 @@ namespace Engine
 
     private:
 		// Cache default asset IDs for editor-spawned primitives
-        int m_defaultShaderID = 0;
-        int m_debugShaderID = 0;
+        UUID m_defaultShaderID = 0;
+        UUID m_debugShaderID = 0;
+		UUID m_skyboxShaderID = 0;
         UUID m_cubeMeshID = 0;
         UUID m_sphereMeshID = 0;
         UUID m_capsuleMeshID = 0;

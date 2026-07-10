@@ -168,7 +168,7 @@ namespace Engine
     }
 
 
-    void Renderer::BindShader(const Engine::ShaderManager& shaderMan, int shaderID)
+    void Renderer::BindShader(const Engine::ShaderManager& shaderMan, UUID shaderID)
     {
         shaderMan.Bind(shaderID, m_dx.context.Get());
     }
@@ -616,7 +616,7 @@ namespace Engine
     }
 
 
-    void Renderer::DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, UUID cubeMeshID)
+    void Renderer::DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, UUID cubeMeshID, UUID skyboxShaderID)
     {
         if (!m_skyboxSRV) return;
 
@@ -644,8 +644,8 @@ namespace Engine
         UpdateViewMatrix(viewRotOnly);
         UpdateProjectionMatrix(proj);
 
-        // Bind skybox shaders (shaderID 2 reserved for skybox)
-        shaderMan.Bind(2, ctx);
+		// Bind skybox shaders using the provided shader ID
+        shaderMan.Bind(skyboxShaderID, ctx);
 
         // Bind sampler and cubemap SRV
         ID3D11SamplerState* sampler = GetSamplerState();
@@ -657,7 +657,7 @@ namespace Engine
         Engine::MeshBuffers cube{};
         if (meshMan.GetMesh(cubeMeshID, cube))
         {
-            ID3D11InputLayout* layout = shaderMan.GetInputLayout(2);
+            ID3D11InputLayout* layout = shaderMan.GetInputLayout(skyboxShaderID);
             SubmitMesh(cube, layout);
             DrawIndexed(cube.indexCount);
         }

@@ -87,7 +87,7 @@ public:
     // upload color constants to GPU (Unlit PS b0)
     void UpdateColorConstants(const DirectX::XMFLOAT4& color);
     // Binds shaders from ShaderManager
-    void BindShader(const Engine::ShaderManager& shaderMan, int shaderID);
+    void BindShader(const Engine::ShaderManager& shaderMan, UUID shaderID);
     // Submits mesh buffers for drawing
     void SubmitMesh(const Engine::MeshBuffers& mesh, ID3D11InputLayout* inputLayout);
     // Issues the draw call
@@ -105,7 +105,7 @@ public:
 
     // Skybox
     void SetSkybox(ID3D11ShaderResourceView* srv) { m_skyboxSRV = srv; }
-    void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, UUID cubeMeshID);
+    void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, UUID cubeMeshID, UUID skyboxShaderID);
 
     // Resource Accessors (for Systems to use if needed)
     ID3D11Device* GetDevice() const { return m_dx.device.Get(); }

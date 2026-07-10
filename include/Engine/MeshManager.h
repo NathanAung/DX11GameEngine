@@ -5,7 +5,6 @@
 #include <wrl/client.h>
 #include <DirectXMath.h>
 #include "Engine/UUID.h"
-#include "Engine/AssetManager.h"
 
 // Assimp - model importing
 #include <assimp/Importer.hpp>
@@ -17,6 +16,8 @@
 
 namespace Engine
 {
+	class AssetManager;
+
     // Vertex format used by BasicVS.hlsl
     struct Vertex
     {

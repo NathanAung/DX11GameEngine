@@ -13,7 +13,8 @@ namespace Engine
         None = 0,
         Mesh,
         Texture,
-        Audio
+        Audio,
+        Shader
     };
 
 	// metadata is used for serialization and deserialization of the asset registry, as well as for runtime asset management.
