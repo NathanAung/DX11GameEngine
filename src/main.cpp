@@ -471,7 +471,7 @@ void Render()
     }
 
 	// Render the editor UI (ImGui panels, etc.) first to set up the framebuffer and any UI state
-    g_editorUI.Render(g_scene, g_renderer, g_input, g_physicsManager, g_SDLWindow);
+    g_editorUI.Render(g_scene, g_renderer, g_meshManager, g_textureManager, g_input, g_physicsManager, g_SDLWindow);
 
     // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
     g_renderer.BindFramebuffer();

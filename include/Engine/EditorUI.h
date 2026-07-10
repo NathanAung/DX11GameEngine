@@ -12,6 +12,8 @@ namespace Engine
 	class InputManager;
 	class Scene;
 	class Renderer;
+    class MeshManager;
+    class TextureManager;
 
     // Editor state machine
     enum class EditorState { Edit, Play };
@@ -19,7 +21,7 @@ namespace Engine
     class EditorUI
     {
     public:
-        void Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window);
+        void Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window);
 
         bool IsSceneFocused() const { return m_scenePanelFocused; }
 

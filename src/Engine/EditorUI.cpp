@@ -5,6 +5,8 @@
 #include "Engine/PhysicsManager.h"
 #include "Engine/AudioManager.h"
 #include "Engine/InputManager.h"
+#include "Engine/MeshManager.h"
+#include "Engine/TextureManager.h"
 #include "Engine/Scene.h"
 #include "Engine/Renderer.h"
 #include "Engine/Systems.h"
@@ -70,7 +72,7 @@ namespace Engine
         }
     }
 
-    void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
+    void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
     {
         // Cache the Editor Camera so we can always revert to it
         if (m_editorCamera == entt::null)
@@ -788,9 +790,11 @@ namespace Engine
 
                         if (treeOpen)
                         {
-                            // Fundamental mesh selection: choose from default primitive meshes
-                            const char* meshTypes[] = { "Cube", "Sphere", "Capsule", "Custom"};
-                            int currentMeshIdx = -1;
+                            // Mesh Selection & Drop Target
+                            const char* meshTypes[] = { "Cube", "Sphere", "Capsule", "Custom" };
+                            int currentMeshIdx = 3; // Default to 'Custom' so it shows correctly when a custom .obj is loaded
+
+                            // Check if the current mesh matches any of our primitives
                             if (mr.meshID == scene.GetCubeMeshID()) currentMeshIdx = 0;
                             else if (mr.meshID == scene.GetSphereMeshID()) currentMeshIdx = 1;
                             else if (mr.meshID == scene.GetCapsuleMeshID()) currentMeshIdx = 2;
@@ -800,10 +804,47 @@ namespace Engine
                                 if (currentMeshIdx == 0) mr.meshID = scene.GetCubeMeshID();
                                 else if (currentMeshIdx == 1) mr.meshID = scene.GetSphereMeshID();
                                 else if (currentMeshIdx == 2) mr.meshID = scene.GetCapsuleMeshID();
-
                             }
 
-                            // Material Type selector
+                            // MODEL DROP TARGET
+                            if (ImGui::BeginDragDropTarget())
+                            {
+                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE"))
+                                {
+                                    const char* droppedPath = (const char*)payload->Data;
+                                    if (scene.GetAssetManager())
+                                    {
+                                        // Load the model through the MeshManager to trigger DirectX creation & Asset Registry
+                                        std::vector<Engine::UUID> loadedMeshes = meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
+
+                                        // A single .obj might contain multiple meshes. We assign the first one to the entity.
+                                        if (!loadedMeshes.empty()) {
+                                            mr.meshID = loadedMeshes[0];
+
+                                            // PHYSICS SYNC
+                                            // If this entity has a Mesh Collider, we must update it and rebuild the Jolt body
+                                            if (scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
+                                                auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
+
+                                                if (rb.shape == Engine::RBShape::Mesh) {
+                                                    rb.meshID = loadedMeshes[0]; // Sync the physics ID to the new visual ID
+
+                                                    // Destroy the old Jolt body. 
+                                                    // The PhysicsSystem will detect the invalid ID and automatically regenerate it next frame
+                                                    if (!rb.bodyID.IsInvalid()) {
+                                                        physicsManager.RemoveRigidBody(rb.bodyID);
+                                                        rb.bodyID = JPH::BodyID();
+                                                        rb.bodyCreated = false;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                ImGui::EndDragDropTarget();
+                            }
+
+                            // Material Settings
                             const char* matTypes[] = { "LitColor", "UnlitColor", "Textured" };
                             int currentMatIdx = static_cast<int>(mr.matType);
                             if (ImGui::Combo("Material Type", &currentMatIdx, matTypes, IM_ARRAYSIZE(matTypes)))
@@ -824,7 +865,34 @@ namespace Engine
 
                             if (mr.matType == Engine::MaterialType::Textured)
                             {
-                                ImGui::TextDisabled("Texture assignment via Drag & Drop coming soon...");
+                                // TEXTURE DROP TARGET
+                                // Fetch the human-readable filename from the UUID to display on the UI
+                                std::string currentTexName = "None";
+                                if (mr.textureID != 0 && scene.GetAssetManager()) {
+                                    const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(mr.textureID);
+                                    if (meta) {
+                                        currentTexName = std::filesystem::path(meta->filepath).filename().string();
+                                    }
+                                }
+
+                                // Create a visual drop zone button that fills the width
+                                std::string buttonLabel = currentTexName + " (Drop Texture Here)";
+                                ImGui::Button(buttonLabel.c_str(), ImVec2(-1, 30));
+
+                                if (ImGui::BeginDragDropTarget())
+                                {
+                                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE"))
+                                    {
+                                        const char* droppedPath = (const char*)payload->Data;
+                                        if (scene.GetAssetManager())
+                                        {
+                                            // Load the texture through the TextureManager
+                                            Engine::UUID newTexID = textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
+                                            mr.textureID = newTexID;
+                                        }
+                                    }
+                                    ImGui::EndDragDropTarget();
+                                }
                             }
 
                             ImGui::TreePop();
@@ -1171,6 +1239,28 @@ namespace Engine
                                 std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
                                 ImGui::SetDragDropPayload("AUDIO_FILE", relativePath.c_str(), relativePath.size() + 1);
                                 ImGui::Text("Assign %s", filenameString.c_str());
+                                ImGui::EndDragDropSource();
+                            }
+                        }
+                        // If the file is a 3D Model, make it a Drag Source
+                        else if (path.extension() == ".obj")
+                        {
+                            if (ImGui::BeginDragDropSource()) {
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                ImGui::SetDragDropPayload("MODEL_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                ImGui::Text("Assign Model %s", filenameString.c_str());
+                                ImGui::EndDragDropSource();
+                            }
+                        }
+                        // If the file is a Texture, make it a Drag Source
+                        else if (path.extension() == ".png" || path.extension() == ".jpg" || path.extension() == ".jpeg")
+                        {
+                            if (ImGui::BeginDragDropSource()) {
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                ImGui::SetDragDropPayload("TEXTURE_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                ImGui::Text("Assign Texture %s", filenameString.c_str());
                                 ImGui::EndDragDropSource();
                             }
                         }
