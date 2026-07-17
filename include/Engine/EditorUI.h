@@ -45,5 +45,10 @@ namespace Engine
 
         std::filesystem::path m_assetPath = "assets";
         std::filesystem::path m_currentDirectory = "assets";
+
+        // Save Scene Modal State
+        char m_saveFilenameBuf[256] = "";
+        bool m_showSaveWarning = false;
+        std::string m_saveWarningMsg = "";
     };
 }

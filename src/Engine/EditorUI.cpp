@@ -1,6 +1,7 @@
 #include "Engine/EditorUI.h"
 #include "Engine/Components.h"
 #include "Engine/MathUtils.h"
+#include "Engine/SceneSerializer.h"
 #include "Engine/AssetManager.h"
 #include "Engine/PhysicsManager.h"
 #include "Engine/AudioManager.h"
@@ -84,6 +85,72 @@ namespace Engine
         }
 
         ImGuizmo::BeginFrame();
+
+        // KEYBOARD SHORTCUTS
+		// Ctrl+S to save the scene
+        if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
+        {
+            if (scene.GetCurrentScenePath().empty()) {
+                ImGui::OpenPopup("Save Scene As");
+                m_showSaveWarning = false;
+                m_saveFilenameBuf[0] = '\0';
+            }
+            else {
+                Engine::SceneSerializer::Serialize(scene.GetCurrentScenePath(), scene);
+            }
+        }
+
+        // SAVE SCENE MODAL POPUP
+		// Center the modal popup on the screen
+        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+        if (ImGui::BeginPopupModal("Save Scene As", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Enter scene name:");
+            ImGui::InputText("##filename", m_saveFilenameBuf, IM_ARRAYSIZE(m_saveFilenameBuf));
+
+			// Show a warning message if the filename already exists
+            if (m_showSaveWarning) {
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", m_saveWarningMsg.c_str());
+            }
+
+            if (ImGui::Button("Save", ImVec2(120, 0)))
+            {
+				// Validate the filename and check for existing files
+                std::string filename = m_saveFilenameBuf;
+                if (!filename.empty())
+                {
+					// Ensure the "assets/Scenes" directory exists
+                    std::filesystem::path dir = "assets/Scenes";
+                    if (!std::filesystem::exists(dir)) {
+                        std::filesystem::create_directories(dir);
+                    }
+
+					// Construct the full file path for the scene
+                    std::string filepath = dir.string() + "/" + filename + ".json";
+
+					// Check if the file already exists and show a warning if it does
+                    if (std::filesystem::exists(filepath)) {
+                        m_showSaveWarning = true;
+                        m_saveWarningMsg = "A scene with this name already exists!";
+                    }
+					// If the file doesn't exist, serialize the scene and set the current scene path
+                    else {
+                        // Serialize the scene and set the tracker
+                        Engine::SceneSerializer::Serialize(filepath, scene);
+                        scene.SetCurrentScenePath(filepath);
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+            }
+            ImGui::SetItemDefaultFocus();
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
 
         // 1. Setup variables for the Dockspace
         ImGuiViewport* viewport = ImGui::GetMainViewport();

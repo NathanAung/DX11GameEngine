@@ -40,6 +40,11 @@ namespace Engine
         void SetAssetManager(Engine::AssetManager* am) { m_assetManager = am; }
         Engine::AssetManager* GetAssetManager() const { return m_assetManager; }
 
+        // Scene Filepath Tracking
+        std::string m_currentScenePath = "";
+        void SetCurrentScenePath(const std::string& path) { m_currentScenePath = path; }
+        const std::string& GetCurrentScenePath() const { return m_currentScenePath; }
+
         // Create a generic entity with ID, Name and default Transform
         entt::entity CreateEntity(const std::string& name);
 
