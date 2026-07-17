@@ -116,6 +116,10 @@ target_link_libraries(DX11GameEngine PRIVATE sol2::sol2)
 find_path(MINIAUDIO_INCLUDE_DIR "miniaudio.h" REQUIRED)
 target_include_directories(DX11GameEngine PRIVATE ${MINIAUDIO_INCLUDE_DIR})
 
+# rapidjson (header-only)
+find_path(RAPIDJSON_INCLUDE_DIR "rapidjson/document.h" REQUIRED)
+target_include_directories(DX11GameEngine PRIVATE ${RAPIDJSON_INCLUDE_DIR})
+
 # --------------------------------------------------------------
 # DirectX system libraries
 # --------------------------------------------------------------

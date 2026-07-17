@@ -46,6 +46,12 @@ namespace Engine
         // Exposes the raw registry (useful later for serializing the asset ledger to a file)
         const std::unordered_map<UUID, AssetMetadata>& GetRegistry() const { return m_assetRegistry; }
 
+        // SERIALIZATION
+        // Saves the current state of the ledger to a JSON file
+        bool SaveRegistry(const std::string& filepath);
+        // Loads a saved ledger from a JSON file, restoring all UUIDs
+        bool LoadRegistry(const std::string& filepath);
+
     private:
 		// Internal registry mapping UUIDs to their corresponding asset metadata
         std::unordered_map<UUID, AssetMetadata> m_assetRegistry;
