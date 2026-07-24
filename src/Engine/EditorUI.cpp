@@ -75,6 +75,14 @@ namespace Engine
 
     void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
     {
+        // Generate the dynamic scene window title early so the DockBuilder can use it
+        std::string sceneName = "Untitled Scene";
+        if (!scene.GetCurrentScenePath().empty()) {
+            std::filesystem::path p(scene.GetCurrentScenePath());
+            sceneName = p.stem().string();
+        }
+        std::string sceneWindowTitle = sceneName + "###Scene";
+
         // Cache the Editor Camera so we can always revert to it
         // Check if it's null or if the scene was reloaded and the old handle became invalid
         if (m_editorCamera == entt::null || !scene.registry.valid(m_editorCamera))
@@ -159,6 +167,62 @@ namespace Engine
             m_showLoadError = false;
         }
 
+        // --- TRIGGER CREATE SCENE MODAL ---
+        if (m_openCreateScenePopup) {
+            ImGui::OpenPopup("Create New Scene");
+            m_openCreateScenePopup = false; // Reset trigger
+            m_newSceneNameBuf[0] = '\0';
+            m_showCreateSceneWarning = false;
+        }
+
+        // --- CREATE SCENE MODAL POPUP ---
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (ImGui::BeginPopupModal("Create New Scene", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("Enter new scene name:");
+            ImGui::InputText("##newscenename", m_newSceneNameBuf, IM_ARRAYSIZE(m_newSceneNameBuf));
+
+            if (m_showCreateSceneWarning) {
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", m_createSceneWarningMsg.c_str());
+            }
+
+            if (ImGui::Button("Create", ImVec2(120, 0)))
+            {
+                std::string filename = m_newSceneNameBuf;
+                if (!filename.empty())
+                {
+                    std::filesystem::path dir = "assets/Scenes";
+                    if (!std::filesystem::exists(dir)) {
+                        std::filesystem::create_directories(dir);
+                    }
+
+                    std::string targetPath = dir.string() + "/" + filename + ".json";
+                    std::string sourcePath = "enginefiles/BaseScene.json";
+
+                    if (std::filesystem::exists(targetPath)) {
+                        m_showCreateSceneWarning = true;
+                        m_createSceneWarningMsg = "A scene with this name already exists!";
+                    }
+                    else if (!std::filesystem::exists(sourcePath)) {
+                        m_showCreateSceneWarning = true;
+                        m_createSceneWarningMsg = "BaseScene.json not found in enginefiles!";
+                    }
+                    else {
+                        // Copy the base scene to the new location
+                        std::filesystem::copy_file(sourcePath, targetPath);
+                        ImGui::CloseCurrentPopup();
+                    }
+                }
+            }
+            ImGui::SetItemDefaultFocus();
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+		// --- LOAD SCENE ERROR MODAL POPUP ---
         ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
         if (ImGui::BeginPopupModal("Load Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
@@ -220,7 +284,7 @@ namespace Engine
             ImGui::DockBuilderDockWindow("Inspector", dock_id_right);
             ImGui::DockBuilderDockWindow("Content Browser", dock_id_bottom);
             ImGui::DockBuilderDockWindow("Toolbar", dock_id_top);
-            ImGui::DockBuilderDockWindow("Scene", dock_main_id); // Scene takes whatever is left in the center
+            ImGui::DockBuilderDockWindow(sceneWindowTitle.c_str(), dock_main_id); // Scene window, takes whatever is left in the center
 
             ImGui::DockBuilderFinish(dockspace_id);
         }
@@ -297,7 +361,7 @@ namespace Engine
 
         // SCENE WINDOW
         // Scene View (dockable): drives the render-to-texture size
-        ImGui::Begin("Scene");
+        ImGui::Begin(sceneWindowTitle.c_str());
         // Get the available size for the viewport (this is the size of the content region inside the "Scene" window)
         ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
@@ -1272,6 +1336,16 @@ namespace Engine
             // CONTENT BROWSER WINDOW
             ImGui::Begin("Content Browser");
             {
+				// Right-click context menu for creating a new scene
+                if (ImGui::BeginPopupContextWindow("ContentBrowserContextMenu", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+                {
+                    if (ImGui::MenuItem("Create New Scene"))
+                    {
+                        m_openCreateScenePopup = true;
+                    }
+                    ImGui::EndPopup();
+                }
+
                 // Back button: only when inside a subfolder (never go above assets root)
                 if (m_currentDirectory != m_assetPath)
                 {
@@ -1297,65 +1371,11 @@ namespace Engine
                     }
                     else
                     {
-                        // Files: display as selectable so it highlights on hover
-                        ImGui::Selectable(("[FILE] " + filenameString).c_str());
-
-                        // If the file is a Lua script, make it a Drag Source
-                        if (path.extension() == ".lua")
-                        {
-                            if (ImGui::BeginDragDropSource())
-                            {
-                                // Get path and normalize Windows backslashes to forward slashes
-                                std::string relativePath = path.string();
-                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
-
-                                // Attach the string path as the payload
-                                ImGui::SetDragDropPayload("SCRIPT_FILE", relativePath.c_str(), relativePath.size() + 1);
-
-                                // Tooltip next to the cursor while dragging
-                                ImGui::Text("Assign %s", filenameString.c_str());
-
-                                ImGui::EndDragDropSource();
-                            }
-                        }
-						// If the file is an audio file, make it a Drag Source
-                        else if (path.extension() == ".wav" || path.extension() == ".mp3")
-                        {
-                            if (ImGui::BeginDragDropSource()) {
-                                std::string relativePath = path.string();
-                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
-                                ImGui::SetDragDropPayload("AUDIO_FILE", relativePath.c_str(), relativePath.size() + 1);
-                                ImGui::Text("Assign %s", filenameString.c_str());
-                                ImGui::EndDragDropSource();
-                            }
-                        }
-                        // If the file is a 3D Model, make it a Drag Source
-                        else if (path.extension() == ".obj")
-                        {
-                            if (ImGui::BeginDragDropSource()) {
-                                std::string relativePath = path.string();
-                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
-                                ImGui::SetDragDropPayload("MODEL_FILE", relativePath.c_str(), relativePath.size() + 1);
-                                ImGui::Text("Assign Model %s", filenameString.c_str());
-                                ImGui::EndDragDropSource();
-                            }
-                        }
-                        // If the file is a Texture, make it a Drag Source
-                        else if (path.extension() == ".png" || path.extension() == ".jpg" || path.extension() == ".jpeg")
-                        {
-                            if (ImGui::BeginDragDropSource()) {
-                                std::string relativePath = path.string();
-                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
-                                ImGui::SetDragDropPayload("TEXTURE_FILE", relativePath.c_str(), relativePath.size() + 1);
-                                ImGui::Text("Assign Texture %s", filenameString.c_str());
-                                ImGui::EndDragDropSource();
-                            }
-                        }
                         // SCENE LOADING
                         // If it's a JSON scene file, make it clickable to load
-                        else if (path.extension() == ".json")
+                        if (path.extension() == ".json")
                         {
-							// Display the scene file as selectable
+                            // Display the scene file as selectable
                             if (ImGui::Selectable(("[SCENE] " + filenameString).c_str()))
                             {
                                 // Prevent loading scenes while the game is currently playing
@@ -1367,6 +1387,62 @@ namespace Engine
                                         m_showLoadError = true;
                                         m_loadErrorMsg = errorMsg;
                                     }
+                                }
+                            }
+                        }
+                        else {
+                            // Files: display as selectable so it highlights on hover
+                            ImGui::Selectable(("[FILE] " + filenameString).c_str());
+
+                            // If the file is a Lua script, make it a Drag Source
+                            if (path.extension() == ".lua")
+                            {
+                                if (ImGui::BeginDragDropSource())
+                                {
+                                    // Get path and normalize Windows backslashes to forward slashes
+                                    std::string relativePath = path.string();
+                                    std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+
+                                    // Attach the string path as the payload
+                                    ImGui::SetDragDropPayload("SCRIPT_FILE", relativePath.c_str(), relativePath.size() + 1);
+
+                                    // Tooltip next to the cursor while dragging
+                                    ImGui::Text("Assign %s", filenameString.c_str());
+
+                                    ImGui::EndDragDropSource();
+                                }
+                            }
+                            // If the file is an audio file, make it a Drag Source
+                            else if (path.extension() == ".wav" || path.extension() == ".mp3")
+                            {
+                                if (ImGui::BeginDragDropSource()) {
+                                    std::string relativePath = path.string();
+                                    std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                    ImGui::SetDragDropPayload("AUDIO_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                    ImGui::Text("Assign %s", filenameString.c_str());
+                                    ImGui::EndDragDropSource();
+                                }
+                            }
+                            // If the file is a 3D Model, make it a Drag Source
+                            else if (path.extension() == ".obj")
+                            {
+                                if (ImGui::BeginDragDropSource()) {
+                                    std::string relativePath = path.string();
+                                    std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                    ImGui::SetDragDropPayload("MODEL_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                    ImGui::Text("Assign Model %s", filenameString.c_str());
+                                    ImGui::EndDragDropSource();
+                                }
+                            }
+                            // If the file is a Texture, make it a Drag Source
+                            else if (path.extension() == ".png" || path.extension() == ".jpg" || path.extension() == ".jpeg")
+                            {
+                                if (ImGui::BeginDragDropSource()) {
+                                    std::string relativePath = path.string();
+                                    std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                    ImGui::SetDragDropPayload("TEXTURE_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                    ImGui::Text("Assign Texture %s", filenameString.c_str());
+                                    ImGui::EndDragDropSource();
                                 }
                             }
                         }

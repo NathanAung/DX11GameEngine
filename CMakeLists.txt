@@ -172,7 +172,13 @@ add_custom_target(CopyAssets ALL
             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/assets
 )
 
-add_dependencies(DX11GameEngine CopyShaders CopyAssets)
+add_custom_target(CopyEngineFiles ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/enginefiles
+            ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/enginefiles
+)
+
+add_dependencies(DX11GameEngine CopyShaders CopyAssets CopyEngineFiles)
 
 # --------------------------------------------------------------
 # IDE File Grouping

@@ -54,5 +54,11 @@ namespace Engine
         // Load Scene Error State
         bool m_showLoadError = false;
         std::string m_loadErrorMsg = "";
+
+        // Create Scene Modal State
+        bool m_openCreateScenePopup = false;
+        char m_newSceneNameBuf[256] = "";
+        bool m_showCreateSceneWarning = false;
+        std::string m_createSceneWarningMsg = "";
     };
 }

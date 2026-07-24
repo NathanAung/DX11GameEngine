@@ -1,0 +1,235 @@
+{
+    "Scene": [
+        {
+            "EntityID": 7,
+            "NameComponent": {
+                "Name": "Ground",
+                "IsActive": true
+            },
+            "TransformComponent": {
+                "Position": [
+                    0.0,
+                    -5.0,
+                    0.0
+                ],
+                "Rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "Scale": [
+                    20.0,
+                    0.10000000149011612,
+                    20.0
+                ]
+            },
+            "MeshRendererComponent": {
+                "IsActive": true,
+                "MeshID": 3319264989227999870,
+                "TextureID": 0,
+                "MatType": 0,
+                "BaseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "Roughness": 0.10000000149011612,
+                "Metallic": 0.20000000298023224
+            },
+            "RigidBodyComponent": {
+                "IsActive": true,
+                "Shape": 0,
+                "MotionType": 0,
+                "Mass": 1.0,
+                "Friction": 0.5,
+                "Restitution": 0.0,
+                "LinearDamping": 0.0,
+                "HalfExtent": [
+                    0.5,
+                    0.5,
+                    0.5
+                ],
+                "Radius": 0.5,
+                "Height": 1.0,
+                "ColliderScale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "MeshID": 0,
+                "ShowWireframe": true
+            }
+        },
+        {
+            "EntityID": 6,
+            "NameComponent": {
+                "Name": "Sample 3D Model",
+                "IsActive": true
+            },
+            "TransformComponent": {
+                "Position": [
+                    0.0,
+                    0.0,
+                    5.0
+                ],
+                "Rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "Scale": [
+                    0.10000000149011612,
+                    0.10000000149011612,
+                    0.10000000149011612
+                ]
+            },
+            "MeshRendererComponent": {
+                "IsActive": true,
+                "MeshID": 10562919726472403517,
+                "TextureID": 335005180863685798,
+                "MatType": 2,
+                "BaseColor": [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "Roughness": 0.30000001192092896,
+                "Metallic": 0.20000000298023224
+            },
+            "RigidBodyComponent": {
+                "IsActive": true,
+                "Shape": 3,
+                "MotionType": 1,
+                "Mass": 1.0,
+                "Friction": 0.5,
+                "Restitution": 0.0,
+                "LinearDamping": 0.0,
+                "HalfExtent": [
+                    0.5,
+                    0.5,
+                    0.5
+                ],
+                "Radius": 0.5,
+                "Height": 1.0,
+                "ColliderScale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "MeshID": 10562919726472403517,
+                "ShowWireframe": true
+            }
+        },
+        {
+            "EntityID": 3,
+            "NameComponent": {
+                "Name": "Sun Light",
+                "IsActive": true
+            },
+            "TransformComponent": {
+                "Position": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "Rotation": [
+                    0.3826834261417389,
+                    0.0,
+                    0.0,
+                    0.9238795042037964
+                ],
+                "Scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "LightComponent": {
+                "IsActive": true,
+                "Color": [
+                    1.0,
+                    1.0,
+                    1.0
+                ],
+                "Intensity": 5.0,
+                "Type": 0,
+                "Range": 10.0,
+                "SpotAngle": 0.7853981852531433
+            }
+        },
+        {
+            "EntityID": 2,
+            "NameComponent": {
+                "Name": "Main Camera",
+                "IsActive": true
+            },
+            "TransformComponent": {
+                "Position": [
+                    0.0,
+                    0.0,
+                    -10.0
+                ],
+                "Rotation": [
+                    0.0,
+                    0.0,
+                    0.0,
+                    1.0
+                ],
+                "Scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "CameraComponent": {
+                "FOV": 0.7853981852531433,
+                "NearClip": 0.10000000149011612,
+                "FarClip": 5000.0,
+                "InvertY": true
+            }
+        },
+        {
+            "EntityID": 1,
+            "NameComponent": {
+                "Name": "Editor Camera",
+                "IsActive": true
+            },
+            "TransformComponent": {
+                "Position": [
+                    0.0,
+                    0.0,
+                    -25.498828887939453
+                ],
+                "Rotation": [
+                    -0.0,
+                    0.0,
+                    -0.0,
+                    1.0
+                ],
+                "Scale": [
+                    1.0,
+                    1.0,
+                    1.0
+                ]
+            },
+            "CameraComponent": {
+                "FOV": 0.7853981852531433,
+                "NearClip": 0.10000000149011612,
+                "FarClip": 5000.0,
+                "InvertY": true
+            },
+            "EditorCamControlComponent": {
+                "Mode": 0,
+                "MoveSpeed": 10.0,
+                "LookSensitivity": 0.0024999999441206455,
+                "SprintMultiplier": 2.0,
+                "Yaw": 0.0,
+                "Pitch": 0.0
+            }
+        }
+    ]
+}

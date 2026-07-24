@@ -344,7 +344,7 @@ int main(int argc, char** argv)
 
     // RESTORE THE ASSET LEDGER
     // NOTE: Do this BEFORE LoadContent() so primitive generation reuses the saved UUIDs
-    g_assetManager.LoadRegistry("assets/AssetRegistry.json");
+    g_assetManager.LoadRegistry("enginefiles/AssetRegistry.json");
 
     try {
         LoadContent();
@@ -419,7 +419,7 @@ int main(int argc, char** argv)
     }
 
     // Save all newly discovered UUIDs to the disk before shutting down
-    g_assetManager.SaveRegistry("assets/AssetRegistry.json");
+    g_assetManager.SaveRegistry("enginefiles/AssetRegistry.json");
 
     // Shutdown and cleanup
     g_audioManager.Shutdown();

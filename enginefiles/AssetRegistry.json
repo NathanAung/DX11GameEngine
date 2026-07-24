@@ -1,0 +1,54 @@
+{
+    "Assets": [
+        {
+            "UUID": 9451701488866714382,
+            "Filepath": "primitive://default_texture",
+            "Type": 2
+        },
+        {
+            "UUID": 12710740902583631268,
+            "Filepath": "shader://basic",
+            "Type": 4
+        },
+        {
+            "UUID": 3831928238807377545,
+            "Filepath": "shader://unlit",
+            "Type": 4
+        },
+        {
+            "UUID": 17549039595658140984,
+            "Filepath": "shader://skybox",
+            "Type": 4
+        },
+        {
+            "UUID": 15518950730893477233,
+            "Filepath": "primitive://sphere_0.500000_32_32",
+            "Type": 1
+        },
+        {
+            "UUID": 8907834480818883940,
+            "Filepath": "primitive://capsule_0.500000_1.000000_32_32",
+            "Type": 1
+        },
+        {
+            "UUID": 3319264989227999870,
+            "Filepath": "primitive://cube",
+            "Type": 1
+        },
+        {
+            "UUID": 10562919726472403517,
+            "Filepath": "assets/Models/MyModel.obj?mesh=0",
+            "Type": 1
+        },
+        {
+            "UUID": 335005180863685798,
+            "Filepath": "assets/Textures/MyTexture.png",
+            "Type": 2
+        },
+        {
+            "UUID": 2645695331221353224,
+            "Filepath": "cubemap://assets/Textures/Skybox/right.png",
+            "Type": 2
+        }
+    ]
+}
