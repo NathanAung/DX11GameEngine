@@ -50,5 +50,9 @@ namespace Engine
         char m_saveFilenameBuf[256] = "";
         bool m_showSaveWarning = false;
         std::string m_saveWarningMsg = "";
+
+        // Load Scene Error State
+        bool m_showLoadError = false;
+        std::string m_loadErrorMsg = "";
     };
 }

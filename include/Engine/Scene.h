@@ -109,6 +109,9 @@ namespace Engine
         void SubmitForDestruction(entt::entity entity);
         void ProcessDestructionQueue(Engine::PhysicsManager& physicsManager);
 
+        // Safely wipes the entire registry and all subsystem data (Jolt/Audio)
+        void Clear(Engine::PhysicsManager& physicsManager);
+
     private:
 		// Cache default asset IDs for editor-spawned primitives
         UUID m_defaultShaderID = 0;

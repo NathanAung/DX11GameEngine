@@ -76,7 +76,8 @@ namespace Engine
     void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
     {
         // Cache the Editor Camera so we can always revert to it
-        if (m_editorCamera == entt::null)
+        // Check if it's null or if the scene was reloaded and the old handle became invalid
+        if (m_editorCamera == entt::null || !scene.registry.valid(m_editorCamera))
         {
             auto view = scene.registry.view<Engine::EditorCamControlComponent>();
             if (view.begin() != view.end()) {
@@ -147,6 +148,25 @@ namespace Engine
             ImGui::SetItemDefaultFocus();
             ImGui::SameLine();
             if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
+        // LOAD SCENE ERROR MODAL
+        if (m_showLoadError) {
+            ImGui::OpenPopup("Load Error");
+            m_showLoadError = false;
+        }
+
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (ImGui::BeginPopupModal("Load Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Scene Validation Failed:");
+            ImGui::Text("%s", m_loadErrorMsg.c_str());
+
+            ImGui::Spacing();
+            if (ImGui::Button("OK", ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
             }
             ImGui::EndPopup();
@@ -1329,6 +1349,25 @@ namespace Engine
                                 ImGui::SetDragDropPayload("TEXTURE_FILE", relativePath.c_str(), relativePath.size() + 1);
                                 ImGui::Text("Assign Texture %s", filenameString.c_str());
                                 ImGui::EndDragDropSource();
+                            }
+                        }
+                        // SCENE LOADING
+                        // If it's a JSON scene file, make it clickable to load
+                        else if (path.extension() == ".json")
+                        {
+							// Display the scene file as selectable
+                            if (ImGui::Selectable(("[SCENE] " + filenameString).c_str()))
+                            {
+                                // Prevent loading scenes while the game is currently playing
+                                if (m_state == EditorState::Edit) {
+                                    std::string errorMsg;
+                                    bool success = Engine::SceneSerializer::Deserialize(path.string(), scene, physicsManager, *scene.GetAssetManager(), errorMsg);
+
+                                    if (!success) {
+                                        m_showLoadError = true;
+                                        m_loadErrorMsg = errorMsg;
+                                    }
+                                }
                             }
                         }
                     }

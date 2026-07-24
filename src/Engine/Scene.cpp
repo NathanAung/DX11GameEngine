@@ -120,17 +120,15 @@ namespace Engine
 
     entt::entity Scene::CreateDirectionalLight(const char* name)
     {
-        entt::entity e = registry.create();
-        registry.emplace<NameComponent>(e, std::string(name));
+        entt::entity e = CreateEntity(name);
 
         // Direction from Transform's rotation (identity then pitch down)
-        TransformComponent tc{};
+        auto& tc = registry.get<TransformComponent>(e);
         // pitch down by ~45 degrees around X
         XMVECTOR qx = XMQuaternionRotationAxis(XMVectorSet(1,0,0,0), XM_PIDIV4);
         XMStoreFloat4(&tc.rotation, qx);
         tc.position = XMFLOAT3(0, 0, 0);
         tc.isDirty = true;
-        registry.emplace<TransformComponent>(e, tc);
 
         // White light, intensity 5.0
         LightComponent lc{};
@@ -149,15 +147,13 @@ namespace Engine
                                          float intensity,
                                          float range)
     {
-        entt::entity e = registry.create();
-        registry.emplace<NameComponent>(e, std::string(name));
+        entt::entity e = CreateEntity(name);
 
-        TransformComponent tc{};
+        auto& tc = registry.get<TransformComponent>(e);
         tc.position = position;
         tc.rotation = XMFLOAT4{ 0.0f, 0.0f, 0.0f, 1.0f };
         tc.scale    = XMFLOAT3{ 1.0f, 1.0f, 1.0f };
         tc.isDirty = true;
-        registry.emplace<TransformComponent>(e, tc);
 
         LightComponent lc{};
         lc.color     = color;
@@ -179,8 +175,7 @@ namespace Engine
                                         float range,
                                         float spotAngleRadians)
     {
-        entt::entity e = registry.create();
-        registry.emplace<NameComponent>(e, std::string(name));
+        entt::entity e = CreateEntity(name);
 
         // Build a quaternion that aligns +Z with desired direction (LH)
         // Compute basis from forward and world up
@@ -201,12 +196,11 @@ namespace Engine
         XMVECTOR q = XMQuaternionRotationMatrix(basis);
         q = XMQuaternionNormalize(q);
 
-        TransformComponent tc{};
+        auto& tc = registry.get<TransformComponent>(e);
         tc.position = position;
         XMStoreFloat4(&tc.rotation, q);
         tc.scale = XMFLOAT3{ 1.0f, 1.0f, 1.0f };
         tc.isDirty = true;
-        registry.emplace<TransformComponent>(e, tc);
 
         LightComponent lc{};
         lc.color     = color;
@@ -559,5 +553,35 @@ namespace Engine
 
         // Register Global Input Pointer
         m_lua["Input"] = inputManager;
+    }
+
+
+    void Scene::Clear(Engine::PhysicsManager& physicsManager)
+    {
+        // Destroy all Jolt bodies
+        auto physView = registry.view<RigidBodyComponent>();
+        for (auto entity : physView) {
+            auto& rb = physView.get<RigidBodyComponent>(entity);
+            if (!rb.bodyID.IsInvalid()) {
+                physicsManager.RemoveRigidBody(rb.bodyID);
+            }
+        }
+
+        // Destroy all active Audio handles
+        auto audioView = registry.view<AudioComponent>();
+        for (auto entity : audioView) {
+            if (m_audioManager) {
+                auto& ac = audioView.get<AudioComponent>(entity);
+                if (ac.soundHandle) {
+                    m_audioManager->DestroyAudio(ac.soundHandle);
+                }
+            }
+        }
+
+        // Wipe the EnTT registry and reset states
+        registry.clear();
+        m_entitiesToDestroy.clear();
+        m_activeRenderCamera = entt::null;
+        m_currentScenePath = "";
     }
 }

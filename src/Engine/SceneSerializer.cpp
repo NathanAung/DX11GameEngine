@@ -1,12 +1,14 @@
 #include "Engine/SceneSerializer.h"
 #include "Engine/Scene.h"
 #include "Engine/Components.h"
+#include "Engine/AssetManager.h"
 
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 namespace Engine
 {
@@ -23,9 +25,6 @@ namespace Engine
 		auto& registry = scene.registry;
         for (auto entity : registry.view<entt::entity>())
             {
-                // Skip the Editor Camera so it doesn't get saved into the game level
-                if (registry.all_of<EditorCamControlComponent>(entity)) continue;
-
                 // Every valid entity must have an ID
                 if (!registry.all_of<IDComponent>(entity)) continue;
 
@@ -152,6 +151,20 @@ namespace Engine
                     writer.EndObject();
                 }
 
+                // EditorCamControl Component
+                if (registry.all_of<EditorCamControlComponent>(entity)) {
+                    auto& ecc = registry.get<EditorCamControlComponent>(entity);
+                    writer.Key("EditorCamControlComponent");
+                    writer.StartObject();
+                    writer.Key("Mode"); writer.Int(static_cast<int>(ecc.mode));
+                    writer.Key("MoveSpeed"); writer.Double(ecc.moveSpeed);
+                    writer.Key("LookSensitivity"); writer.Double(ecc.lookSensitivity);
+                    writer.Key("SprintMultiplier"); writer.Double(ecc.sprintMultiplier);
+                    writer.Key("Yaw"); writer.Double(ecc.yaw);
+                    writer.Key("Pitch"); writer.Double(ecc.pitch);
+                    writer.EndObject();
+                }
+
                 // Relationship Component (Hierarchy)
                 // Convert transient memory addresses (entt::entity) to stable uint64_t IDs
                 if (registry.all_of<RelationshipComponent>(entity)) {
@@ -185,6 +198,243 @@ namespace Engine
         file.close();
 
         std::cout << "Scene saved successfully to " << filepath << std::endl;
+        return true;
+    }
+
+
+    bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, PhysicsManager& physicsManager, AssetManager& assetManager, std::string& outErrorMsg)
+    {
+        std::ifstream file(filepath);
+        if (!file.is_open()) {
+            outErrorMsg = "Failed to open scene file: " + filepath;
+            return false;
+        }
+
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        file.close();
+
+        rapidjson::Document doc;
+        doc.Parse(buffer.str().c_str());
+
+        if (doc.HasParseError() || !doc.HasMember("Scene") || !doc["Scene"].IsArray()) {
+            outErrorMsg = "Invalid JSON scene format.";
+            return false;
+        }
+
+        const auto& entities = doc["Scene"];
+
+        // --- PASS 1: VALIDATION (Check for Missing Assets) ---
+        // Helper lambda to check if an asset UUID maps to a real file
+        auto checkAsset = [&](uint64_t uuid) -> bool {
+            if (uuid == 0) return true; // 0 means 'None', which is valid
+
+            const AssetMetadata* meta = assetManager.GetMetadata(uuid);
+            if (!meta) return false; // UUID not in the registry at all
+
+            // Ignore virtual paths (like primitive://cube)
+            if (meta->filepath.find("primitive://") == 0) return true;
+            if (meta->filepath.find("shader://") == 0) return true;
+            if (meta->filepath.find("cubemap://") == 0) return true;
+
+            // Strip sub-mesh query strings (e.g., "?mesh=0") before checking OS filesystem
+            std::string pathToCheck = meta->filepath;
+            size_t queryPos = pathToCheck.find('?');
+            if (queryPos != std::string::npos) {
+                pathToCheck = pathToCheck.substr(0, queryPos);
+            }
+
+            if (!std::filesystem::exists(pathToCheck)) return false;
+
+            return true;
+            };
+
+        for (rapidjson::SizeType i = 0; i < entities.Size(); i++) {
+            const auto& item = entities[i];
+
+            if (item.HasMember("MeshRendererComponent")) {
+                if (!checkAsset(item["MeshRendererComponent"]["MeshID"].GetUint64())) {
+                    outErrorMsg = "Missing Mesh Asset in Scene."; return false;
+                }
+                if (!checkAsset(item["MeshRendererComponent"]["TextureID"].GetUint64())) {
+                    outErrorMsg = "Missing Texture Asset in Scene."; return false;
+                }
+            }
+            if (item.HasMember("RigidBodyComponent")) {
+                if (!checkAsset(item["RigidBodyComponent"]["MeshID"].GetUint64())) {
+                    outErrorMsg = "Missing Physics Mesh Asset in Scene."; return false;
+                }
+            }
+            if (item.HasMember("AudioComponent")) {
+                if (!checkAsset(item["AudioComponent"]["AudioID"].GetUint64())) {
+                    outErrorMsg = "Missing Audio Asset in Scene."; return false;
+                }
+            }
+            if (item.HasMember("LuaScriptComponent")) {
+                const auto& scripts = item["LuaScriptComponent"]["Scripts"];
+                for (rapidjson::SizeType j = 0; j < scripts.Size(); j++) {
+                    std::string scriptPath = scripts[j].GetString();
+                    if (!scriptPath.empty() && !std::filesystem::exists(scriptPath)) {
+                        outErrorMsg = "Missing Script File: " + scriptPath; return false;
+                    }
+                }
+            }
+        }
+
+        // --- PASS 2: CLEAR CURRENT SCENE ---
+        // Validation passed! It is now safe to delete the current active world.
+        scene.Clear(physicsManager);
+        scene.SetCurrentScenePath(filepath);
+
+        // Map to translate saved uint64_t IDs into fresh EnTT entity handles
+        std::unordered_map<uint64_t, entt::entity> idMap;
+
+        // --- PASS 3: REBUILD ENTITIES & COMPONENTS ---
+        for (rapidjson::SizeType i = 0; i < entities.Size(); i++) {
+            const auto& item = entities[i];
+            entt::entity entity = scene.registry.create();
+
+            uint64_t savedID = item["EntityID"].GetUint64();
+            scene.registry.emplace<IDComponent>(entity, IDComponent{ savedID });
+            idMap[savedID] = entity;
+
+            if (item.HasMember("NameComponent")) {
+                scene.registry.emplace<NameComponent>(entity, NameComponent{
+                    item["NameComponent"]["Name"].GetString(),
+                    item["NameComponent"]["IsActive"].GetBool()
+                    });
+            }
+
+            if (item.HasMember("TransformComponent")) {
+                const auto& pos = item["TransformComponent"]["Position"];
+                const auto& rot = item["TransformComponent"]["Rotation"];
+                const auto& scl = item["TransformComponent"]["Scale"];
+                scene.registry.emplace<TransformComponent>(entity, TransformComponent{
+                    DirectX::XMFLOAT3(static_cast<float>(pos[0].GetDouble()), static_cast<float>(pos[1].GetDouble()), static_cast<float>(pos[2].GetDouble())),
+                    DirectX::XMFLOAT4(static_cast<float>(rot[0].GetDouble()), static_cast<float>(rot[1].GetDouble()), static_cast<float>(rot[2].GetDouble()), static_cast<float>(rot[3].GetDouble())),
+                    DirectX::XMFLOAT3(static_cast<float>(scl[0].GetDouble()), static_cast<float>(scl[1].GetDouble()), static_cast<float>(scl[2].GetDouble())),
+                    DirectX::XMFLOAT4X4(), true
+                    });
+            }
+
+            if (item.HasMember("MeshRendererComponent")) {
+                const auto& color = item["MeshRendererComponent"]["BaseColor"];
+                scene.registry.emplace<MeshRendererComponent>(entity, MeshRendererComponent{
+                    item["MeshRendererComponent"]["IsActive"].GetBool(),
+                    item["MeshRendererComponent"]["MeshID"].GetUint64(),
+                    item["MeshRendererComponent"]["TextureID"].GetUint64(),
+                    static_cast<MaterialType>(item["MeshRendererComponent"]["MatType"].GetInt()),
+                    DirectX::XMFLOAT4(static_cast<float>(color[0].GetDouble()), static_cast<float>(color[1].GetDouble()), static_cast<float>(color[2].GetDouble()), static_cast<float>(color[3].GetDouble())),
+                    static_cast<float>(item["MeshRendererComponent"]["Roughness"].GetDouble()),
+                    static_cast<float>(item["MeshRendererComponent"]["Metallic"].GetDouble())
+                    });
+            }
+
+            if (item.HasMember("RigidBodyComponent")) {
+                const auto& he = item["RigidBodyComponent"]["HalfExtent"];
+                const auto& cs = item["RigidBodyComponent"]["ColliderScale"];
+                scene.registry.emplace<RigidBodyComponent>(entity, RigidBodyComponent{
+                    item["RigidBodyComponent"]["IsActive"].GetBool(),
+                    static_cast<RBShape>(item["RigidBodyComponent"]["Shape"].GetInt()),
+                    static_cast<RBMotion>(item["RigidBodyComponent"]["MotionType"].GetInt()),
+                    static_cast<float>(item["RigidBodyComponent"]["Mass"].GetDouble()),
+                    static_cast<float>(item["RigidBodyComponent"]["Friction"].GetDouble()),
+                    static_cast<float>(item["RigidBodyComponent"]["Restitution"].GetDouble()),
+                    static_cast<float>(item["RigidBodyComponent"]["LinearDamping"].GetDouble()),
+                    DirectX::XMFLOAT3(static_cast<float>(he[0].GetDouble()), static_cast<float>(he[1].GetDouble()), static_cast<float>(he[2].GetDouble())),
+                    static_cast<float>(item["RigidBodyComponent"]["Radius"].GetDouble()),
+                    static_cast<float>(item["RigidBodyComponent"]["Height"].GetDouble()),
+                    DirectX::XMFLOAT3(static_cast<float>(cs[0].GetDouble()), static_cast<float>(cs[1].GetDouble()), static_cast<float>(cs[2].GetDouble())),
+                    item["RigidBodyComponent"]["MeshID"].GetUint64(),
+                    JPH::BodyID(), false,
+                    item["RigidBodyComponent"]["ShowWireframe"].GetBool()
+                    });
+            }
+
+            if (item.HasMember("LightComponent")) {
+                const auto& col = item["LightComponent"]["Color"];
+                scene.registry.emplace<LightComponent>(entity, LightComponent{
+                    item["LightComponent"]["IsActive"].GetBool(),
+                    DirectX::XMFLOAT3(static_cast<float>(col[0].GetDouble()), static_cast<float>(col[1].GetDouble()), static_cast<float>(col[2].GetDouble())),
+                    static_cast<float>(item["LightComponent"]["Intensity"].GetDouble()),
+                    static_cast<LightType>(item["LightComponent"]["Type"].GetInt()),
+                    static_cast<float>(item["LightComponent"]["Range"].GetDouble()),
+                    static_cast<float>(item["LightComponent"]["SpotAngle"].GetDouble())
+                    });
+            }
+
+            if (item.HasMember("AudioComponent")) {
+                scene.registry.emplace<AudioComponent>(entity, AudioComponent{
+                    item["AudioComponent"]["AudioID"].GetUint64(),
+                    item["AudioComponent"]["Is3D"].GetBool(),
+                    item["AudioComponent"]["Loop"].GetBool(),
+                    item["AudioComponent"]["PlayOnCreate"].GetBool(),
+                    static_cast<float>(item["AudioComponent"]["Volume"].GetDouble()),
+                    nullptr, false
+                    });
+            }
+
+            if (item.HasMember("LuaScriptComponent")) {
+                LuaScriptComponent lsc;
+                const auto& scripts = item["LuaScriptComponent"]["Scripts"];
+                for (rapidjson::SizeType j = 0; j < scripts.Size(); j++) {
+                    ScriptInstance inst;
+                    inst.filepath = scripts[j].GetString();
+                    lsc.scripts.push_back(inst);
+                }
+                scene.registry.emplace<LuaScriptComponent>(entity, lsc);
+            }
+
+            if (item.HasMember("CameraComponent")) {
+                scene.registry.emplace<CameraComponent>(entity, CameraComponent{
+                    static_cast<float>(item["CameraComponent"]["FOV"].GetDouble()),
+                    static_cast<float>(item["CameraComponent"]["NearClip"].GetDouble()),
+                    static_cast<float>(item["CameraComponent"]["FarClip"].GetDouble()),
+                    item["CameraComponent"]["InvertY"].GetBool()
+                    });
+                scene.registry.emplace<ViewportComponent>(entity);
+
+                // Force the Editor Camera to become the active render camera, even if another camera loaded first
+                if (scene.m_activeRenderCamera == entt::null || item.HasMember("EditorCamControlComponent")) {
+                    scene.m_activeRenderCamera = entity;
+                }
+            }
+
+            if (item.HasMember("EditorCamControlComponent")) {
+                scene.registry.emplace<EditorCamControlComponent>(entity, EditorCamControlComponent{
+                    static_cast<CameraControlMode>(item["EditorCamControlComponent"]["Mode"].GetInt()),
+                    static_cast<float>(item["EditorCamControlComponent"]["MoveSpeed"].GetDouble()),
+                    static_cast<float>(item["EditorCamControlComponent"]["LookSensitivity"].GetDouble()),
+                    static_cast<float>(item["EditorCamControlComponent"]["SprintMultiplier"].GetDouble()),
+                    static_cast<float>(item["EditorCamControlComponent"]["Yaw"].GetDouble()),
+                    static_cast<float>(item["EditorCamControlComponent"]["Pitch"].GetDouble())
+                    });
+            }
+        }
+
+        // --- PASS 4: RESTORE HIERARCHY ---
+        // Using the Translation Map to map old uint64_t to new entt::entity handles
+        for (rapidjson::SizeType i = 0; i < entities.Size(); i++) {
+            const auto& item = entities[i];
+            if (item.HasMember("RelationshipComponent")) {
+                uint64_t savedID = item["EntityID"].GetUint64();
+                entt::entity entity = idMap[savedID];
+
+                uint64_t p = item["RelationshipComponent"]["Parent"].GetUint64();
+                uint64_t fc = item["RelationshipComponent"]["FirstChild"].GetUint64();
+                uint64_t ps = item["RelationshipComponent"]["PrevSibling"].GetUint64();
+                uint64_t ns = item["RelationshipComponent"]["NextSibling"].GetUint64();
+
+                scene.registry.emplace<RelationshipComponent>(entity, RelationshipComponent{
+                    p == 0 ? entt::null : idMap[p],
+                    fc == 0 ? entt::null : idMap[fc],
+                    ps == 0 ? entt::null : idMap[ps],
+                    ns == 0 ? entt::null : idMap[ns]
+                    });
+            }
+        }
+
+        std::cout << "Scene loaded successfully from " << filepath << std::endl;
         return true;
     }
 }

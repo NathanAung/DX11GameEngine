@@ -47,6 +47,9 @@ namespace Engine
         const std::unordered_map<UUID, AssetMetadata>& GetRegistry() const { return m_assetRegistry; }
 
         // SERIALIZATION
+		// Every asset the engine has ever seen is logged in a ledger (JSON file) for future reference.
+		// This gurantees that UUIDs remain consistent across engine sessions and prevents accidental duplication of assets.
+        
         // Saves the current state of the ledger to a JSON file
         bool SaveRegistry(const std::string& filepath);
         // Loads a saved ledger from a JSON file, restoring all UUIDs
