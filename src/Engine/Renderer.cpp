@@ -25,9 +25,11 @@ namespace Engine
         if (!CreateInitialResources())
             return false;
 
+#ifndef DIST_BUILD
         // Create editor framebuffer (Render-to-Texture)
         if (!CreateFramebuffer(m_dx.width, m_dx.height))
             return false;
+#endif // !DIST_BUILD
 
         return true;
     }
@@ -108,8 +110,10 @@ namespace Engine
         if (!CreateViews())
             return false;
 
+#ifndef DIST_BUILD
         // Resize editor framebuffer (Render-to-Texture)
         return CreateFramebuffer(m_dx.width, m_dx.height);
+#endif // !DIST_BUILD
     }
 
 
@@ -589,6 +593,7 @@ namespace Engine
         if (!m_dx.context || !m_dx.rtv || !m_dx.dsv)
             return;
 
+		// m_dx.rtv and m_dx.dsv are the main back buffer RTV and DSV created from the swap chain
         m_dx.context->OMSetRenderTargets(1, m_dx.rtv.GetAddressOf(), m_dx.dsv.Get());
 
         // viewport (match window)

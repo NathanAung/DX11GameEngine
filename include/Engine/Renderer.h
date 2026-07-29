@@ -96,11 +96,11 @@ public:
     // Framebuffer (Editor Render-to-Texture)
     // creates an off-screen framebuffer with RTV, DSV, and SRV for editor preview rendering
 	bool CreateFramebuffer(UINT width, UINT height);    
-	// binds the off-screen framebuffer RTV/DSV for rendering; call GetFramebufferSRV() to bind the texture to shaders
+	// binds the off-screen framebuffer RTV/DSV for rendering, so that the scene is rendered to the framebuffer texture instead of the main back buffer
     void BindFramebuffer();
 	// binds the main back buffer RTV/DSV for rendering
     void BindBackBuffer();
-	// Accessor for the framebuffer texture SRV (for shader binding)
+	// Accessor for the framebuffer texture SRV (for use in ImGui or other systems)
     ID3D11ShaderResourceView* GetFramebufferSRV() const { return m_framebufferSRV.Get(); }
 
     // Skybox
@@ -125,6 +125,8 @@ public:
     void SetWireframeMode(bool enable);
 
 private:
+	// DirectX 11 context and resources
+	// Encapsulates device, context, swap chain, RTV, DSV, and feature level
     DX11Context m_dx;
 
     // DirectX ComPtr globals

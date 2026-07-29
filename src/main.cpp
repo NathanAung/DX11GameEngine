@@ -8,9 +8,14 @@
 #include "Engine/ShaderManager.h"
 #include "Engine/Systems.h"
 #include "Engine/TextureManager.h"
-#include "Engine/ImGuiManager.h"
 #include "Engine/AudioManager.h"
+#include "Engine/SceneSerializer.h"
+#ifndef DIST_BUILD
+#include "Engine/ImGuiManager.h"
 #include "Engine/EditorUI.h"
+#endif // !DIST_BUILD
+
+
 
 
 // Common Usings
@@ -38,7 +43,6 @@ Engine::MeshManager g_meshManager;
 Engine::ShaderManager g_shaderManager;
 Engine::TextureManager g_textureManager;
 Engine::PhysicsManager g_physicsManager;
-Engine::ImGuiManager g_imGuiManager;
 Engine::AudioManager g_audioManager;
 
 // ECS: Scene and a sample 3d entity
@@ -48,38 +52,55 @@ entt::entity g_sampleEntity = entt::null;
 // Renderer
 Engine::Renderer g_renderer;
 
+#ifndef DIST_BUILD
 // Editor UI
+Engine::ImGuiManager g_imGuiManager;
 Engine::EditorUI g_editorUI;
+#endif // !DIST_BUILD
 
 // Forward declarations
+static void LoadCoreAssets();
 static void LoadContent();
+static void PreloadAssets();
 void Update(float deltaTime);
 void Render();
 
-static void LoadContent()
+
+// Loads core assets that are required for the engine to function properly, such as default textures, shaders, and primitive meshes.
+static void LoadCoreAssets()
 {
     // Create the default 1x1 fallback texture
     g_textureManager.CreateDefaultTexture(g_renderer.GetDevice(), g_assetManager);
 
-    // Create resources with renderer device
-    const UUID shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice(), g_assetManager);
-
-    // Compile & load Unlit shaders
+	// COMPILE & LOAD SHADERS
+    const UUID shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice(), g_assetManager); // Create resources with renderer device
     const UUID unlitShaderID = g_shaderManager.LoadUnlitShaders(g_renderer.GetDevice(), g_assetManager);
-
-    // Ensure skybox cube mesh always exists for DrawSkybox
-    const UUID cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice(), g_assetManager);
-
-    // Compile & load skybox shaders
     const UUID skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice(), g_assetManager);
 
-    // Create shared primitive meshes for editor-spawned entities
+    // Create shared primitive meshes
+    const UUID cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice(), g_assetManager);
     const UUID sphereMeshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), g_assetManager, 0.5f, 32, 32);
     const UUID capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), g_assetManager, 0.5f, 1.0f, 32, 32);
 
-    // Cache default assets on the Scene so EditorUI can autonomously spawn primitives
+	// Cache default assets on the Scene so primitive spawning and editor UI can access them without needing to know the UUIDs
     g_scene.SetDefaultAssets(shaderID, unlitShaderID, skyboxShaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
 
+    // Load the default Skybox (order: +X, -X, +Y, -Y, +Z, -Z)
+    std::vector<std::string> faces{
+        "assets/Textures/Skybox/right.png", "assets/Textures/Skybox/left.png",
+        "assets/Textures/Skybox/top.png", "assets/Textures/Skybox/bottom.png",
+        "assets/Textures/Skybox/front.png", "assets/Textures/Skybox/back.png"
+    };
+    // Load the cubemap via TextureManager, which handles AssetManager registration and returns a UUID
+    UUID skyID = g_textureManager.LoadCubemap(g_renderer.GetDevice(), g_assetManager, faces);
+    if (skyID != 0) g_renderer.SetSkybox(g_textureManager.GetTexture(skyID));
+    else throw std::runtime_error("Failed to load skybox cubemap textures.");
+}
+
+
+// Loads the main scene content, including cameras, lights, and a sample 3D model with physics.
+static void LoadContent()
+{
     // Create the editor camera entity
     g_scene.CreateEditorCamera("Editor Camera", g_renderer.GetWidth(), g_renderer.GetHeight());
 
@@ -150,23 +171,6 @@ static void LoadContent()
         g_scene.registry.emplace<Engine::RigidBodyComponent>(g_sampleEntity, rb);
     }
 
-    // Load skybox cubemap: order +X, -X, +Y, -Y, +Z, -Z
-    {
-        std::vector<std::string> faces{
-            "assets/Textures/Skybox/right.png",  // +X
-            "assets/Textures/Skybox/left.png",   // -X
-            "assets/Textures/Skybox/top.png",    // +Y
-            "assets/Textures/Skybox/bottom.png", // -Y
-            "assets/Textures/Skybox/front.png",  // +Z
-            "assets/Textures/Skybox/back.png"    // -Z
-        };
-		// Load the cubemap via TextureManager, which handles AssetManager registration and returns a UUID
-        UUID skyID = g_textureManager.LoadCubemap(g_renderer.GetDevice(), g_assetManager, faces);
-        if (skyID != 0) g_renderer.SetSkybox(g_textureManager.GetTexture(skyID));
-        else throw std::runtime_error("Failed to load skybox cubemap textures.");
-    }
-
-
 	// PHYSICS TEST ENTITIES
     // Ground (static box)
     {
@@ -223,7 +227,7 @@ static void LoadContent()
         g_scene.registry.emplace<Engine::RigidBodyComponent>(sphere, rb);
 
         Engine::MeshRendererComponent rend{};
-        rend.meshID = sphereMeshID; // radius matches physics
+		rend.meshID = g_scene.GetSphereMeshID();
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(sphere, rend);
@@ -245,15 +249,38 @@ static void LoadContent()
         g_scene.registry.emplace<Engine::RigidBodyComponent>(capsule, rb);
 
         Engine::MeshRendererComponent rend{};
-		rend.meshID = capsuleMeshID;
+		rend.meshID = g_scene.GetCapsuleMeshID();
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
         g_scene.registry.emplace<Engine::MeshRendererComponent>(capsule, rend);
     }
-
-    //g_audioManager.PlaySound2D("assets/Audio/game_clear.mp3");
-    //g_scene.registry.emplace<Engine::AudioComponent>(g_sampleEntity, Engine::AudioComponent{ "assets/Audio/game_clear.mp3", true, true });
 }
+
+
+// Preloads all game assets into VRAM to reduce runtime loading stutter. This is especially useful for large models and textures.
+static void PreloadGameAssets()
+{
+    // Iterate through the entire Asset Ledger and push physical files to VRAM
+    for (const auto& [uuid, meta] : g_assetManager.GetRegistry())
+    {
+        if (meta.type == Engine::AssetType::Mesh) {
+            if (meta.filepath.find("primitive://") == std::string::npos) {
+                // Strip the ?mesh=0 query string for loading
+                std::string loadPath = meta.filepath;
+                size_t queryPos = loadPath.find('?');
+                if (queryPos != std::string::npos) loadPath = loadPath.substr(0, queryPos);
+
+                g_meshManager.LoadModel(g_renderer.GetDevice(), g_assetManager, loadPath);
+            }
+        }
+        else if (meta.type == Engine::AssetType::Texture) {
+            if (meta.filepath.find("primitive://") == std::string::npos && meta.filepath.find("cubemap://") == std::string::npos) {
+                g_textureManager.LoadTexture(g_renderer.GetDevice(), g_assetManager, meta.filepath);
+            }
+        }
+    }
+}
+
 
 // Main entry point
 int main(int argc, char** argv)
@@ -300,6 +327,7 @@ int main(int argc, char** argv)
         return -1;
     }
 
+#ifndef DIST_BUILD
     // Initialize Dear ImGui (SDL2 + DX11) after D3D11 is ready
     if (!g_imGuiManager.Initialize(g_SDLWindow, g_renderer.GetDevice(), g_renderer.GetContext()))
     {
@@ -312,12 +340,17 @@ int main(int argc, char** argv)
         SDL_Quit();
         return -1;
     }
+#endif // !DIST_BUILD
 
     // Initialize physics (Jolt)
     if (!g_physicsManager.Initialize())
     {
         std::fprintf(stderr, "PhysicsManager initialization failed\n");
+
+#ifndef DIST_BUILD
         g_imGuiManager.Shutdown();
+#endif // !DIST_BUILD
+
         g_renderer.Shutdown();
         if (g_SDLWindow) {
             SDL_DestroyWindow(g_SDLWindow);
@@ -332,7 +365,11 @@ int main(int argc, char** argv)
     {
         std::fprintf(stderr, "AudioManager initialization failed\n");
         g_physicsManager.Shutdown();
+
+#ifndef DIST_BUILD
         g_imGuiManager.Shutdown();
+#endif // !DIST_BUILD
+
         g_renderer.Shutdown();
         if (g_SDLWindow) {
             SDL_DestroyWindow(g_SDLWindow);
@@ -347,14 +384,58 @@ int main(int argc, char** argv)
     g_assetManager.LoadRegistry("enginefiles/AssetRegistry.json");
 
     try {
+        // Always load core shaders and primitives, regardless of build type
+        LoadCoreAssets();
+
+#ifndef DIST_BUILD
+        // EDITOR MODE: Load the testing sandbox content
         LoadContent();
+#else
+        // GAME MODE:
+        // Pre-load all external assets from the registry into VRAM
+        PreloadGameAssets();
+
+        // Automatically load the start scene and enter Play Mode immediately
+        std::string errorMsg;
+        bool loaded = Engine::SceneSerializer::Deserialize("enginefiles/BaseScene.json", g_scene, g_physicsManager, g_assetManager, errorMsg);
+
+        if (!loaded) {
+            throw std::runtime_error("Failed to load BaseScene.json: " + errorMsg);
+        }
+
+        // Snapshot the clean scene and immediately boot Script and Physics systems
+        g_scene.CopyToBackup();
+        Engine::ScriptSystemInit(g_scene);
+
+        // Find the active Game Camera to look through
+        auto camView = g_scene.registry.view<Engine::CameraComponent>();
+        for (auto entity : camView)
+        {
+            if (!g_scene.registry.all_of<Engine::EditorCamControlComponent>(entity) && g_scene.registry.get<Engine::NameComponent>(entity).isActive)
+            {
+                g_scene.m_activeRenderCamera = entity;
+
+                // Force the viewport component to match the full window size
+                auto& vp = g_scene.registry.get<Engine::ViewportComponent>(entity);
+                vp.width = g_windowWidth;
+                vp.height = g_windowHeight;
+
+				std::printf("Active Game Camera: %s\n", g_scene.registry.get<Engine::NameComponent>(entity).name.c_str());
+                break;
+            }
+        }
+#endif
     }
     catch (const std::exception& e)
     {
         std::fprintf(stderr, "Content load failed: %s\n", e.what());
         g_audioManager.Shutdown();
         g_physicsManager.Shutdown();
+
+#ifndef DIST_BUILD
         g_imGuiManager.Shutdown();
+#endif // !DIST_BUILD
+
         g_renderer.Shutdown();
         if (g_SDLWindow) {
             SDL_DestroyWindow(g_SDLWindow);
@@ -388,6 +469,7 @@ int main(int argc, char** argv)
             // Global input handling (e.g., exit on Escape key)
             if (e.type == SDL_KEYDOWN && e.key.keysym.scancode == SDL_SCANCODE_ESCAPE) { g_running = false; }
 
+#ifndef DIST_BUILD
             // Intercept events for Dear ImGui first
             bool imguiCaptured = g_imGuiManager.ProcessEvent(e);
 
@@ -398,12 +480,27 @@ int main(int argc, char** argv)
             {
                 g_input.ProcessEvent(e);
             }
+#else
+            // In a game build, all input goes straight to the engine
+            g_input.ProcessEvent(e);
+#endif // !DIST_BUILD
+
+
 
             if (e.type == SDL_QUIT) g_running = false;
             else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
             {
                 (void)g_renderer.Resize((UINT)e.window.data1, (UINT)e.window.data2);
                 // NOTE: Camera ViewportComponent updates are now handled by the "Scene" ImGui panel sizing.
+
+#ifdef DIST_BUILD
+// In Game Mode, resizing the window must resize the active camera viewport
+                if (g_scene.m_activeRenderCamera != entt::null && g_scene.registry.all_of<Engine::ViewportComponent>(g_scene.m_activeRenderCamera)) {
+                    auto& vp = g_scene.registry.get<Engine::ViewportComponent>(g_scene.m_activeRenderCamera);
+                    vp.width = (UINT)e.window.data1;
+                    vp.height = (UINT)e.window.data2;
+                }
+#endif
             }
         }
 
@@ -424,7 +521,11 @@ int main(int argc, char** argv)
     // Shutdown and cleanup
     g_audioManager.Shutdown();
     g_physicsManager.Shutdown();
+
+#ifndef DIST_BUILD
     g_imGuiManager.Shutdown();
+#endif // !DIST_BUILD
+
     g_renderer.Shutdown();
     if (g_SDLWindow) {
         SDL_DestroyWindow(g_SDLWindow);
@@ -435,7 +536,14 @@ int main(int argc, char** argv)
 }
 
 void Update(float deltaTime) {
+
+#ifndef DIST_BUILD
+	// In editor mode, only simulate physics and scripts when in Play mode
     bool isPlaying = g_editorUI.GetState() == Engine::EditorState::Play;
+#else
+    // In a game build, always simulate physics and scripts
+	bool isPlaying = true;
+#endif // !DIST_BUILD
 
     // Physics step and sync (Play: simulate + pull. Edit: push gizmo transforms to colliders)
     Engine::PhysicsSystem(g_scene, g_physicsManager, g_meshManager, deltaTime, isPlaying);
@@ -449,9 +557,11 @@ void Update(float deltaTime) {
         g_scene.ProcessDestructionQueue(g_physicsManager);
     }
 
+#ifndef DIST_BUILD
     // only process editor camera in Edit mode
-	if (g_editorUI.GetState() == Engine::EditorState::Edit)
+    if (g_editorUI.GetState() == Engine::EditorState::Edit)
         Engine::EditorCameraInputSystem(g_scene, g_input, deltaTime, g_editorUI.IsSceneFocused());
+#endif // !DIST_BUILD
 
     // Execute the transform hierarchy update after input/gizmo/physics changes
     Engine::TransformSystem(g_scene);
@@ -462,6 +572,7 @@ void Update(float deltaTime) {
 
 void Render()
 {
+#ifndef DIST_BUILD
     // Start the ImGui frame (after processing input and before rendering)
     g_imGuiManager.BeginFrame();
 
@@ -477,17 +588,25 @@ void Render()
         io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
     }
 
-	// Render the editor UI (ImGui panels, etc.) first to set up the framebuffer and any UI state
+    // Render the editor UI (ImGui panels, etc.) first to set up the framebuffer and any UI state
     g_editorUI.Render(g_scene, g_renderer, g_meshManager, g_textureManager, g_input, g_physicsManager, g_SDLWindow);
 
     // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
     g_renderer.BindFramebuffer();
+#else
+    // In a game build, render directly to the back buffer
+	g_renderer.BindBackBuffer();
+#endif // !DIST_BUILD
+
+
 
     Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
 
-	// Draw debug colliders if in Edit mode
+#ifndef DIST_BUILD
+    // Draw debug colliders if in Edit mode
     if (g_editorUI.GetState() == Engine::EditorState::Edit)
         Engine::RenderSystem::DrawDebugColliders(g_scene, g_renderer, g_meshManager, g_shaderManager, g_editorUI.GetSelectedEntity());
+#endif // !DIST_BUILD
 
     // Draw skybox last: z=w ensures it renders only where nothing else drew
     if (g_scene.m_activeRenderCamera != entt::null &&
@@ -499,12 +618,13 @@ void Render()
         g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans, g_scene.GetCubeMeshID(), g_scene.GetSkyboxShaderID());
     }
 
+#ifndef DIST_BUILD
     // Now bind the real swapchain back buffer.
     // NOTE: The window will intentionally render black until ImGui displays the framebuffer SRV.
     g_renderer.BindBackBuffer();
-
     // Draw the UI data to the cleared backbuffer
     g_imGuiManager.EndFrame();
+#endif // !DIST_BUILD
 
     g_renderer.Present(g_vSync);
 }
