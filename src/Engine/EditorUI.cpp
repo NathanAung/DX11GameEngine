@@ -16,6 +16,8 @@
 #include <ImGuizmo.h>
 #include <SDL.h>
 #include <DirectXCollision.h>
+#include <fstream>
+#include <cstdlib>
 
 namespace Engine
 {
@@ -167,6 +169,12 @@ namespace Engine
             m_showLoadError = false;
         }
 
+        // EXPORT ERROR MODAL
+        if (m_showExportError) {
+            ImGui::OpenPopup("Export Error");
+            m_showExportError = false;
+        }
+
         // --- TRIGGER CREATE SCENE MODAL ---
         if (m_openCreateScenePopup) {
             ImGui::OpenPopup("Create New Scene");
@@ -236,6 +244,20 @@ namespace Engine
             ImGui::EndPopup();
         }
 
+        // --- EXPORT ERROR MODAL POPUP ---
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        if (ImGui::BeginPopupModal("Export Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Export Failed:");
+            ImGui::Text("You must save the current scene before exporting the game.");
+
+            ImGui::Spacing();
+            if (ImGui::Button("OK", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+            }
+            ImGui::EndPopup();
+        }
+
         // 1. Setup variables for the Dockspace
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
@@ -294,13 +316,12 @@ namespace Engine
 
         // TOOLBAR WINDOW (Play / Stop)
 
-		// Set the window class to prevent docking and resizing, and to remove the tab bar
+        // Set the window class to prevent docking and resizing, and to remove the tab bar
         ImGuiWindowClass window_class;
         window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoResize;
         ImGui::SetNextWindowClass(&window_class);
 
-		// Style the toolbar to be more compact and visually distinct
-        //ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 2));
+        // Style the toolbar to be more compact and visually distinct
         ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0, 0, 0, 0));
         auto& colors = ImGui::GetStyle().Colors;
@@ -311,15 +332,15 @@ namespace Engine
 
         ImGui::Begin("Toolbar", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-        // Center the buttons
+        // Center the buttons (adjusting math for two buttons: Play [2.5] + Spacing [0.5] + Export [4.0] = 7.0 total width)
         float size = ImGui::GetWindowHeight() / 2;
-        ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - (size * 0.5f));
+        ImGui::SetCursorPosX((ImGui::GetWindowContentRegionMax().x * 0.5f) - (size * 3.5f));
 
         // Play / Stop Logic
         bool isPlaying = m_state == EditorState::Play;
         const char* buttonLabel = isPlaying ? "Stop" : "Play";
 
-		// When the button is clicked, toggle between Play and Edit modes
+        // When the button is clicked, toggle between Play and Edit modes
         if (ImGui::Button(buttonLabel, ImVec2(size * 2.5f, size)))
         {
             if (m_state == EditorState::Edit)
@@ -334,7 +355,6 @@ namespace Engine
                 auto camView = scene.registry.view<Engine::CameraComponent>();
                 for (auto entity : camView)
                 {
-                    // Find the first active camera that is NOT the editor camera
                     if (!scene.registry.all_of<Engine::EditorCamControlComponent>(entity) && scene.registry.get<NameComponent>(entity).isActive)
                     {
                         scene.m_activeRenderCamera = entity;
@@ -352,6 +372,78 @@ namespace Engine
 
                 // Revert to Editor Camera
                 scene.m_activeRenderCamera = m_editorCamera;
+            }
+        }
+
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (size * 0.5f));
+
+        // --- NATIVE EXPORT GAME BUTTON ---
+        if (ImGui::Button("Export Game", ImVec2(size * 5.0f, size)))
+        {
+			// Check if the current scene has been saved before allowing export
+            if (scene.GetCurrentScenePath().empty())
+            {
+                // Trigger the error modal
+                m_showExportError = true;
+            }
+            else
+            {
+                try {
+                    // 1. Define paths relative to the executable (bin/)
+                    std::filesystem::path currentPath = std::filesystem::current_path();
+                    std::filesystem::path runtimeTemplate = currentPath / "RuntimeTemplate";
+                    std::filesystem::path exportDir = currentPath / "ExportedGame";
+
+                    // 2. Prepare a clean export directory
+                    if (std::filesystem::exists(exportDir)) {
+                        std::filesystem::remove_all(exportDir);
+                    }
+                    std::filesystem::create_directory(exportDir);
+
+                    // 3. Copy the compiled runtime executable and DLLs
+                    if (std::filesystem::exists(runtimeTemplate)) {
+                        std::filesystem::copy(runtimeTemplate, exportDir, std::filesystem::copy_options::recursive);
+                    }
+                    else {
+                        std::fprintf(stderr, "Export Error: RuntimeTemplate folder not found! Build the project in Visual Studio first.\n");
+                    }
+
+                    // 4. Copy the runtime assets and enginefiles
+                    if (std::filesystem::exists(currentPath / "assets")) {
+                        std::filesystem::copy(currentPath / "assets", exportDir / "assets", std::filesystem::copy_options::recursive);
+                    }
+                    if (std::filesystem::exists(currentPath / "enginefiles")) {
+                        std::filesystem::copy(currentPath / "enginefiles", exportDir / "enginefiles", std::filesystem::copy_options::recursive);
+                    }
+
+                    // Copy shaders (required for rendering)
+                    if (std::filesystem::exists(currentPath / "shaders")) {
+                        std::filesystem::copy(currentPath / "shaders", exportDir / "shaders", std::filesystem::copy_options::recursive);
+                    }
+
+                    // 5. Serialize the current scene to disk so the export gets the latest changes
+                    if (!scene.GetCurrentScenePath().empty()) {
+                        Engine::SceneSerializer::Serialize(scene.GetCurrentScenePath(), scene);
+
+                        // Write Launch.txt *inside* the ExportedGame folder so it targets the correct scene
+                        std::ofstream launchFile(exportDir / "enginefiles" / "Launch.txt");
+                        if (launchFile.is_open()) {
+                            launchFile << scene.GetCurrentScenePath();
+                            launchFile.close();
+                        }
+                    }
+
+                    // 6. Open the exported folder in Windows File Explorer automatically
+#ifdef _WIN32
+                    std::string openCmd = "explorer " + exportDir.string();
+                    std::system(openCmd.c_str());
+#endif
+
+                }
+                catch (const std::exception& e) {
+                    std::fprintf(stderr, "Export Failed: %s\n", e.what());
+                }
             }
         }
 
@@ -1386,6 +1478,24 @@ namespace Engine
                                     if (!success) {
                                         m_showLoadError = true;
                                         m_loadErrorMsg = errorMsg;
+                                    }
+                                    else {
+                                        // Preload the loaded scene's assets into VRAM
+                                        for (const auto& [uuid, meta] : scene.GetAssetManager()->GetRegistry())
+                                        {
+                                            // Load custom meshes
+                                            if (meta.type == Engine::AssetType::Mesh && meta.filepath.find("primitive://") == std::string::npos) {
+                                                std::string loadPath = meta.filepath;
+                                                size_t queryPos = loadPath.find('?');
+                                                if (queryPos != std::string::npos) loadPath = loadPath.substr(0, queryPos);
+
+                                                meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), loadPath);
+                                            }
+                                            // Load custom textures
+                                            else if (meta.type == Engine::AssetType::Texture && meta.filepath.find("primitive://") == std::string::npos && meta.filepath.find("cubemap://") == std::string::npos) {
+                                                textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), meta.filepath);
+                                            }
+                                        }
                                     }
                                 }
                             }

@@ -62,7 +62,7 @@ Engine::EditorUI g_editorUI;
 // Forward declarations
 static void LoadCoreAssets();
 static void LoadContent();
-static void PreloadAssets();
+static void PreloadGameAssets();
 void Update(float deltaTime);
 void Render();
 

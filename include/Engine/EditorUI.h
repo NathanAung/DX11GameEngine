@@ -51,9 +51,12 @@ namespace Engine
         bool m_showSaveWarning = false;
         std::string m_saveWarningMsg = "";
 
-        // Load Scene Error State
+		// Load Scene Error State for displaying error messages when loading fails
         bool m_showLoadError = false;
         std::string m_loadErrorMsg = "";
+
+		// Export Scene Error State for displaying error messages when exporting fails
+        bool m_showExportError = false;
 
         // Create Scene Modal State
         bool m_openCreateScenePopup = false;

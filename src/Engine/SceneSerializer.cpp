@@ -197,6 +197,11 @@ namespace Engine
         file << sb.GetString();
         file.close();
 
+        if (scene.GetAssetManager())
+        {
+            scene.GetAssetManager()->SaveRegistry("enginefiles/AssetRegistry.json");
+        }
+
         std::cout << "Scene saved successfully to " << filepath << std::endl;
         return true;
     }
