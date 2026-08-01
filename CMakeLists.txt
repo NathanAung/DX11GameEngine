@@ -6,14 +6,6 @@ project(DX11GameEngine
 )
 
 # --------------------------------------------------------------
-# DISTRIBUTION BUILD OPTION
-# --------------------------------------------------------------
-option(DIST_BUILD "Build for distribution (standalone game)" OFF)
-if(DIST_BUILD)
-    message(STATUS "Building for Distribution (DIST_BUILD=ON)")
-endif()
-
-# --------------------------------------------------------------
 # Compiler and project settings
 # --------------------------------------------------------------
 
@@ -79,93 +71,89 @@ set(ENGINE_HEADER_FILES
     external/imguizmo/ImGuizmo.h
 )
 
-add_executable(DX11GameEngine
+# Create the Editor executable
+add_executable(DX11Editor
     ${ENGINE_SOURCE_FILES}
     ${ENGINE_HEADER_FILES}
 )
 
-# Precompiled header (optional)
-target_precompile_headers(DX11GameEngine PRIVATE include/Engine/Core.h)
+# Create the Standalone Game executable
+add_executable(DX11Runtime
+    ${ENGINE_SOURCE_FILES}
+    ${ENGINE_HEADER_FILES}
+)
+
+# Inject the DIST_BUILD macro ONLY into the Runtime target
+target_compile_definitions(DX11Runtime PRIVATE DIST_BUILD)
+
+# Precompiled headers
+target_precompile_headers(DX11Editor PRIVATE include/Engine/Core.h)
+target_precompile_headers(DX11Runtime PRIVATE include/Engine/Core.h)
 
 # --------------------------------------------------------------
 # vcpkg manifest mode packages (auto-installed)
 # --------------------------------------------------------------
 
-# SDL2
+# --------------------------------------------------------------
+# vcpkg manifest mode packages & linking
+# --------------------------------------------------------------
+
+# Find all required packages
 find_package(SDL2 CONFIG REQUIRED)
-target_link_libraries(DX11GameEngine PRIVATE SDL2::SDL2 SDL2::SDL2main)
-
-# Assimp
 find_package(assimp CONFIG REQUIRED)
-target_link_libraries(DX11GameEngine PRIVATE assimp::assimp)
-
-# EnTT
 find_package(EnTT CONFIG REQUIRED)
-target_link_libraries(DX11GameEngine PRIVATE EnTT::EnTT)
-
-# RapidJSON (header-only)
 find_package(RapidJSON CONFIG REQUIRED)
-
-# imgui (DX11 backend)
 find_package(imgui CONFIG REQUIRED)
-target_link_libraries(DX11GameEngine PRIVATE imgui::imgui)
-
-# Jolt Physics
 find_package(Jolt CONFIG REQUIRED)
-target_link_libraries(DX11GameEngine PRIVATE Jolt::Jolt)
-
-# Lua
 find_package(lua CONFIG REQUIRED)
-target_link_libraries(DX11GameEngine PRIVATE lua)
-
-# sol2 (header-only, but sets up correct include paths)
 find_package(sol2 CONFIG REQUIRED)
-target_link_libraries(DX11GameEngine PRIVATE sol2::sol2)
-
-# miniaudio (header-only)
 find_path(MINIAUDIO_INCLUDE_DIR "miniaudio.h" REQUIRED)
-target_include_directories(DX11GameEngine PRIVATE ${MINIAUDIO_INCLUDE_DIR})
-
-# rapidjson (header-only)
 find_path(RAPIDJSON_INCLUDE_DIR "rapidjson/document.h" REQUIRED)
-target_include_directories(DX11GameEngine PRIVATE ${RAPIDJSON_INCLUDE_DIR})
+
+# Apply linking and includes to BOTH targets
+set(ENGINE_TARGETS DX11Editor DX11Runtime)
+
+foreach(TARGET IN LISTS ENGINE_TARGETS)
+    target_link_libraries(${TARGET} PRIVATE SDL2::SDL2 SDL2::SDL2main)
+    target_link_libraries(${TARGET} PRIVATE assimp::assimp)
+    target_link_libraries(${TARGET} PRIVATE EnTT::EnTT)
+    target_link_libraries(${TARGET} PRIVATE imgui::imgui)
+    target_link_libraries(${TARGET} PRIVATE Jolt::Jolt)
+    target_link_libraries(${TARGET} PRIVATE lua)
+    target_link_libraries(${TARGET} PRIVATE sol2::sol2)
+    
+    target_include_directories(${TARGET} PRIVATE ${MINIAUDIO_INCLUDE_DIR})
+    target_include_directories(${TARGET} PRIVATE ${RAPIDJSON_INCLUDE_DIR})
+    
+# --------------------------------------------------------------
+# Include directories
+# --------------------------------------------------------------
+
+    target_include_directories(${TARGET} PRIVATE 
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/external/imguizmo
+    )
 
 # --------------------------------------------------------------
 # DirectX system libraries
 # --------------------------------------------------------------
 
-if (WIN32)
-    target_link_libraries(DX11GameEngine PRIVATE
-        d3d11
-        dxgi
-        d3dcompiler
-        dxguid
-    )
-endif()
+    if (WIN32)
+        target_link_libraries(${TARGET} PRIVATE d3d11 dxgi d3dcompiler dxguid)
+    endif()
 
-# --------------------------------------------------------------
-# Include directories
-# --------------------------------------------------------------
-
-target_include_directories(DX11GameEngine
-    PRIVATE 
-        ${CMAKE_SOURCE_DIR}/include
-        ${CMAKE_SOURCE_DIR}/external/imguizmo
-)
+    set_property(TARGET ${TARGET} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+endforeach()
 
 # --------------------------------------------------------------
 # Visual Studio settings
 # --------------------------------------------------------------
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-             PROPERTY VS_STARTUP_PROJECT DX11GameEngine)
-
-set_property(TARGET DX11GameEngine
-             PROPERTY VS_DEBUGGER_WORKING_DIRECTORY
-             "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
+             PROPERTY VS_STARTUP_PROJECT DX11Editor)
 
 # --------------------------------------------------------------
-# Copy shaders & assets to build/bin
+# Custom build steps for copying assets and shaders
 # --------------------------------------------------------------
 
 add_custom_target(CopyShaders ALL
@@ -186,7 +174,9 @@ add_custom_target(CopyEngineFiles ALL
             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/enginefiles
 )
 
-add_dependencies(DX11GameEngine CopyShaders CopyAssets CopyEngineFiles)
+# Ensure both targets trigger the asset copying
+add_dependencies(DX11Editor CopyShaders CopyAssets CopyEngineFiles)
+add_dependencies(DX11Runtime CopyShaders CopyAssets CopyEngineFiles)
 
 # --------------------------------------------------------------
 # IDE File Grouping
@@ -196,33 +186,25 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR}
     FILES ${ENGINE_SOURCE_FILES} ${ENGINE_HEADER_FILES}
 )
 
-# --- DIST_BUILD PACKAGING LOGIC ---
-if(DIST_BUILD)
-    # Inject the C++ Macro
-    target_compile_definitions(DX11GameEngine PRIVATE DIST_BUILD)
+# --------------------------------------------------------------
+# RUNTIME TEMPLATE PACKAGING
+# --------------------------------------------------------------
+# Automatically place the Standalone executable and its required DLLs 
+# into a template folder so the Editor can copy them out later.
 
-    # Setup the Shipping output directory
-    set(SHIPPING_DIR ${CMAKE_BINARY_DIR}/Shipping)
+set(RUNTIME_TEMPLATE_DIR ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/RuntimeTemplate)
 
-    # Create a post-build command to package the game
-    add_custom_command(TARGET DX11GameEngine POST_BUILD
-        # Create the Shipping folder
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${SHIPPING_DIR}
-        
-        # Copy the compiled executable
-        COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:DX11GameEngine> ${SHIPPING_DIR}/
+add_custom_command(TARGET DX11Runtime POST_BUILD
+    # Create the RuntimeTemplate folder inside bin/
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${RUNTIME_TEMPLATE_DIR}
+    
+    # Copy the DX11Runtime.exe into it
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:DX11Runtime> ${RUNTIME_TEMPLATE_DIR}/
 
-        # Copy all dynamically linked libraries (DLLs)
-        # We use the Windows cmd to grab all .dll files generated by vcpkg in the bin folder
-        COMMAND powershell -noprofile -Command "Copy-Item -Path '$<TARGET_FILE_DIR:DX11GameEngine>/*.dll' -Destination '${SHIPPING_DIR}' -Force -ErrorAction SilentlyContinue"
-        
-        # Copy the runtime directories
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/assets ${SHIPPING_DIR}/assets
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/shaders ${SHIPPING_DIR}/shaders
-        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/enginefiles ${SHIPPING_DIR}/enginefiles
-        
-        COMMENT "Packaging standalone game to ${SHIPPING_DIR}..."
-    )
-endif()
+    # Copy all dynamically linked libraries (DLLs) required to run the game
+    COMMAND powershell -noprofile -Command "Copy-Item -Path '$<TARGET_FILE_DIR:DX11Runtime>/*.dll' -Destination '${RUNTIME_TEMPLATE_DIR}' -Force -ErrorAction SilentlyContinue"
+    
+    COMMENT "Assembling Runtime Template at ${RUNTIME_TEMPLATE_DIR}..."
+)
 
-message(STATUS "DX11GameEngine configured (manifest mode active).")
+message(STATUS "DX11GameEngine (Editor & Runtime) configured.")

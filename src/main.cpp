@@ -1,3 +1,4 @@
+#include <fstream>
 #include "Engine/Core.h"
 #include "Engine/UUID.h"
 #include "Engine/AssetManager.h"
@@ -395,12 +396,23 @@ int main(int argc, char** argv)
         // Pre-load all external assets from the registry into VRAM
         PreloadGameAssets();
 
-        // Automatically load the start scene and enter Play Mode immediately
+        // Read the launch configuration to find the starting scene
+        std::string startScenePath;
+        std::ifstream launchFile("enginefiles/Launch.txt");
+        if (launchFile.is_open()) {
+            std::getline(launchFile, startScenePath);
+            launchFile.close();
+        }
+        else {
+            throw std::runtime_error("Could not find enginefiles/Launch.txt. The game doesn't know which scene to load.");
+        }
+
+        // Automatically load the designated start scene and enter Play Mode immediately
         std::string errorMsg;
-        bool loaded = Engine::SceneSerializer::Deserialize("enginefiles/BaseScene.json", g_scene, g_physicsManager, g_assetManager, errorMsg);
+        bool loaded = Engine::SceneSerializer::Deserialize(startScenePath, g_scene, g_physicsManager, g_assetManager, errorMsg);
 
         if (!loaded) {
-            throw std::runtime_error("Failed to load BaseScene.json: " + errorMsg);
+            throw std::runtime_error("Failed to load " + startScenePath + ": " + errorMsg);
         }
 
         // Snapshot the clean scene and immediately boot Script and Physics systems
@@ -419,8 +431,6 @@ int main(int argc, char** argv)
                 auto& vp = g_scene.registry.get<Engine::ViewportComponent>(entity);
                 vp.width = g_windowWidth;
                 vp.height = g_windowHeight;
-
-				std::printf("Active Game Camera: %s\n", g_scene.registry.get<Engine::NameComponent>(entity).name.c_str());
                 break;
             }
         }
