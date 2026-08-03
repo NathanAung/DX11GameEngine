@@ -20,7 +20,11 @@ C/C++ により実装されており、ECS（Entity Component System）、リソ
 
 ## 開発アップデート動画（クリックで再生）
 
-2025/12/22までに実装された機能を紹介する動画です。
+2026/03/02までの進捗：
+
+[![Development Update](https://i.imgur.com/oK4etRg.jpeg)](https://youtu.be/wETGqUAdZaQ)
+
+エンジン紹介動画(2025/12/22までの進捗)：
 
 [![Development Update](https://i.imgur.com/VwbFdgl.jpeg)](https://youtu.be/ANGTMzYf98M)
 
