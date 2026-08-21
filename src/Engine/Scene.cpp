@@ -584,4 +584,39 @@ namespace Engine
         m_activeRenderCamera = entt::null;
         m_currentScenePath = "";
     }
+
+
+    void Scene::GenerateDefaultSetup(Engine::PhysicsManager& physicsManager)
+    {
+        // Completely clear the current scene and physics bodies
+        Clear(physicsManager);
+
+        // Create the Editor Camera (Required for the Editor UI to function)
+        CreateEditorCamera("Editor Camera", 1280, 720);
+
+        // Create a default Game Camera
+        CreateGameCamera("Main Camera", 1280, 720);
+
+        // Create a default Directional Light
+        CreateDirectionalLight("Sun Light");
+
+        // Create a default Ground Plane
+        entt::entity ground = CreateEntity("Ground");
+
+        auto& tc = registry.get<Engine::TransformComponent>(ground);
+        tc.position = DirectX::XMFLOAT3(0.0f, -5.0f, 0.0f);
+        tc.scale = DirectX::XMFLOAT3(20.0f, 0.1f, 20.0f);
+
+        Engine::RigidBodyComponent rb{};
+        rb.shape = Engine::RBShape::Box;
+        rb.motionType = Engine::RBMotion::Static;
+        registry.emplace<Engine::RigidBodyComponent>(ground, rb);
+
+        // Safely assign the dynamically fetched Cube UUID
+        Engine::MeshRendererComponent rend{};
+        rend.meshID = GetCubeMeshID();
+        rend.roughness = 0.1f;
+        rend.metallic = 0.2f;
+        registry.emplace<Engine::MeshRendererComponent>(ground, rend);
+    }
 }

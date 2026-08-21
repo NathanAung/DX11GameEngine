@@ -112,6 +112,9 @@ namespace Engine
         // Safely wipes the entire registry and all subsystem data (Jolt/Audio)
         void Clear(Engine::PhysicsManager& physicsManager);
 
+        // Generates a default starting scene (Camera, Light, Ground)
+        void GenerateDefaultSetup(Engine::PhysicsManager& physicsManager);
+
     private:
 		// Cache default asset IDs for editor-spawned primitives
         UUID m_defaultShaderID = 0;

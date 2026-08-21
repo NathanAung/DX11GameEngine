@@ -205,19 +205,21 @@ namespace Engine
                     }
 
                     std::string targetPath = dir.string() + "/" + filename + ".json";
-                    std::string sourcePath = "enginefiles/BaseScene.json";
 
                     if (std::filesystem::exists(targetPath)) {
                         m_showCreateSceneWarning = true;
                         m_createSceneWarningMsg = "A scene with this name already exists!";
                     }
-                    else if (!std::filesystem::exists(sourcePath)) {
-                        m_showCreateSceneWarning = true;
-                        m_createSceneWarningMsg = "BaseScene.json not found in enginefiles!";
-                    }
                     else {
-                        // Copy the base scene to the new location
-                        std::filesystem::copy_file(sourcePath, targetPath);
+                        // Generate the fresh scene procedurally (uses current UUIDs)
+                        scene.GenerateDefaultSetup(physicsManager);
+
+                        // Immediately save the newly generated scene to the target JSON file
+                        Engine::SceneSerializer::Serialize(targetPath, scene);
+
+                        // Set the engine's active tracker to the new file
+                        scene.SetCurrentScenePath(targetPath);
+
                         ImGui::CloseCurrentPopup();
                     }
                 }
