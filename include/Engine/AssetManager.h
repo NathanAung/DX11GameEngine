@@ -55,6 +55,17 @@ namespace Engine
         // Loads a saved ledger from a JSON file, restoring all UUIDs
         bool LoadRegistry(const std::string& filepath);
 
+        // Table of Contents Entry for the VFS
+        struct TOCEntry {
+            uint64_t uuid;
+            uint32_t type;
+            uint64_t offset;
+            uint64_t size;
+        };
+
+        // Compiles all physical files in the registry into a single binary archive
+        bool PackAssets(const std::string& pakFilepath) const;
+
     private:
 		// Internal registry mapping UUIDs to their corresponding asset metadata
         std::unordered_map<UUID, AssetMetadata> m_assetRegistry;

@@ -392,18 +392,22 @@ namespace Engine
             else
             {
                 try {
-                    // 1. Define paths relative to the executable (bin/)
+                    // Define paths relative to the executable (bin/)
                     std::filesystem::path currentPath = std::filesystem::current_path();
                     std::filesystem::path runtimeTemplate = currentPath / "RuntimeTemplate";
                     std::filesystem::path exportDir = currentPath / "ExportedGame";
 
-                    // 2. Prepare a clean export directory
+                    // Prepare a clean export directory
                     if (std::filesystem::exists(exportDir)) {
                         std::filesystem::remove_all(exportDir);
                     }
                     std::filesystem::create_directory(exportDir);
 
-                    // 3. Copy the compiled runtime executable and DLLs
+                    // Generate the data.pak archive directly into the export folder
+                    std::filesystem::path pakPath = exportDir / "data.pak";
+                    scene.GetAssetManager()->PackAssets(pakPath.string());
+
+                    // Copy the compiled runtime executable and DLLs
                     if (std::filesystem::exists(runtimeTemplate)) {
                         std::filesystem::copy(runtimeTemplate, exportDir, std::filesystem::copy_options::recursive);
                     }
@@ -411,7 +415,7 @@ namespace Engine
                         std::fprintf(stderr, "Export Error: RuntimeTemplate folder not found! Build the project in Visual Studio first.\n");
                     }
 
-                    // 4. Copy the runtime assets and enginefiles
+                    // Copy the runtime assets and enginefiles
                     if (std::filesystem::exists(currentPath / "assets")) {
                         std::filesystem::copy(currentPath / "assets", exportDir / "assets", std::filesystem::copy_options::recursive);
                     }
@@ -424,7 +428,7 @@ namespace Engine
                         std::filesystem::copy(currentPath / "shaders", exportDir / "shaders", std::filesystem::copy_options::recursive);
                     }
 
-                    // 5. Serialize the current scene to disk so the export gets the latest changes
+                    // Serialize the current scene to disk so the export gets the latest changes
                     if (!scene.GetCurrentScenePath().empty()) {
                         Engine::SceneSerializer::Serialize(scene.GetCurrentScenePath(), scene);
 
@@ -436,7 +440,7 @@ namespace Engine
                         }
                     }
 
-                    // 6. Open the exported folder in Windows File Explorer automatically
+                    // Open the exported folder in Windows File Explorer automatically
 #ifdef _WIN32
                     std::string openCmd = "explorer " + exportDir.string();
                     std::system(openCmd.c_str());

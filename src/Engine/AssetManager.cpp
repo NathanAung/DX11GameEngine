@@ -5,6 +5,8 @@
 #include <sstream>
 #include <iostream>
 
+#include <filesystem>
+
 // RapidJSON includes
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
@@ -167,6 +169,81 @@ namespace Engine
         }
 
         std::cout << "Successfully loaded Asset Registry from " << filepath << " (" << m_assetRegistry.size() << " assets known)." << std::endl;
+        return true;
+    }
+
+
+    bool AssetManager::PackAssets(const std::string& pakFilepath) const
+    {
+		// Open the output PAK file for writing in binary mode
+        std::ofstream pakFile(pakFilepath, std::ios::binary);
+        if (!pakFile.is_open()) return false;
+
+		// Prepare the Table of Contents (TOC) and a list of valid file paths
+        std::vector<TOCEntry> toc;
+        std::vector<std::string> validPaths;
+
+        // Gather valid physical files and calculate file sizes
+        for (const auto& [uuid, meta] : m_assetRegistry)
+        {
+            std::string path = meta.filepath;
+            // Strip any sub-mesh query strings
+            size_t queryPos = path.find('?');
+            if (queryPos != std::string::npos) path = path.substr(0, queryPos);
+
+            // Skip virtual assets and ensure the file exists on disk
+            if (path.find("primitive://") == 0 || path.find("shader://") == 0 || path.find("cubemap://") == 0) continue;
+
+			// If the file exists, we create a TOC entry for it and add it to the list of valid paths to be packed
+            if (std::filesystem::exists(path))
+            {
+                TOCEntry entry{};
+                entry.uuid = uuid;
+                entry.type = static_cast<uint32_t>(meta.type);
+                entry.size = std::filesystem::file_size(path);
+
+                toc.push_back(entry);
+                validPaths.push_back(path);
+            }
+        }
+
+        // Write the Header (Magic Number + Asset Count)
+        const char magic[4] = { 'P', 'A', 'K', '1' };
+        pakFile.write(magic, 4);
+
+        uint32_t assetCount = static_cast<uint32_t>(toc.size());
+        pakFile.write(reinterpret_cast<const char*>(&assetCount), sizeof(uint32_t));
+
+        // Calculate Offsets and Write the TOC
+        // The first byte of raw data starts immediately after the Magic(4) + Count(4) + TOC(Count * 24 bytes)
+        uint64_t currentOffset = 4 + sizeof(uint32_t) + (toc.size() * sizeof(TOCEntry));
+
+		// Write each TOC entry to the PAK file
+        for (auto& entry : toc)
+        {
+            entry.offset = currentOffset;
+            currentOffset += entry.size;
+
+            pakFile.write(reinterpret_cast<const char*>(&entry.uuid), sizeof(uint64_t));
+            pakFile.write(reinterpret_cast<const char*>(&entry.type), sizeof(uint32_t));
+            pakFile.write(reinterpret_cast<const char*>(&entry.offset), sizeof(uint64_t));
+            pakFile.write(reinterpret_cast<const char*>(&entry.size), sizeof(uint64_t));
+        }
+
+        // Append the Raw Binary Data
+        for (const std::string& path : validPaths)
+        {
+            std::ifstream assetFile(path, std::ios::binary);
+            if (assetFile.is_open())
+            {
+                // Rapidly copy the file buffer directly into the archive
+                pakFile << assetFile.rdbuf();
+                assetFile.close();
+            }
+        }
+
+        pakFile.close();
+        std::cout << "Successfully packed " << assetCount << " assets into " << pakFilepath << std::endl;
         return true;
     }
 }
