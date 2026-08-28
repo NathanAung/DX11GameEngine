@@ -22,7 +22,31 @@ namespace Engine
         // Load Image Data (force RGBA)
         int width = 0, height = 0, channels = 0;
         //stbi_set_flip_vertically_on_load(true); // Flip for DirectX UVs
-        unsigned char* imgData = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
+
+        unsigned char* imgData = nullptr;
+
+        // Route the loading through the VFS if active
+        if (assetManager.IsVFSActive())
+        {
+			// UUID assigned to this file path is used to locate the asset in the VFS
+            Engine::UUID handle = assetManager.ImportAsset(filepath, Engine::AssetType::Texture);
+            std::vector<char> memBuffer = assetManager.ReadAssetFromVFS(handle);
+
+            if (!memBuffer.empty())
+            {
+                imgData = stbi_load_from_memory(
+                    reinterpret_cast<const stbi_uc*>(memBuffer.data()),
+                    static_cast<int>(memBuffer.size()),
+                    &width, &height, &channels, 4
+                );
+            }
+        }
+        else
+        {
+            // Standard Editor fallback
+            imgData = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
+        }
+
         if (!imgData)
         {
             std::cerr << "TextureManager Failed to load: " << filepath << std::endl;

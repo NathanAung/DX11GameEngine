@@ -125,7 +125,29 @@ namespace Engine
 
         // Read the file and obtain the scene object
         // aiScene is the root object for the imported data
-        const aiScene* scene = importer.ReadFile(filename, flags);
+        //const aiScene* scene = importer.ReadFile(filename, flags);
+        const aiScene* scene = nullptr;
+
+        // Read the asset from the virtual file system (VFS)
+        Engine::UUID handle = assetManager.ImportAsset(filename, Engine::AssetType::ModelFile);
+
+		// Check if VFS is active and read the asset accordingly
+        if (assetManager.IsVFSActive())
+        {
+            std::vector<char> memBuffer = assetManager.ReadAssetFromVFS(handle);
+
+            if (!memBuffer.empty())
+            {
+                // Assimp deduces the format automatically from the memory blob
+                scene = importer.ReadFileFromMemory(memBuffer.data(), memBuffer.size(), flags);
+            }
+        }
+        else
+        {
+            // Standard Editor fallback
+            scene = importer.ReadFile(filename, flags);
+        }
+
         if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
         {
             std::fprintf(stderr, "Assimp load failed for '%s'\n", filename.c_str());

@@ -186,24 +186,22 @@ namespace Engine
         // Gather valid physical files and calculate file sizes
         for (const auto& [uuid, meta] : m_assetRegistry)
         {
-            std::string path = meta.filepath;
-            // Strip any sub-mesh query strings
-            size_t queryPos = path.find('?');
-            if (queryPos != std::string::npos) path = path.substr(0, queryPos);
+            // Skip virtual sub-meshes (Assimp handles these in memory)
+            if (meta.type == Engine::AssetType::Mesh) continue;
 
             // Skip virtual assets and ensure the file exists on disk
-            if (path.find("primitive://") == 0 || path.find("shader://") == 0 || path.find("cubemap://") == 0) continue;
+            if (meta.filepath.find("primitive://") == 0 || meta.filepath.find("shader://") == 0 || meta.filepath.find("cubemap://") == 0) continue;
 
 			// If the file exists, we create a TOC entry for it and add it to the list of valid paths to be packed
-            if (std::filesystem::exists(path))
+            if (std::filesystem::exists(meta.filepath))
             {
                 TOCEntry entry{};
                 entry.uuid = uuid;
                 entry.type = static_cast<uint32_t>(meta.type);
-                entry.size = std::filesystem::file_size(path);
+                entry.size = std::filesystem::file_size(meta.filepath);
 
                 toc.push_back(entry);
-                validPaths.push_back(path);
+                validPaths.push_back(meta.filepath);
             }
         }
 
@@ -215,8 +213,9 @@ namespace Engine
         pakFile.write(reinterpret_cast<const char*>(&assetCount), sizeof(uint32_t));
 
         // Calculate Offsets and Write the TOC
-        // The first byte of raw data starts immediately after the Magic(4) + Count(4) + TOC(Count * 24 bytes)
-        uint64_t currentOffset = 4 + sizeof(uint32_t) + (toc.size() * sizeof(TOCEntry));
+        //uint64_t currentOffset = 4 + sizeof(uint32_t) + (toc.size() * sizeof(TOCEntry));
+		// The first byte of raw data starts immediately after the Magic(4) + Count(4) + TOCEntries(28 bytes each)
+        uint64_t currentOffset = 4 + sizeof(uint32_t) + (toc.size() * 28);
 
 		// Write each TOC entry to the PAK file
         for (auto& entry : toc)
@@ -245,5 +244,66 @@ namespace Engine
         pakFile.close();
         std::cout << "Successfully packed " << assetCount << " assets into " << pakFilepath << std::endl;
         return true;
+    }
+
+
+    bool AssetManager::MountVFS(const std::string& pakFilepath)
+    {
+        std::ifstream pakFile(pakFilepath, std::ios::binary);
+        if (!pakFile.is_open()) {
+            return false;
+        }
+
+        // Verify the Magic Number
+        char magic[5] = { 0 }; // Extra byte for null terminator
+        pakFile.read(magic, 4);
+        if (std::string(magic) != "PAK1") {
+            std::cerr << "VFS Mount Failed: Invalid magic number in " << pakFilepath << std::endl;
+            return false;
+        }
+
+        // Read the Asset Count
+        uint32_t assetCount = 0;
+        pakFile.read(reinterpret_cast<char*>(&assetCount), sizeof(uint32_t));
+
+        // Populate the internal VFS Table
+        for (uint32_t i = 0; i < assetCount; ++i) {
+            TOCEntry entry{};
+            pakFile.read(reinterpret_cast<char*>(&entry.uuid), sizeof(uint64_t));
+            pakFile.read(reinterpret_cast<char*>(&entry.type), sizeof(uint32_t));
+            pakFile.read(reinterpret_cast<char*>(&entry.offset), sizeof(uint64_t));
+            pakFile.read(reinterpret_cast<char*>(&entry.size), sizeof(uint64_t));
+
+            m_vfsTable[entry.uuid] = entry;
+        }
+
+        m_vfsPakPath = pakFilepath;
+        m_useVFS = true;
+
+        std::cout << "Successfully mounted VFS: " << pakFilepath << " (" << assetCount << " assets)" << std::endl;
+        return true;
+    }
+
+
+    std::vector<char> AssetManager::ReadAssetFromVFS(UUID handle) const
+    {
+        std::vector<char> buffer;
+
+        // Check if the asset exists in the VFS Table
+        auto it = m_vfsTable.find(handle);
+        if (it == m_vfsTable.end()) {
+            return buffer; // Return empty buffer if not found
+        }
+
+        // Open the archive, seek to the exact offset, and copy the bytes
+        std::ifstream pakFile(m_vfsPakPath, std::ios::binary);
+        if (pakFile.is_open()) {
+            buffer.resize(it->second.size);
+            pakFile.seekg(it->second.offset);
+            pakFile.read(buffer.data(), it->second.size);
+            pakFile.close();
+        }
+
+        return buffer;
     }
 }

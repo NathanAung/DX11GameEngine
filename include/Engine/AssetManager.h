@@ -14,7 +14,8 @@ namespace Engine
         Mesh,
         Texture,
         Audio,
-        Shader
+        Shader,
+        ModelFile
     };
 
 	// metadata is used for serialization and deserialization of the asset registry, as well as for runtime asset management.
@@ -66,8 +67,22 @@ namespace Engine
         // Compiles all physical files in the registry into a single binary archive
         bool PackAssets(const std::string& pakFilepath) const;
 
+        // Mounts the binary archive and loads the Table of Contents into memory
+        bool MountVFS(const std::string& pakFilepath);
+
+        // Checks if the engine is currently running in VFS mode
+        bool IsVFSActive() const { return m_useVFS; }
+
+        // Seeks to the exact byte offset in the archive and extracts the raw asset data
+        std::vector<char> ReadAssetFromVFS(UUID handle) const;
+
     private:
 		// Internal registry mapping UUIDs to their corresponding asset metadata
         std::unordered_map<UUID, AssetMetadata> m_assetRegistry;
+
+        // VFS State
+        std::unordered_map<uint64_t, TOCEntry> m_vfsTable;
+        std::string m_vfsPakPath;
+        bool m_useVFS = false;
     };
 }

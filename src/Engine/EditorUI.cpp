@@ -1489,13 +1489,9 @@ namespace Engine
                                         // Preload the loaded scene's assets into VRAM
                                         for (const auto& [uuid, meta] : scene.GetAssetManager()->GetRegistry())
                                         {
-                                            // Load custom meshes
-                                            if (meta.type == Engine::AssetType::Mesh && meta.filepath.find("primitive://") == std::string::npos) {
-                                                std::string loadPath = meta.filepath;
-                                                size_t queryPos = loadPath.find('?');
-                                                if (queryPos != std::string::npos) loadPath = loadPath.substr(0, queryPos);
-
-                                                meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), loadPath);
+                                            // Load custom models
+                                            if (meta.type == Engine::AssetType::ModelFile) {
+                                                meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), meta.filepath);
                                             }
                                             // Load custom textures
                                             else if (meta.type == Engine::AssetType::Texture && meta.filepath.find("primitive://") == std::string::npos && meta.filepath.find("cubemap://") == std::string::npos) {
