@@ -1,10 +1,171 @@
 #include "Engine/MeshManager.h"
 #include <DirectXMath.h>
 #include <cmath>
+#include <fstream> 
+#include <iostream>
+#include <iterator>
+#include <vector>
+#include <filesystem>
+#include <assimp/IOSystem.hpp>
+#include <assimp/IOStream.hpp>
 #include "Engine/AssetManager.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
+
+
+namespace
+{
+    // Helper to strip hidden Windows carriage returns from Assimp strings
+    std::string CleanAssimpPath(const char* pFile)
+    {
+        std::string path(pFile);
+
+        // Force all Windows backslashes to forward slashes
+        for (char& c : path) {
+            if (c == '\\') c = '/';
+        }
+
+        // Strip hidden carriage returns
+        while (!path.empty() && (path.back() == '\r' || path.back() == '\n' || path.back() == ' ')) {
+            path.pop_back();
+        }
+        return path;
+    }
+
+    // A custom file stream that reads from a loaded VFS memory buffer
+    class VFSIOStream : public Assimp::IOStream
+    {
+    private:
+        std::vector<char> m_buffer;
+        size_t m_pos = 0;
+
+    public:
+        VFSIOStream(std::vector<char> buffer) : m_buffer(std::move(buffer)) {}
+        ~VFSIOStream() override = default;
+
+        size_t Read(void* pvBuffer, size_t pSize, size_t pCount) override
+        {
+            size_t bytesToRead = pSize * pCount;
+            if (m_pos + bytesToRead > m_buffer.size()) {
+                bytesToRead = m_buffer.size() - m_pos;
+            }
+            if (bytesToRead > 0) {
+                std::memcpy(pvBuffer, m_buffer.data() + m_pos, bytesToRead);
+                m_pos += bytesToRead;
+            }
+            return bytesToRead / pSize; // Return how many elements were successfully read
+        }
+
+        size_t Write(const void* /*pvBuffer*/, size_t /*pSize*/, size_t /*pCount*/) override {
+            return 0; // Read-only stream
+        }
+
+        aiReturn Seek(size_t pOffset, aiOrigin pOrigin) override
+        {
+            if (pOrigin == aiOrigin_SET) m_pos = pOffset;
+            else if (pOrigin == aiOrigin_CUR) m_pos += pOffset;
+            else if (pOrigin == aiOrigin_END) m_pos = m_buffer.size() - pOffset;
+
+            if (m_pos > m_buffer.size()) m_pos = m_buffer.size();
+            return aiReturn_SUCCESS;
+        }
+
+        size_t Tell() const override { return m_pos; }
+        size_t FileSize() const override { return m_buffer.size(); }
+        void Flush() override {}
+    };
+
+    // A custom file system that forces Assimp to ask the AssetManager for files
+    class VFSIOSystem : public Assimp::IOSystem
+    {
+    private:
+        Engine::AssetManager* m_assetManager;
+        std::string m_basePath; // Stores the directory of the .obj file
+
+        // Helper to safely prepend the directory if Assimp provides a raw filename
+        std::string ResolvePath(const char* pFile) const {
+            std::string clean = CleanAssimpPath(pFile);
+            std::filesystem::path p(clean);
+            // If it's a relative path and doesn't already start with our base path, prepend it
+            if (p.is_relative() && clean.find(m_basePath) != 0) {
+                return m_basePath + clean;
+            }
+            return clean;
+        }
+
+    public:
+        VFSIOSystem(Engine::AssetManager* am, const std::string& basePath)
+            : m_assetManager(am), m_basePath(basePath) {
+        }
+        ~VFSIOSystem() override = default;
+
+        bool Exists(const char* pFile) const override {
+            //// Sanitize the path before doing anything
+            //std::string cleanPath = CleanAssimpPath(pFile);
+
+            std::string resolvedPath = ResolvePath(pFile);
+
+            if (m_assetManager->IsVFSActive())
+            {
+                // In Game Mode: Check if the file is genuinely inside the VFS memory
+                Engine::UUID handle = m_assetManager->ImportAsset(resolvedPath, Engine::AssetType::ModelFile);
+                //return !m_assetManager->ReadAssetFromVFS(handle).empty();
+
+                if(m_assetManager->IsInVFS(handle))
+                {
+                    return true;
+                }
+                else
+                {
+					std::cerr << "VFSIOSystem: File not found in VFS: " << resolvedPath << std::endl;
+					return false;
+				}
+            }
+            else
+            {
+                // In Editor Mode: Check the physical hard drive
+                return std::filesystem::exists(resolvedPath);
+            }
+        }
+
+        char getOsSeparator() const override { return '/'; }
+
+        Assimp::IOStream* Open(const char* pFile, const char* /*pMode*/) override
+        {
+            //// Sanitize the path
+            //std::string cleanPath = CleanAssimpPath(pFile);
+            
+            std::string resolvedPath = ResolvePath(pFile);
+            
+            // Register the dependency so the Packer knows it exists!
+            Engine::UUID handle = m_assetManager->ImportAsset(resolvedPath, Engine::AssetType::ModelFile);
+
+            if (m_assetManager->IsVFSActive())
+            {
+                // GAME MODE: Pull from archive
+                std::vector<char> buffer = m_assetManager->ReadAssetFromVFS(handle);
+                if (buffer.empty()) return nullptr;
+                return new VFSIOStream(std::move(buffer));
+            }
+            else
+            {
+                // EDITOR MODE: Read from disk, but now the asset IS registered!
+                std::ifstream file(resolvedPath, std::ios::binary);
+                if (!file.is_open()) return nullptr;
+
+                // Read whole file into buffer
+                std::vector<char> buffer((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+                return new VFSIOStream(std::move(buffer));
+            }
+        }
+
+        void Close(Assimp::IOStream* pFile) override {
+            delete pFile;
+        }
+    };
+}
+
 
 namespace Engine
 {
@@ -123,30 +284,23 @@ namespace Engine
                                     aiProcess_MakeLeftHanded | 
                                     aiProcess_FlipWindingOrder;
 
-        // Read the file and obtain the scene object
-        // aiScene is the root object for the imported data
-        //const aiScene* scene = importer.ReadFile(filename, flags);
-        const aiScene* scene = nullptr;
-
         // Read the asset from the virtual file system (VFS)
         Engine::UUID handle = assetManager.ImportAsset(filename, Engine::AssetType::ModelFile);
 
-		// Check if VFS is active and read the asset accordingly
-        if (assetManager.IsVFSActive())
-        {
-            std::vector<char> memBuffer = assetManager.ReadAssetFromVFS(handle);
+        // Extract the directory path (e.g., "assets/Models/")
+        std::string basePath = std::filesystem::path(filename).parent_path().generic_string() + "/";
 
-            if (!memBuffer.empty())
-            {
-                // Assimp deduces the format automatically from the memory blob
-                scene = importer.ReadFileFromMemory(memBuffer.data(), memBuffer.size(), flags);
-            }
+        // Always override Assimp's file system so dependencies are tracked
+        importer.SetIOHandler(new VFSIOSystem(&assetManager, basePath));
+
+        if (assetManager.IsVFSActive()) {
+            std::fprintf(stdout, "Assimp: loading '%s' from VFS\n", filename.c_str());
         }
-        else
-        {
-            // Standard Editor fallback
-            scene = importer.ReadFile(filename, flags);
-        }
+
+        // aiScene is the root object for the imported data
+        // If the VFS is active, this automatically routes into our custom VFSIOSystem.
+		// If not, Assimp will read from the physical file system.
+        const aiScene* scene = importer.ReadFile(filename, flags);
 
         if (!scene || (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) || !scene->mRootNode)
         {

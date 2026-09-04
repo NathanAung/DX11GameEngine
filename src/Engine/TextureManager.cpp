@@ -199,8 +199,29 @@ namespace Engine
         // Load each face of the cubemap
         for (int i = 0; i < 6; ++i)
         {
+            // Register the individual physical face so the Packer knows about it
+            Engine::UUID faceUUID = assetManager.ImportAsset(filepaths[i], Engine::AssetType::Texture);
+
             int w, h, c;
-            images[i] = stbi_load(filepaths[i].c_str(), &w, &h, &c, 4);
+
+            // VFS Memory routing for each face
+            if (assetManager.IsVFSActive())
+            {
+                std::vector<char> memBuffer = assetManager.ReadAssetFromVFS(faceUUID);
+                if (!memBuffer.empty())
+                {
+                    images[i] = stbi_load_from_memory(
+                        reinterpret_cast<const stbi_uc*>(memBuffer.data()),
+                        static_cast<int>(memBuffer.size()),
+                        &w, &h, &c, 4
+                    );
+                }
+            }
+			// Standard Editor fallback
+            else {
+                images[i] = stbi_load(filepaths[i].c_str(), &w, &h, &c, 4);
+            }
+            
             if (!images[i])
             {
                 std::cerr << "TextureManager Failed to load cubemap face: " << filepaths[i] << std::endl;

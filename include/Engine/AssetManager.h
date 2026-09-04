@@ -76,6 +76,9 @@ namespace Engine
         // Seeks to the exact byte offset in the archive and extracts the raw asset data
         std::vector<char> ReadAssetFromVFS(UUID handle) const;
 
+        // Checks if an asset currently exists inside the mounted VFS
+        bool IsInVFS(UUID handle) const;
+
     private:
 		// Internal registry mapping UUIDs to their corresponding asset metadata
         std::unordered_map<UUID, AssetMetadata> m_assetRegistry;

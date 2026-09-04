@@ -242,6 +242,9 @@ namespace Engine
             if (meta->filepath.find("shader://") == 0) return true;
             if (meta->filepath.find("cubemap://") == 0) return true;
 
+            // The assets are safely packed in memory, so we trust the Asset Ledger.
+            if (assetManager.IsVFSActive()) return true;
+
             // Strip sub-mesh query strings (e.g., "?mesh=0") before checking OS filesystem
             std::string pathToCheck = meta->filepath;
             size_t queryPos = pathToCheck.find('?');
@@ -279,7 +282,8 @@ namespace Engine
                 const auto& scripts = item["LuaScriptComponent"]["Scripts"];
                 for (rapidjson::SizeType j = 0; j < scripts.Size(); j++) {
                     std::string scriptPath = scripts[j].GetString();
-                    if (!scriptPath.empty() && !std::filesystem::exists(scriptPath)) {
+                    // Bypass physical check for scripts if VFS is active
+                    if (!scriptPath.empty() && !assetManager.IsVFSActive() && !std::filesystem::exists(scriptPath)) {
                         outErrorMsg = "Missing Script File: " + scriptPath; return false;
                     }
                 }
