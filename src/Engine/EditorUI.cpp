@@ -403,6 +403,11 @@ namespace Engine
                     }
                     std::filesystem::create_directory(exportDir);
 
+                    // Serialize the scene FIRST so the registry tracks all new scripts
+                    if (!scene.GetCurrentScenePath().empty()) {
+                        Engine::SceneSerializer::Serialize(scene.GetCurrentScenePath(), scene);
+                    }
+
                     // Generate the data.pak archive directly into the export folder
                     std::filesystem::path pakPath = exportDir / "data.pak";
                     scene.GetAssetManager()->PackAssets(pakPath.string());
@@ -428,11 +433,8 @@ namespace Engine
                         std::filesystem::copy(currentPath / "shaders", exportDir / "shaders", std::filesystem::copy_options::recursive);
                     }
 
-                    // Serialize the current scene to disk so the export gets the latest changes
+                    // Write Launch.txt inside the ExportedGame folder so it targets the correct scene
                     if (!scene.GetCurrentScenePath().empty()) {
-                        Engine::SceneSerializer::Serialize(scene.GetCurrentScenePath(), scene);
-
-                        // Write Launch.txt *inside* the ExportedGame folder so it targets the correct scene
                         std::ofstream launchFile(exportDir / "enginefiles" / "Launch.txt");
                         if (launchFile.is_open()) {
                             launchFile << scene.GetCurrentScenePath();

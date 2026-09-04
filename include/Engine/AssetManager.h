@@ -15,7 +15,8 @@ namespace Engine
         Texture,
         Audio,
         Shader,
-        ModelFile
+        ModelFile,
+		LuaScript,
     };
 
 	// metadata is used for serialization and deserialization of the asset registry, as well as for runtime asset management.

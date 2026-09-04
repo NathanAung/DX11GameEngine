@@ -134,6 +134,10 @@ namespace Engine
                     writer.StartArray();
                     for (const auto& script : lsc.scripts) {
                         writer.String(script.filepath.c_str());
+                        // Ensure the script is tracked in the registry before the registry is saved
+                        if (scene.GetAssetManager() && !script.filepath.empty()) {
+                            scene.GetAssetManager()->ImportAsset(script.filepath, Engine::AssetType::LuaScript);
+                        }
                     }
                     writer.EndArray();
                     writer.EndObject();

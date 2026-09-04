@@ -391,6 +391,14 @@ int main(int argc, char** argv)
     // NOTE: Do this BEFORE LoadContent() so primitive generation reuses the saved UUIDs
     g_assetManager.LoadRegistry("enginefiles/AssetRegistry.json");
 
+    // Inject core manager dependencies into the Scene BEFORE booting any content
+    // Set the AudioManager reference in the Scene for audio playback and ECS integration
+    g_scene.SetAudioManager(&g_audioManager);
+    // Set the AssetManager reference in the Scene for asset lookups and spawning
+    g_scene.SetAssetManager(&g_assetManager);
+    // Initialize Lua bindings with access to input and physics manager
+    g_scene.InitializeLuaBindings(&g_input, &g_physicsManager);
+
     try {
 #ifdef DIST_BUILD
         // GAME MODE:
@@ -477,14 +485,6 @@ int main(int argc, char** argv)
     // Main loop
     g_perfFreq = SDL_GetPerformanceFrequency();
     g_lastCounter = SDL_GetPerformanceCounter();
-
-	// Set the AudioManager reference in the Scene for audio playback and ECS integration
-    g_scene.SetAudioManager(&g_audioManager);
-	// Set the AssetManager reference in the Scene for asset lookups and spawning
-    g_scene.SetAssetManager(&g_assetManager);
-
-	// Initialize Lua bindings with access to input and physics manager
-    g_scene.InitializeLuaBindings(&g_input, &g_physicsManager);
 
     while (g_running)
     {

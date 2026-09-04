@@ -685,7 +685,29 @@ namespace Engine
                         script.env["self"] = ScriptEntity(entity, &scene);
 
 						// Compile and run the file into this environment
-                        scene.m_lua.script_file(script.filepath, script.env);
+						// If VFS is active, read the file from the virtual filesystem instead of directly from disk
+                        Engine::UUID handle = scene.GetAssetManager()->ImportAsset(script.filepath, Engine::AssetType::LuaScript);
+                        if (scene.GetAssetManager()->IsVFSActive()) {
+                            std::vector<char> buffer = scene.GetAssetManager()->ReadAssetFromVFS(handle);
+                            if (!buffer.empty()) {
+                                std::string scriptCode(buffer.begin(), buffer.end());
+
+                                // Use safe_script to prevent parsing panics
+                                auto result = scene.m_lua.safe_script(scriptCode, script.env, script.filepath, sol::load_mode::any);
+                                if (!result.valid()) {
+                                    sol::error err = result;
+                                    std::fprintf(stderr, "Lua Syntax Error in %s: %s\n", script.filepath.c_str(), err.what());
+                                }
+                            }
+                        }
+						// If VFS is not active, fall back to reading the file directly from disk
+                        else {
+                            auto result = scene.m_lua.safe_script_file(script.filepath, script.env);
+                            if (!result.valid()) {
+                                sol::error err = result;
+                                std::fprintf(stderr, "Lua File Error in %s: %s\n", script.filepath.c_str(), err.what());
+                            }
+                        }
 
 						// Cache lifecycle functions to avoid string lookups per frame
                         script.OnCreate = script.env["OnCreate"];
@@ -693,9 +715,14 @@ namespace Engine
                         script.OnDestroy = script.env["OnDestroy"];
 
                         if (script.OnCreate.valid()) {
-							// Copy to stack before execution (in case OnCreate spawns new entities or scripts and causes reallocations)
-                            sol::function createFunc = script.OnCreate;
-                            createFunc();
+							// Copy to stack before execution (in case OnCreate spawns new entities or scripts and causes reallocations
+                            // Use protected_function to prevent execution crashes
+                            sol::protected_function createFunc = script.OnCreate;
+                            auto result = createFunc();
+                            if (!result.valid()) {
+                                sol::error err = result;
+                                std::fprintf(stderr, "Lua OnCreate Error in %s: %s\n", script.filepath.c_str(), err.what());
+                            }
                         }
                     }
                     catch (const sol::error& e) {
@@ -731,7 +758,27 @@ namespace Engine
                         try {
                             script.env = sol::environment(scene.m_lua, sol::create, scene.m_lua.globals());
                             script.env["self"] = ScriptEntity(entity, &scene);
-                            scene.m_lua.script_file(script.filepath, script.env);
+
+                            Engine::UUID handle = scene.GetAssetManager()->ImportAsset(script.filepath, Engine::AssetType::LuaScript);
+                            if (scene.GetAssetManager()->IsVFSActive()) {
+                                std::vector<char> buffer = scene.GetAssetManager()->ReadAssetFromVFS(handle);
+                                if (!buffer.empty()) {
+                                    std::string scriptCode(buffer.begin(), buffer.end());
+                                    // Use safe_script to prevent parsing panics
+                                    auto result = scene.m_lua.safe_script(scriptCode, script.env, script.filepath, sol::load_mode::any);
+                                    if (!result.valid()) {
+                                        sol::error err = result;
+                                        std::fprintf(stderr, "Lua Syntax Error in %s: %s\n", script.filepath.c_str(), err.what());
+                                    }
+                                }
+                            }
+                            else {
+                                auto result = scene.m_lua.safe_script_file(script.filepath, script.env);
+                                if (!result.valid()) {
+                                    sol::error err = result;
+                                    std::fprintf(stderr, "Lua File Error in %s: %s\n", script.filepath.c_str(), err.what());
+                                }
+                            }
 
                             script.OnCreate = script.env["OnCreate"];
                             script.OnUpdate = script.env["OnUpdate"];
@@ -759,14 +806,15 @@ namespace Engine
 
                         // Copy the Lua function and filepath to the C++ stack before executing
                         // This guarantees safety even if the EnTT pool is deleted/moved mid-execution.
-                        sol::function updateFunc = safeScript.OnUpdate;
+                        // Cast to protected_function
+                        sol::protected_function updateFunc = safeScript.OnUpdate;
                         std::string filepath = safeScript.filepath;
 
-                        try {
-                            updateFunc(dt);
-                        }
-                        catch (const sol::error& e) {
-                            std::fprintf(stderr, "Lua Update Error in %s: %s\n", filepath.c_str(), e.what());
+                        // Execute safely and catch Lua runtime errors without aborting
+                        auto result = updateFunc(dt);
+                        if (!result.valid()) {
+                            sol::error err = result;
+                            std::fprintf(stderr, "Lua Update Error in %s: %s\n", filepath.c_str(), err.what());
                         }
                     }
                 }
@@ -789,13 +837,14 @@ namespace Engine
                     auto& script = scene.registry.get<LuaScriptComponent>(entity).scripts[i];
                     if (script.isInitialized) {
                         if (script.OnDestroy.valid()) {
-                            sol::function destroyFunc = script.OnDestroy;
+                            // Cast to protected_function
+                            sol::protected_function destroyFunc = script.OnDestroy;
                             std::string filepath = script.filepath;
-                            try {
-                                destroyFunc();
-                            }
-                            catch (const sol::error& e) {
-                                std::fprintf(stderr, "Lua Destroy Error in %s: %s\n", filepath.c_str(), e.what());
+
+                            auto result = destroyFunc();
+                            if (!result.valid()) {
+                                sol::error err = result;
+                                std::fprintf(stderr, "Lua Destroy Error in %s: %s\n", filepath.c_str(), err.what());
                             }
                         }
                     }
