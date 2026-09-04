@@ -63,6 +63,9 @@ namespace Engine
 
     bool AssetManager::SaveRegistry(const std::string& filepath)
     {
+        // Never write the JSON ledger to disk if we are running from the PAK archive
+        if (m_useVFS) return true;
+
 		// Create a JSON document to hold the asset registry
         rapidjson::StringBuffer sb;
 		// Use PrettyWriter for human-readable formatting
@@ -175,58 +178,63 @@ namespace Engine
 
     bool AssetManager::PackAssets(const std::string& pakFilepath) const
     {
-		// Open the output PAK file for writing in binary mode
+        // Open the output PAK file for writing in binary mode
         std::ofstream pakFile(pakFilepath, std::ios::binary);
         if (!pakFile.is_open()) return false;
 
-		// Prepare the Table of Contents (TOC) and a list of valid file paths
-        std::vector<TOCEntry> toc;
-        std::vector<std::string> validPaths;
-
-        // Gather valid physical files and calculate file sizes
-        for (const auto& [uuid, meta] : m_assetRegistry)
-        {
-            // Skip virtual sub-meshes (Assimp handles these in memory)
-            if (meta.type == Engine::AssetType::Mesh) continue;
-
-            // Skip virtual assets and ensure the file exists on disk
-            if (meta.filepath.find("primitive://") == 0 || meta.filepath.find("shader://") == 0 || meta.filepath.find("cubemap://") == 0) continue;
-
-			// If the file exists, we create a TOC entry for it and add it to the list of valid paths to be packed
-            if (std::filesystem::exists(meta.filepath))
-            {
-                TOCEntry entry{};
-                entry.uuid = uuid;
-                entry.type = static_cast<uint32_t>(meta.type);
-                entry.size = std::filesystem::file_size(meta.filepath);
-
-                toc.push_back(entry);
-                validPaths.push_back(meta.filepath);
-            }
-        }
-
-        // Write the Header (Magic Number + Asset Count)
-        const char magic[4] = { 'P', 'A', 'K', '1' };
+        // Upgrade Magic Number to PAK2 to reflect the new dynamic TOC format
+        const char magic[4] = { 'P', 'A', 'K', '2' };
         pakFile.write(magic, 4);
 
-        uint32_t assetCount = static_cast<uint32_t>(toc.size());
+        uint32_t assetCount = static_cast<uint32_t>(m_assetRegistry.size());
         pakFile.write(reinterpret_cast<const char*>(&assetCount), sizeof(uint32_t));
 
-        // Calculate Offsets and Write the TOC
-        //uint64_t currentOffset = 4 + sizeof(uint32_t) + (toc.size() * sizeof(TOCEntry));
-		// The first byte of raw data starts immediately after the Magic(4) + Count(4) + TOCEntries(28 bytes each)
-        uint64_t currentOffset = 4 + sizeof(uint32_t) + (toc.size() * 28);
-
-		// Write each TOC entry to the PAK file
-        for (auto& entry : toc)
+        // Calculate the starting offset for the raw binary payload data
+        uint64_t totalTOCSize = 0;
+        for (const auto& [uuid, meta] : m_assetRegistry)
         {
-            entry.offset = currentOffset;
-            currentOffset += entry.size;
+            // UUID(8) + Type(4) + PathLen(4) + String(...) + Offset(8) + Size(8)
+            totalTOCSize += 32 + meta.filepath.size();
+        }
 
-            pakFile.write(reinterpret_cast<const char*>(&entry.uuid), sizeof(uint64_t));
-            pakFile.write(reinterpret_cast<const char*>(&entry.type), sizeof(uint32_t));
-            pakFile.write(reinterpret_cast<const char*>(&entry.offset), sizeof(uint64_t));
-            pakFile.write(reinterpret_cast<const char*>(&entry.size), sizeof(uint64_t));
+        // Header(8) + TOC Size
+        uint64_t currentOffset = 8 + totalTOCSize;
+        std::vector<std::string> validPaths;
+
+        // Write the Dynamic TOC
+        for (const auto& [uuid, meta] : m_assetRegistry)
+        {
+            uint64_t size = 0;
+            bool packPayload = false;
+
+            // Only prepare physical payload packing for actual files
+            if (meta.type != Engine::AssetType::Mesh &&
+                meta.filepath.find("primitive://") != 0 &&
+                meta.filepath.find("shader://") != 0 &&
+                meta.filepath.find("cubemap://") != 0)
+            {
+                if (std::filesystem::exists(meta.filepath)) {
+                    size = std::filesystem::file_size(meta.filepath);
+                    packPayload = true;
+                }
+            }
+
+            uint32_t type = static_cast<uint32_t>(meta.type);
+            uint32_t pathLen = static_cast<uint32_t>(meta.filepath.size());
+
+            // Write metadata into the header
+            pakFile.write(reinterpret_cast<const char*>(&uuid), sizeof(uint64_t));
+            pakFile.write(reinterpret_cast<const char*>(&type), sizeof(uint32_t));
+            pakFile.write(reinterpret_cast<const char*>(&pathLen), sizeof(uint32_t));
+            pakFile.write(meta.filepath.c_str(), pathLen);
+            pakFile.write(reinterpret_cast<const char*>(&currentOffset), sizeof(uint64_t));
+            pakFile.write(reinterpret_cast<const char*>(&size), sizeof(uint64_t));
+
+            // Advance the offset if this file has physical data
+            if (packPayload) {
+                validPaths.push_back(meta.filepath);
+                currentOffset += size;
+            }
         }
 
         // Append the Raw Binary Data
@@ -235,7 +243,6 @@ namespace Engine
             std::ifstream assetFile(path, std::ios::binary);
             if (assetFile.is_open())
             {
-                // Rapidly copy the file buffer directly into the archive
                 pakFile << assetFile.rdbuf();
                 assetFile.close();
             }
@@ -254,33 +261,60 @@ namespace Engine
             return false;
         }
 
-        // Verify the Magic Number
-        char magic[5] = { 0 }; // Extra byte for null terminator
+        // Verify the new PAK2 Magic Number
+        char magic[5] = { 0 };
         pakFile.read(magic, 4);
-        if (std::string(magic) != "PAK1") {
+        if (std::string(magic) != "PAK2") {
             std::cerr << "VFS Mount Failed: Invalid magic number in " << pakFilepath << std::endl;
             return false;
         }
 
-        // Read the Asset Count
         uint32_t assetCount = 0;
         pakFile.read(reinterpret_cast<char*>(&assetCount), sizeof(uint32_t));
 
-        // Populate the internal VFS Table
-        for (uint32_t i = 0; i < assetCount; ++i) {
-            TOCEntry entry{};
-            pakFile.read(reinterpret_cast<char*>(&entry.uuid), sizeof(uint64_t));
-            pakFile.read(reinterpret_cast<char*>(&entry.type), sizeof(uint32_t));
-            pakFile.read(reinterpret_cast<char*>(&entry.offset), sizeof(uint64_t));
-            pakFile.read(reinterpret_cast<char*>(&entry.size), sizeof(uint64_t));
+        // Clear existing registries to prevent ghost UUIDs
+        m_assetRegistry.clear();
+        m_vfsTable.clear();
 
-            m_vfsTable[entry.uuid] = entry;
+        // Reconstruct the registry from the TOC
+        for (uint32_t i = 0; i < assetCount; ++i) {
+            uint64_t uuid;
+            uint32_t type, pathLen;
+            uint64_t offset, size;
+
+            pakFile.read(reinterpret_cast<char*>(&uuid), sizeof(uint64_t));
+            pakFile.read(reinterpret_cast<char*>(&type), sizeof(uint32_t));
+            pakFile.read(reinterpret_cast<char*>(&pathLen), sizeof(uint32_t));
+
+            std::string path(pathLen, '\0');
+            pakFile.read(&path[0], pathLen);
+
+            pakFile.read(reinterpret_cast<char*>(&offset), sizeof(uint64_t));
+            pakFile.read(reinterpret_cast<char*>(&size), sizeof(uint64_t));
+
+            // Restore the Ledger mapping
+            AssetMetadata meta;
+            meta.handle = uuid;
+            meta.type = static_cast<AssetType>(type);
+            meta.filepath = path;
+            meta.isLoaded = false;
+            m_assetRegistry[uuid] = meta;
+
+            // Map the VFS extract table for physical assets
+            if (size > 0) {
+                TOCEntry entry{};
+                entry.uuid = uuid;
+                entry.type = type;
+                entry.offset = offset;
+                entry.size = size;
+                m_vfsTable[uuid] = entry;
+            }
         }
 
         m_vfsPakPath = pakFilepath;
         m_useVFS = true;
 
-        std::cout << "Successfully mounted VFS: " << pakFilepath << " (" << assetCount << " assets)" << std::endl;
+        std::cout << "Successfully mounted VFS: " << pakFilepath << " (" << assetCount << " assets mapped)" << std::endl;
         return true;
     }
 

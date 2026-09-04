@@ -420,13 +420,11 @@ namespace Engine
                         std::fprintf(stderr, "Export Error: RuntimeTemplate folder not found! Build the project in Visual Studio first.\n");
                     }
 
-                    // Copy the runtime assets and enginefiles
-                    if (std::filesystem::exists(currentPath / "assets")) {
-                        std::filesystem::copy(currentPath / "assets", exportDir / "assets", std::filesystem::copy_options::recursive);
-                    }
-                    if (std::filesystem::exists(currentPath / "enginefiles")) {
-                        std::filesystem::copy(currentPath / "enginefiles", exportDir / "enginefiles", std::filesystem::copy_options::recursive);
-                    }
+                    // Copy the enginefiles (only Launch.txt)
+                    if(std::filesystem::exists(currentPath / "enginefiles" / "Launch.txt")) {
+                        std::filesystem::create_directory(exportDir / "enginefiles");
+						std::filesystem::copy(currentPath / "enginefiles" / "Launch.txt", exportDir / "enginefiles" / "Launch.txt");
+					}
 
                     // Copy shaders (required for rendering)
                     if (std::filesystem::exists(currentPath / "shaders")) {

@@ -203,6 +203,9 @@ namespace Engine
 
         if (scene.GetAssetManager())
         {
+            // Register the scene file so the packer knows it exists
+            scene.GetAssetManager()->ImportAsset(filepath, Engine::AssetType::Scene);
+
             scene.GetAssetManager()->SaveRegistry("enginefiles/AssetRegistry.json");
         }
 
@@ -213,18 +216,37 @@ namespace Engine
 
     bool SceneSerializer::Deserialize(const std::string& filepath, Scene& scene, PhysicsManager& physicsManager, AssetManager& assetManager, std::string& outErrorMsg)
     {
-        std::ifstream file(filepath);
-        if (!file.is_open()) {
-            outErrorMsg = "Failed to open scene file: " + filepath;
-            return false;
+        std::string jsonString;
+
+        if (assetManager.IsVFSActive())
+        {
+            // GAME MODE: Pull scene JSON from Virtual File System
+            Engine::UUID handle = assetManager.ImportAsset(filepath, Engine::AssetType::Scene);
+            std::vector<char> buffer = assetManager.ReadAssetFromVFS(handle);
+
+            if (buffer.empty()) {
+                outErrorMsg = "Failed to load scene from VFS: " + filepath;
+                return false;
+            }
+            jsonString.assign(buffer.begin(), buffer.end());
+        }
+        else
+        {
+            // EDITOR MODE: Read physical file from disk
+            std::ifstream file(filepath);
+            if (!file.is_open()) {
+                outErrorMsg = "Failed to open scene file: " + filepath;
+                return false;
+            }
+
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            file.close();
+            jsonString = buffer.str();
         }
 
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        file.close();
-
         rapidjson::Document doc;
-        doc.Parse(buffer.str().c_str());
+        doc.Parse(jsonString.c_str());
 
         if (doc.HasParseError() || !doc.HasMember("Scene") || !doc["Scene"].IsArray()) {
             outErrorMsg = "Invalid JSON scene format.";

@@ -387,9 +387,11 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    // RESTORE THE ASSET LEDGER
+#ifndef DIST_BUILD
+    // EDITOR MODE: Restore the Asset Ledger from JSON
     // NOTE: Do this BEFORE LoadContent() so primitive generation reuses the saved UUIDs
     g_assetManager.LoadRegistry("enginefiles/AssetRegistry.json");
+#endif
 
     // Inject core manager dependencies into the Scene BEFORE booting any content
     // Set the AudioManager reference in the Scene for audio playback and ECS integration
@@ -544,8 +546,10 @@ int main(int argc, char** argv)
         Render();
     }
 
+#ifndef DIST_BUILD
     // Save all newly discovered UUIDs to the disk before shutting down
     g_assetManager.SaveRegistry("enginefiles/AssetRegistry.json");
+#endif
 
     // Shutdown and cleanup
     g_audioManager.Shutdown();
