@@ -3,6 +3,7 @@
 #include <string>
 #include <d3d11.h>
 #include <wrl/client.h>
+#include <vector>
 #include "Engine/UUID.h"
 
 // ShaderManager class handles loading, compiling, and binding shaders
@@ -39,10 +40,13 @@ namespace Engine
             Microsoft::WRL::ComPtr<ID3D11InputLayout>  inputLayout;
         };
 
+        // The master memory pool for shaders
+        std::unordered_map<UUID, ShaderData> m_shaders;
+
 		// Compiles a shader from file
         static Microsoft::WRL::ComPtr<ID3DBlob> Compile(const std::wstring& path, const std::string& entry, const std::string& target);
 
-        // The master memory pool for shaders
-        std::unordered_map<UUID, ShaderData> m_shaders;
+        // Helper to manage caching CSO files to disk and loading from VFS
+        std::vector<char> GetShaderBytecode(Engine::AssetManager& assetManager, const std::wstring& hlslPath, const std::string& csoPath, const std::string& entry, const std::string& target);
     };
 }
