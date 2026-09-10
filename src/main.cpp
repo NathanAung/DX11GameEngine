@@ -264,8 +264,15 @@ static void PreloadGameAssets()
     // Iterate through the entire Asset Ledger and push physical files to VRAM
     for (const auto& [uuid, meta] : g_assetManager.GetRegistry())
     {
-        if (meta.type == Engine::AssetType::ModelFile) {
-            g_meshManager.LoadModel(g_renderer.GetDevice(), g_assetManager, meta.filepath);
+        if (meta.type == Engine::AssetType::Mesh) {
+            if (meta.filepath.find("primitive://") == std::string::npos) {
+                // Strip the ?mesh=0 query string for loading
+                std::string loadPath = meta.filepath;
+                size_t queryPos = loadPath.find('?');
+                if (queryPos != std::string::npos) loadPath = loadPath.substr(0, queryPos);
+
+                g_meshManager.LoadModel(g_renderer.GetDevice(), g_assetManager, loadPath);
+            }
         }
         else if (meta.type == Engine::AssetType::Texture) {
             if (meta.filepath.find("primitive://") == std::string::npos && meta.filepath.find("cubemap://") == std::string::npos) {
@@ -386,13 +393,6 @@ int main(int argc, char** argv)
         LoadContent();
 #else
         // GAME MODE:
-        
-        // Mount the packed binary archive instead of relying on loose files
-        if (!g_assetManager.MountVFS("data.pak"))
-        {
-            throw std::runtime_error("Failed to mount data.pak archive! Ensure it was exported correctly.");
-        }
-
         // Pre-load all external assets from the registry into VRAM
         PreloadGameAssets();
 
