@@ -251,7 +251,7 @@ namespace Engine
         if (ImGui::BeginPopupModal("Export Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Export Failed:");
-            ImGui::Text("You must save the current scene before exporting the game.");
+            ImGui::Text("%s", m_exportErrorMsg.c_str());
 
             ImGui::Spacing();
             if (ImGui::Button("OK", ImVec2(120, 0))) {
@@ -348,32 +348,12 @@ namespace Engine
             if (m_state == EditorState::Edit)
             {
                 m_state = EditorState::Play;
-
-                // Snapshot the scene before simulation starts
-                scene.CopyToBackup();
-                Engine::ScriptSystemInit(scene);
-
-                // Switch to Game Camera
-                auto camView = scene.registry.view<Engine::CameraComponent>();
-                for (auto entity : camView)
-                {
-                    if (!scene.registry.all_of<Engine::EditorCamControlComponent>(entity) && scene.registry.get<NameComponent>(entity).isActive)
-                    {
-                        scene.m_activeRenderCamera = entity;
-                        break;
-                    }
-                }
+                scene.StartPlayMode();
             }
             else if (m_state == EditorState::Play)
             {
                 m_state = EditorState::Edit;
-
-                Engine::ScriptSystemShutdown(scene);
-                // Restore the original scene state and reset all physics bodies
-                scene.RestoreFromBackup(physicsManager);
-
-                // Revert to Editor Camera
-                scene.m_activeRenderCamera = m_editorCamera;
+                scene.StopPlayMode(m_editorCamera, physicsManager);
             }
         }
 
@@ -383,72 +363,13 @@ namespace Engine
         // --- NATIVE EXPORT GAME BUTTON ---
         if (ImGui::Button("Export Game", ImVec2(size * 5.0f, size)))
         {
-			// Check if the current scene has been saved before allowing export
-            if (scene.GetCurrentScenePath().empty())
+            if (scene.GetAssetManager())
             {
-                // Trigger the error modal
-                m_showExportError = true;
-            }
-            else
-            {
-                try {
-                    // Define paths relative to the executable (bin/)
-                    std::filesystem::path currentPath = std::filesystem::current_path();
-                    std::filesystem::path runtimeTemplate = currentPath / "RuntimeTemplate";
-                    std::filesystem::path exportDir = currentPath / "ExportedGame";
-
-                    // Prepare a clean export directory
-                    if (std::filesystem::exists(exportDir)) {
-                        std::filesystem::remove_all(exportDir);
-                    }
-                    std::filesystem::create_directory(exportDir);
-
-                    // Serialize the scene FIRST so the registry tracks all new scripts
-                    if (!scene.GetCurrentScenePath().empty()) {
-                        Engine::SceneSerializer::Serialize(scene.GetCurrentScenePath(), scene);
-                    }
-
-                    // Generate the data.pak archive directly into the export folder
-                    std::filesystem::path pakPath = exportDir / "data.pak";
-                    scene.GetAssetManager()->PackAssets(pakPath.string());
-
-                    // Copy the compiled runtime executable and DLLs
-                    if (std::filesystem::exists(runtimeTemplate)) {
-                        std::filesystem::copy(runtimeTemplate, exportDir, std::filesystem::copy_options::recursive);
-                    }
-                    else {
-                        std::fprintf(stderr, "Export Error: RuntimeTemplate folder not found! Build the project in Visual Studio first.\n");
-                    }
-
-                    // Copy the enginefiles (only Launch.txt)
-                    if(std::filesystem::exists(currentPath / "enginefiles" / "Launch.txt")) {
-                        std::filesystem::create_directory(exportDir / "enginefiles");
-						std::filesystem::copy(currentPath / "enginefiles" / "Launch.txt", exportDir / "enginefiles" / "Launch.txt");
-					}
-
-                    //// Copy shaders (required for rendering)
-                    //if (std::filesystem::exists(currentPath / "shaders")) {
-                    //    std::filesystem::copy(currentPath / "shaders", exportDir / "shaders", std::filesystem::copy_options::recursive);
-                    //}
-
-                    // Write Launch.txt inside the ExportedGame folder so it targets the correct scene
-                    if (!scene.GetCurrentScenePath().empty()) {
-                        std::ofstream launchFile(exportDir / "enginefiles" / "Launch.txt");
-                        if (launchFile.is_open()) {
-                            launchFile << scene.GetCurrentScenePath();
-                            launchFile.close();
-                        }
-                    }
-
-                    // Open the exported folder in Windows File Explorer automatically
-#ifdef _WIN32
-                    std::string openCmd = "explorer " + exportDir.string();
-                    std::system(openCmd.c_str());
-#endif
-
-                }
-                catch (const std::exception& e) {
-                    std::fprintf(stderr, "Export Failed: %s\n", e.what());
+                std::string errorMsg;
+                if (!scene.GetAssetManager()->ExportProject(scene, errorMsg))
+                {
+                    m_exportErrorMsg = errorMsg;
+                    m_showExportError = true;
                 }
             }
         }
@@ -536,54 +457,8 @@ namespace Engine
 
             auto ray = Engine::Math::ScreenToWorldRay(localX, localY, viewportSize.x, viewportSize.y, view, proj);
 
-            entt::entity hitEntity = physicsManager.CastRay(ray, scene.registry);
-
-            // FALLBACK: If physics didn't hit anything, test mathematical bounding boxes
-            if (hitEntity == entt::null)
-            {
-				// Look through all entities with a TransformComponent and test against their Oriented Bounding Box (OBB)
-                float closestDistance = FLT_MAX;
-                auto view = scene.registry.view<Engine::TransformComponent>();
-
-                for (auto entity : view)
-                {
-                    // Skip entities that have a RigidBody (physics already tested them and missed)
-                    if (scene.registry.all_of<Engine::RigidBodyComponent>(entity))
-                        continue;
-
-                    // Skip the camera we are currently looking through to prevent self-intersection
-                    if (entity == scene.m_activeRenderCamera)
-                        continue;
-
-                    // Skip inactive entities (master toggle)
-                    if (scene.registry.all_of<Engine::NameComponent>(entity))
-                    {
-                        if (!scene.registry.get<Engine::NameComponent>(entity).isActive)
-                            continue;
-                    }
-
-                    auto& tc = view.get<Engine::TransformComponent>(entity);
-
-                    // Construct an Oriented Bounding Box (OBB) from the TransformComponent
-                    DirectX::BoundingOrientedBox obb;
-                    obb.Center = tc.position;
-                    // Assuming a standard 1x1x1 unit volume, half-extents are 0.5 * scale
-                    obb.Extents = DirectX::XMFLOAT3(tc.scale.x * 0.5f, tc.scale.y * 0.5f, tc.scale.z * 0.5f);
-                    obb.Orientation = tc.rotation;
-
-                    // Test for intersection
-                    float distance = 0.0f;
-                    if (obb.Intersects(DirectX::XMLoadFloat3(&ray.origin), DirectX::XMLoadFloat3(&ray.direction), distance))
-                    {
-                        // Keep track of the closest intersected entity
-                        if (distance < closestDistance)
-                        {
-                            closestDistance = distance;
-                            hitEntity = entity;
-                        }
-                    }
-                }
-            }
+            // Delegate the entire picking process to the Scene
+            entt::entity hitEntity = scene.CastRay(ray, physicsManager);
 
             // Update selection if we hit something (either via physics or OBB)
             if (hitEntity != entt::null)

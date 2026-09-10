@@ -101,30 +101,29 @@ namespace
         ~VFSIOSystem() override = default;
 
         bool Exists(const char* pFile) const override {
-            //// Sanitize the path before doing anything
-            //std::string cleanPath = CleanAssimpPath(pFile);
-
             std::string resolvedPath = ResolvePath(pFile);
 
             if (m_assetManager->IsVFSActive())
             {
-                // In Game Mode: Check if the file is genuinely inside the VFS memory
-                Engine::UUID handle = m_assetManager->ImportAsset(resolvedPath, Engine::AssetType::ModelFile);
-                //return !m_assetManager->ReadAssetFromVFS(handle).empty();
-
-                if(m_assetManager->IsInVFS(handle))
+                // GAME MODE: Prevent "Ghost Asset" leaks. 
+                // Do NOT call ImportAsset here, as Assimp is just guessing if files exist.
+                // Instead, manually scan the existing registry to see if we know about this path.
+                for (const auto& [uuid, metadata] : m_assetManager->GetRegistry())
                 {
-                    return true;
+                    if (metadata.filepath == resolvedPath)
+                    {
+                        // If we know about it, verify it is actually packed in the archive
+                        return m_assetManager->IsInVFS(uuid);
+                    }
                 }
-                else
-                {
-					std::cerr << "VFSIOSystem: File not found in VFS: " << resolvedPath << std::endl;
-					return false;
-				}
+
+                // If it isn't in the registry, it definitely isn't in the VFS. 
+                // Safely return false without printing console spam.
+                return false;
             }
             else
             {
-                // In Editor Mode: Check the physical hard drive
+                // EDITOR MODE: Check the physical hard drive
                 return std::filesystem::exists(resolvedPath);
             }
         }
@@ -138,7 +137,7 @@ namespace
             
             std::string resolvedPath = ResolvePath(pFile);
             
-            // Register the dependency so the Packer knows it exists!
+            // Register the dependency so the Packer knows it exists
             Engine::UUID handle = m_assetManager->ImportAsset(resolvedPath, Engine::AssetType::ModelFile);
 
             if (m_assetManager->IsVFSActive())
@@ -150,7 +149,7 @@ namespace
             }
             else
             {
-                // EDITOR MODE: Read from disk, but now the asset IS registered!
+                // EDITOR MODE: Read from disk, but now the asset IS registered
                 std::ifstream file(resolvedPath, std::ios::binary);
                 if (!file.is_open()) return nullptr;
 

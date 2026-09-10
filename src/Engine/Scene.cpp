@@ -1,3 +1,4 @@
+#include <DirectXMath.h>
 #include "Engine/Scene.h"
 #include "Engine/Components.h"
 #include "Engine/AssetManager.h"
@@ -5,7 +6,8 @@
 #include "Engine/InputManager.h"
 #include "Engine/AudioManager.h"
 #include "Engine/ScriptEntity.h"
-#include <DirectXMath.h>
+#include "Engine/Systems.h"
+#include "Engine/MathUtils.h"
 
 using namespace DirectX;
 
@@ -618,5 +620,79 @@ namespace Engine
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
         registry.emplace<Engine::MeshRendererComponent>(ground, rend);
+    }
+
+
+    void Scene::StartPlayMode()
+    {
+        // Snapshot the scene before simulation starts
+        CopyToBackup();
+        Engine::ScriptSystemInit(*this);
+
+        // Switch to Game Camera
+        auto camView = registry.view<Engine::CameraComponent>();
+        for (auto entity : camView)
+        {
+            if (!registry.all_of<Engine::EditorCamControlComponent>(entity) && registry.get<NameComponent>(entity).isActive)
+            {
+                m_activeRenderCamera = entity;
+                break;
+            }
+        }
+    }
+
+
+    void Scene::StopPlayMode(entt::entity editorCameraFallback, Engine::PhysicsManager& physicsManager)
+    {
+        Engine::ScriptSystemShutdown(*this);
+
+        // Restore the original scene state and reset all physics bodies
+        RestoreFromBackup(physicsManager);
+
+        // Revert to Editor Camera
+        m_activeRenderCamera = editorCameraFallback;
+    }
+
+
+    entt::entity Scene::CastRay(const Engine::Math::Ray& ray, Engine::PhysicsManager& physicsManager)
+    {
+        // Try Physics Manager first
+        entt::entity hitEntity = physicsManager.CastRay(ray, registry);
+
+        // FALLBACK: If physics didn't hit anything, test mathematical bounding boxes
+        if (hitEntity == entt::null)
+        {
+            float closestDistance = FLT_MAX;
+            auto view = registry.view<Engine::TransformComponent>();
+
+            for (auto entity : view)
+            {
+                // Skip entities that have a RigidBody (physics already tested them and missed)
+                if (registry.all_of<Engine::RigidBodyComponent>(entity)) continue;
+
+                // Skip the camera we are currently looking through to prevent self-intersection
+                if (entity == m_activeRenderCamera) continue;
+
+                // Skip inactive entities
+                if (registry.all_of<Engine::NameComponent>(entity)) {
+                    if (!registry.get<Engine::NameComponent>(entity).isActive) continue;
+                }
+
+                auto& tc = view.get<Engine::TransformComponent>(entity);
+                float distance = 0.0f;
+
+                // Use the new MathUtils helper
+                if (Engine::Math::RayIntersectsOBB(ray, tc.position, tc.scale, tc.rotation, distance))
+                {
+                    if (distance < closestDistance)
+                    {
+                        closestDistance = distance;
+                        hitEntity = entity;
+                    }
+                }
+            }
+        }
+
+        return hitEntity;
     }
 }

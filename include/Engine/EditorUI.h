@@ -57,6 +57,7 @@ namespace Engine
 
 		// Export Scene Error State for displaying error messages when exporting fails
         bool m_showExportError = false;
+        std::string m_exportErrorMsg = "";
 
         // Create Scene Modal State
         bool m_openCreateScenePopup = false;

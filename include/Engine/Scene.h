@@ -9,6 +9,9 @@
 
 namespace Engine
 {
+    // Forward declare Ray struct for raycasting
+	namespace Math { struct Ray; }  
+
     class PhysicsManager;
     class InputManager;
     class AudioManager;
@@ -101,6 +104,10 @@ namespace Engine
         void CopyToBackup();
         void RestoreFromBackup(Engine::PhysicsManager& physicsManager);
 
+        // Play/Stop State Transitions
+        void StartPlayMode();
+        void StopPlayMode(entt::entity editorCameraFallback, Engine::PhysicsManager& physicsManager);
+
 		// Initialize Lua bindings for scene manipulation and scripting
         void InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager);
 
@@ -114,6 +121,9 @@ namespace Engine
 
         // Generates a default starting scene (Camera, Light, Ground)
         void GenerateDefaultSetup(Engine::PhysicsManager& physicsManager);
+
+        // Master raycast query that checks physics first, then falls back to OBB math
+        entt::entity CastRay(const Engine::Math::Ray& ray, Engine::PhysicsManager& physicsManager);
 
     private:
 		// Cache default asset IDs for editor-spawned primitives
