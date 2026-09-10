@@ -97,8 +97,31 @@ namespace Engine
 
         ImGuizmo::BeginFrame();
 
+		// Draw all modal popups (Save, Load, Export, Create Scene)
+        DrawModals(scene, physicsManager);
+
+		// Setup the ImGui Dockspace for the editor layout
+        SetupDockspace(sceneWindowTitle);
+
+		// Draw the top toolbar with Play/Stop buttons and other controls
+        DrawToolbar(scene, physicsManager);
+
+        // Draw the primary 3D viewport, gizmos, and handle scene picking
+        DrawSceneView(scene, renderer, input, physicsManager, window, sceneWindowTitle);
+
+		// Only show these windows in Edit mode
+        if (m_state == EditorState::Edit) {
+            DrawHierarchy(scene, physicsManager);
+            DrawInspector(scene, renderer, meshManager, textureManager, physicsManager);
+            DrawContentBrowser(scene, renderer, meshManager, textureManager, physicsManager);
+        }
+    }
+
+
+    void EditorUI::DrawModals(Engine::Scene& scene, Engine::PhysicsManager& physicsManager)
+    {
         // KEYBOARD SHORTCUTS
-		// Ctrl+S to save the scene
+        // Ctrl+S to save the scene
         if (ImGui::GetIO().KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
         {
             if (scene.GetCurrentScenePath().empty()) {
@@ -111,42 +134,42 @@ namespace Engine
             }
         }
 
-        // SAVE SCENE MODAL POPUP
-		// Center the modal popup on the screen
+        // Center the modal popups on the screen
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
+        // SAVE SCENE MODAL POPUP
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
         if (ImGui::BeginPopupModal("Save Scene As", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
             ImGui::Text("Enter scene name:");
             ImGui::InputText("##filename", m_saveFilenameBuf, IM_ARRAYSIZE(m_saveFilenameBuf));
 
-			// Show a warning message if the filename already exists
+            // Show a warning message if the filename already exists
             if (m_showSaveWarning) {
                 ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "%s", m_saveWarningMsg.c_str());
             }
 
             if (ImGui::Button("Save", ImVec2(120, 0)))
             {
-				// Validate the filename and check for existing files
+                // Validate the filename and check for existing files
                 std::string filename = m_saveFilenameBuf;
                 if (!filename.empty())
                 {
-					// Ensure the "assets/Scenes" directory exists
+                    // Ensure the "assets/Scenes" directory exists
                     std::filesystem::path dir = "assets/Scenes";
                     if (!std::filesystem::exists(dir)) {
                         std::filesystem::create_directories(dir);
                     }
 
-					// Construct the full file path for the scene
+                    // Construct the full file path for the scene
                     std::string filepath = dir.string() + "/" + filename + ".json";
 
-					// Check if the file already exists and show a warning if it does
+                    // Check if the file already exists and show a warning if it does
                     if (std::filesystem::exists(filepath)) {
                         m_showSaveWarning = true;
                         m_saveWarningMsg = "A scene with this name already exists!";
                     }
-					// If the file doesn't exist, serialize the scene and set the current scene path
+                    // If the file doesn't exist, serialize the scene and set the current scene path
                     else {
                         // Serialize the scene and set the tracker
                         Engine::SceneSerializer::Serialize(filepath, scene);
@@ -178,7 +201,7 @@ namespace Engine
         // --- TRIGGER CREATE SCENE MODAL ---
         if (m_openCreateScenePopup) {
             ImGui::OpenPopup("Create New Scene");
-            m_openCreateScenePopup = false; // Reset trigger
+            m_openCreateScenePopup = false;
             m_newSceneNameBuf[0] = '\0';
             m_showCreateSceneWarning = false;
         }
@@ -213,13 +236,13 @@ namespace Engine
                     else {
                         // Generate the fresh scene procedurally (uses current UUIDs)
                         scene.GenerateDefaultSetup(physicsManager);
-
+                        
                         // Immediately save the newly generated scene to the target JSON file
                         Engine::SceneSerializer::Serialize(targetPath, scene);
-
+                        
                         // Set the engine's active tracker to the new file
                         scene.SetCurrentScenePath(targetPath);
-
+                        
                         ImGui::CloseCurrentPopup();
                     }
                 }
@@ -232,7 +255,7 @@ namespace Engine
             ImGui::EndPopup();
         }
 
-		// --- LOAD SCENE ERROR MODAL POPUP ---
+        // --- LOAD SCENE ERROR MODAL POPUP ---
         ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
         if (ImGui::BeginPopupModal("Load Error", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
@@ -259,31 +282,36 @@ namespace Engine
             }
             ImGui::EndPopup();
         }
+    }
 
-        // 1. Setup variables for the Dockspace
+
+    void EditorUI::SetupDockspace(const std::string& sceneWindowTitle)
+    {
+        // Setup variables for the Dockspace
         ImGuiViewport* viewport = ImGui::GetMainViewport();
         ImGuiID dockspace_id = ImGui::GetID("EditorDockspace");
 
-        // 2. Set Dockspace flags and styling to match the viewport
+        // Set Dockspace flags and styling to match the viewport
         ImGui::SetNextWindowPos(viewport->WorkPos);
         ImGui::SetNextWindowSize(viewport->WorkSize);
         ImGui::SetNextWindowViewport(viewport->ID);
 
+		// Set window flags to make the host window invisible and non-interactive
         ImGuiWindowFlags host_window_flags = 0;
         host_window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
         host_window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
-        // 3. Create the invisible background window to host the dockspace
+        // Create the invisible background window to host the dockspace
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::Begin("DockSpace Window", nullptr, host_window_flags);
         ImGui::PopStyleVar(3);
 
-        // 4. Submit the actual DockSpace
+        // Submit the actual DockSpace
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
 
-        // 5. Build the Default Layout (Only runs once, if the layout is completely empty/new)
+        // Build the Default Layout (Only runs once, if the layout is completely empty/new)
         static bool first_time = true;
         if (first_time)
         {
@@ -299,7 +327,7 @@ namespace Engine
             ImGuiID dock_id_left = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Left, 0.20f, nullptr, &dock_main_id);
             ImGuiID dock_id_right = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.25f, nullptr, &dock_main_id);
             ImGuiID dock_id_bottom = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Down, 0.30f, nullptr, &dock_main_id);
-
+            
             // Create a top strip for the toolbar
             ImGuiID dock_id_top = ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Up, 0.07f, nullptr, &dock_main_id);
 
@@ -308,16 +336,17 @@ namespace Engine
             ImGui::DockBuilderDockWindow("Inspector", dock_id_right);
             ImGui::DockBuilderDockWindow("Content Browser", dock_id_bottom);
             ImGui::DockBuilderDockWindow("Toolbar", dock_id_top);
-            ImGui::DockBuilderDockWindow(sceneWindowTitle.c_str(), dock_main_id); // Scene window, takes whatever is left in the center
+            ImGui::DockBuilderDockWindow(sceneWindowTitle.c_str(), dock_main_id);
 
             ImGui::DockBuilderFinish(dockspace_id);
         }
 
-        // End the DockSpace Window host
         ImGui::End();
+    }
 
-        // TOOLBAR WINDOW (Play / Stop)
 
+    void EditorUI::DrawToolbar(Engine::Scene& scene, Engine::PhysicsManager& physicsManager)
+    {
         // Set the window class to prevent docking and resizing, and to remove the tab bar
         ImGuiWindowClass window_class;
         window_class.DockNodeFlagsOverrideSet = ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoResize;
@@ -377,10 +406,898 @@ namespace Engine
         ImGui::PopStyleVar(1);
         ImGui::PopStyleColor(3);
         ImGui::End();
+    }
 
+
+    void EditorUI::DrawContentBrowser(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::PhysicsManager& physicsManager)
+    {
+        ImGui::Begin("Content Browser");
+        {
+            // Right-click context menu for creating a new scene
+            if (ImGui::BeginPopupContextWindow("ContentBrowserContextMenu", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+            {
+                if (ImGui::MenuItem("Create New Scene"))
+                {
+                    m_openCreateScenePopup = true;
+                }
+                ImGui::EndPopup();
+            }
+
+            // Back button: only when inside a subfolder (never go above assets root)
+            if (m_currentDirectory != m_assetPath)
+            {
+                if (ImGui::Button("<- Back"))
+                {
+                    m_currentDirectory = m_currentDirectory.parent_path();
+                }
+            }
+
+            // Iterate and display the current directory
+            for (auto& directoryEntry : std::filesystem::directory_iterator(m_currentDirectory))
+            {
+                const auto& path = directoryEntry.path();
+                std::string filenameString = path.filename().string();
+
+                // Directories: clickable to navigate into
+                if (directoryEntry.is_directory())
+                {
+                    if (ImGui::Selectable(("[DIR] " + filenameString).c_str()))
+                    {
+                        m_currentDirectory /= path.filename();
+                    }
+                }
+                else
+                {
+                    // SCENE LOADING
+                    // If it's a JSON scene file, make it clickable to load
+                    if (path.extension() == ".json")
+                    {
+                        // Display the scene file as selectable
+                        if (ImGui::Selectable(("[SCENE] " + filenameString).c_str()))
+                        {
+                            // Prevent loading scenes while the game is currently playing
+                            if (m_state == EditorState::Edit) {
+                                std::string errorMsg;
+                                bool success = Engine::SceneSerializer::Deserialize(path.string(), scene, physicsManager, *scene.GetAssetManager(), errorMsg);
+
+                                if (!success) {
+                                    m_showLoadError = true;
+                                    m_loadErrorMsg = errorMsg;
+                                }
+                                else {
+                                    // Preload the loaded scene's assets into VRAM
+                                    for (const auto& [uuid, meta] : scene.GetAssetManager()->GetRegistry())
+                                    {
+                                        // Load custom models
+                                        if (meta.type == Engine::AssetType::ModelFile && meta.filepath.find(".mtl") == std::string::npos) {
+                                            meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), meta.filepath);
+                                        }
+                                        // Load custom textures
+                                        else if (meta.type == Engine::AssetType::Texture && meta.filepath.find("primitive://") == std::string::npos && meta.filepath.find("cubemap://") == std::string::npos) {
+                                            textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), meta.filepath);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        // Files: display as selectable so it highlights on hover
+                        ImGui::Selectable(("[FILE] " + filenameString).c_str());
+
+                        // If the file is a Lua script, make it a Drag Source
+                        if (path.extension() == ".lua")
+                        {
+                            if (ImGui::BeginDragDropSource())
+                            {
+                                // Get path and normalize Windows backslashes to forward slashes
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+
+                                // Attach the string path as the payload
+                                ImGui::SetDragDropPayload("SCRIPT_FILE", relativePath.c_str(), relativePath.size() + 1);
+
+                                // Tooltip next to the cursor while dragging
+                                ImGui::Text("Assign %s", filenameString.c_str());
+
+                                ImGui::EndDragDropSource();
+                            }
+                        }
+                        // If the file is an audio file, make it a Drag Source
+                        else if (path.extension() == ".wav" || path.extension() == ".mp3")
+                        {
+                            if (ImGui::BeginDragDropSource()) {
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                ImGui::SetDragDropPayload("AUDIO_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                ImGui::Text("Assign %s", filenameString.c_str());
+                                ImGui::EndDragDropSource();
+                            }
+                        }
+                        // If the file is a 3D Model, make it a Drag Source
+                        else if (path.extension() == ".obj")
+                        {
+                            if (ImGui::BeginDragDropSource()) {
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                ImGui::SetDragDropPayload("MODEL_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                ImGui::Text("Assign Model %s", filenameString.c_str());
+                                ImGui::EndDragDropSource();
+                            }
+                        }
+                        // If the file is a Texture, make it a Drag Source
+                        else if (path.extension() == ".png" || path.extension() == ".jpg" || path.extension() == ".jpeg")
+                        {
+                            if (ImGui::BeginDragDropSource()) {
+                                std::string relativePath = path.string();
+                                std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
+                                ImGui::SetDragDropPayload("TEXTURE_FILE", relativePath.c_str(), relativePath.size() + 1);
+                                ImGui::Text("Assign Texture %s", filenameString.c_str());
+                                ImGui::EndDragDropSource();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ImGui::End();
+    }
+
+
+    void EditorUI::DrawHierarchy(Engine::Scene& scene, Engine::PhysicsManager& physicsManager)
+    {
+        ImGui::Begin("Hierarchy");
+        {
+            // Right-click empty space in the Hierarchy to create entities
+            if (ImGui::BeginPopupContextWindow("HierarchyContextMenu", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
+            {
+                if (ImGui::BeginMenu("Create New Entity"))
+                {
+                    // EMPTY ENTITY
+                    if (ImGui::MenuItem("Empty Entity")) {
+                        scene.CreateEntity("New Entity");
+                    }
+
+                    // CAMERA ENTITY
+                    if (ImGui::MenuItem("Camera")) {
+                        scene.CreateGameCamera("Camera", 1280, 720);
+                    }
+
+                    // PRIMITIVE SHAPES
+                    if (ImGui::BeginMenu("Shapes"))
+                    {
+                        if (ImGui::MenuItem("Cube")) scene.CreateCube("Cube");
+                        if (ImGui::MenuItem("Sphere")) scene.CreateSphere("Sphere");
+                        if (ImGui::MenuItem("Capsule")) scene.CreateCapsule("Capsule");
+                        ImGui::EndMenu();
+                    }
+
+                    // LIGHT ENTITIES
+                    if (ImGui::BeginMenu("Lights"))
+                    {
+                        if (ImGui::MenuItem("Directional Light")) scene.CreateDirectionalLight("Directional Light");
+                        if (ImGui::MenuItem("Point Light")) scene.CreatePointLight("Point Light", { 0, 0, 0 }, { 1, 1, 1 }, 1.0f, 10.0f);
+                        if (ImGui::MenuItem("Spot Light")) scene.CreateSpotLight("Spot Light", { 0, 0, 0 }, { 0, 0, 1 }, { 1, 1, 1 }, 1.0f, 10.0f, 0.785f);
+                        ImGui::EndMenu();
+                    }
+                    ImGui::EndMenu();
+                }
+
+                ImGui::EndPopup();
+            }
+
+            // We cannot destroy entities while iterating, so we defer destruction until after the loop
+            entt::entity entityToDestroy = entt::null;
+
+            // Find all roots (every entity has a NameComponent)
+            auto view = scene.registry.view<NameComponent>();
+            for (auto entity : view)
+            {
+                auto& nameComp = view.get<NameComponent>(entity);
+
+                // Prevent editor camera from showing in the hierarchy
+                if (scene.registry.all_of<Engine::EditorCamControlComponent>(entity)) continue;
+
+                // Grey-out inactive entities in the list so state is obvious
+                if (!nameComp.isActive) {
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+                }
+
+                auto* rel = scene.registry.try_get<RelationshipComponent>(entity);
+                // Only draw root nodes (no relationship comp, or parent is null)
+                if (!rel || rel->parent == entt::null) {
+                    DrawEntityNode(scene, entity, entityToDestroy);
+                }
+
+                if (!nameComp.isActive) {
+                    ImGui::PopStyleColor();
+                }
+            }
+
+            // Fill the remaining vertical space with a dummy item to act as a drop zone for unparenting
+            ImVec2 availSpace = ImGui::GetContentRegionAvail();
+            if (availSpace.y > 0.0f) {
+                ImGui::Dummy(availSpace);
+                if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_PAYLOAD")) {
+                        entt::entity droppedEntity = *(const entt::entity*)payload->Data;
+                        scene.UnparentEntity(droppedEntity);
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+            }
+
+            // Safe deferred destruction
+            if (entityToDestroy != entt::null) {
+                scene.DestroyEntity(entityToDestroy, physicsManager);
+            }
+
+            // Deselection: click empty space in the window to clear selection
+            if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
+            {
+                m_selectedEntity = entt::null;
+            }
+
+            if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity))
+            {
+                if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete))
+                {
+                    scene.DestroyEntity(m_selectedEntity, physicsManager);
+                    m_selectedEntity = entt::null;
+                }
+            }
+        }
+        ImGui::End();
+    }
+
+
+    void EditorUI::DrawInspector(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::PhysicsManager& physicsManager)
+    {
+        ImGui::Begin("Inspector");
+        {
+            if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity))
+            {
+                // NameComponent UI
+                if (scene.registry.all_of<Engine::NameComponent>(m_selectedEntity))
+                {
+                    auto& nameComp = scene.registry.get<Engine::NameComponent>(m_selectedEntity);
+
+                    // Master active toggle next to name (entity-wide active state)
+                    ImGui::Checkbox("##EntityActive", &nameComp.isActive);
+                    ImGui::SameLine();
+
+                    static char buffer[256] = {};
+#ifdef _MSC_VER
+                    strncpy_s(buffer, nameComp.name.c_str(), sizeof(buffer) - 1);
+#else
+                    std::strncpy(buffer, nameComp.name.c_str(), sizeof(buffer) - 1);
+#endif
+
+                    if (ImGui::InputText("##Name", buffer, sizeof(buffer)))
+                    {
+                        nameComp.name = buffer;
+                    }
+                }
+
+                // TransformComponent UI
+                if (scene.registry.all_of<Engine::TransformComponent>(m_selectedEntity))
+                {
+                    auto& tc = scene.registry.get<Engine::TransformComponent>(m_selectedEntity);
+
+                    if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+                    {
+                        ImGui::DragFloat3("Position", &tc.position.x, 0.1f);
+                        ImGui::DragFloat3("Scale", &tc.scale.x, 0.1f, 0.01f, 10000.0f);
+
+                        // Static cache to hold UI state between frames
+                        static entt::entity s_lastEntity = entt::null;
+                        static DirectX::XMFLOAT3 s_cachedEuler{ 0.0f, 0.0f, 0.0f };
+
+                        // 1. Check if the selection changed
+                        bool selectionChanged = (s_lastEntity != m_selectedEntity);
+                        s_lastEntity = m_selectedEntity;
+
+                        // 2. Check if the quaternion was changed externally (e.g., by Physics)
+                        // Compare the actual quaternion against the one generated by cached Euler angles.
+                        DirectX::XMFLOAT4 expectedQuat = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
+                        DirectX::XMVECTOR q1 = DirectX::XMLoadFloat4(&expectedQuat);
+                        DirectX::XMVECTOR q2 = DirectX::XMLoadFloat4(&tc.rotation);
+
+                        // Use dot product to check if quaternions are virtually identical
+                        float dot = fabs(DirectX::XMVectorGetX(DirectX::XMQuaternionDot(q1, q2)));
+                        bool externallyChanged = (dot < 0.9999f);
+
+                        // 3. Update the cache ONLY if selection changed or physics moved the object
+                        if (selectionChanged || externallyChanged)
+                        {
+                            s_cachedEuler = Engine::Math::QuaternionToEulerDegrees(tc.rotation);
+                            tc.isDirty = true;
+                        }
+
+                        // 4. Draw the UI using the stable cached values
+                        if (ImGui::DragFloat3("Rotation", &s_cachedEuler.x, 1.0f))
+                        {
+                            // 5. If the user drags the slider, push the new rotation to the component
+                            tc.rotation = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
+                            tc.isDirty = true;
+                        }
+                    }
+                }
+
+                // LightComponent UI
+                if (scene.registry.all_of<Engine::LightComponent>(m_selectedEntity))
+                {
+                    auto& lc = scene.registry.get<Engine::LightComponent>(m_selectedEntity);
+
+                    ImGui::PushID("Light");
+                    ImGui::Checkbox("##Active", &lc.isActive);
+                    ImGui::SameLine();
+                    bool treeOpen = ImGui::TreeNodeEx("Light", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                    bool removeComponent = false;
+                    if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                        if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                        ImGui::EndPopup();
+                    }
+
+                    if (treeOpen)
+                    {
+                        // Fundamental Light type picker
+                        const char* lightTypes[] = { "Directional", "Point", "Spot" };
+                        // Assuming LightType enum maps 0=Directional, 1=Point, 2=Spot
+                        int currentLightIdx = static_cast<int>(lc.type);
+
+                        if (ImGui::Combo("Light Type", &currentLightIdx, lightTypes, IM_ARRAYSIZE(lightTypes)))
+                        {
+                            lc.type = static_cast<Engine::LightType>(currentLightIdx);
+                        }
+
+                        ImGui::ColorEdit3("Color", &lc.color.x);
+                        ImGui::DragFloat("Intensity", &lc.intensity, 0.1f, 0.0f, 1000.0f);
+                        ImGui::DragFloat("Range", &lc.range, 0.5f, 0.0f, 1000.0f);
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+
+                    if (removeComponent)
+                    {
+                        scene.registry.remove<Engine::LightComponent>(m_selectedEntity);
+                    }
+                }
+
+                // RigidbodyComponent UI
+                if (scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity))
+                {
+                    auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
+
+                    ImGui::PushID("Rigidbody");
+                    ImGui::Checkbox("##Active", &rb.isActive);
+                    ImGui::SameLine();
+                    bool treeOpen = ImGui::TreeNodeEx("Rigidbody", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                    bool removeComponent = false;
+                    if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                        if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                        ImGui::EndPopup();
+                    }
+
+                    if (treeOpen)
+                    {
+                        // Fundamental rigid body settings: Shape + Motion
+                        // CRUCIAL: on change, destroy the Jolt body so PhysicsSystem rebuilds it next frame.
+                        const char* rbShapes[] = { "Box", "Sphere", "Capsule", "Mesh" };
+                        int currentShapeIdx = static_cast<int>(rb.shape);
+                        if (ImGui::Combo("Shape", &currentShapeIdx, rbShapes, IM_ARRAYSIZE(rbShapes)))
+                        {
+                            rb.shape = static_cast<Engine::RBShape>(currentShapeIdx);
+                            // Invalidate body to force a rebuild with the new shape
+                            if (!rb.bodyID.IsInvalid()) {
+                                physicsManager.RemoveRigidBody(rb.bodyID);
+                                rb.bodyID = JPH::BodyID();
+                                rb.bodyCreated = false;
+                            }
+                        }
+
+                        const char* rbMotions[] = { "Static", "Dynamic" };
+                        int currentMotionIdx = static_cast<int>(rb.motionType);
+                        if (ImGui::Combo("Motion Type", &currentMotionIdx, rbMotions, IM_ARRAYSIZE(rbMotions)))
+                        {
+                            rb.motionType = static_cast<Engine::RBMotion>(currentMotionIdx);
+                            // Invalidate body to force a rebuild with the new mass properties
+                            if (!rb.bodyID.IsInvalid()) {
+                                physicsManager.RemoveRigidBody(rb.bodyID);
+                                rb.bodyID = JPH::BodyID();
+                                rb.bodyCreated = false;
+                            }
+                        }
+
+                        // Physical dimensions (force Jolt rebuild on change)
+                        // NOTE* min/max values are hardcoded for now
+                        bool shapeChanged = false;
+                        if (rb.shape == Engine::RBShape::Box) {
+                            if (ImGui::DragFloat3("Half Extents", &rb.halfExtent.x, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                        }
+                        else if (rb.shape == Engine::RBShape::Sphere) {
+                            if (ImGui::DragFloat("Radius", &rb.radius, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                        }
+                        else if (rb.shape == Engine::RBShape::Capsule) {
+                            if (ImGui::DragFloat("Radius", &rb.radius, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                            if (ImGui::DragFloat("Height", &rb.height, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                        }
+                        else if (rb.shape == Engine::RBShape::Mesh) {
+                            if (ImGui::DragFloat3("Collider Scale", &rb.colliderScale.x, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
+                        }
+
+                        // Force Jolt to rebuild the body with the new dimensions
+                        if (shapeChanged && !rb.bodyID.IsInvalid()) {
+                            physicsManager.RemoveRigidBody(rb.bodyID);
+                            rb.bodyID = JPH::BodyID();
+                            rb.bodyCreated = false;
+                        }
+
+                        // Mass and Linear Damping: These require a core physical structural rebuild
+                        if (ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.01f, 1000.0f) ||
+                            ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 1.0f))
+                        {
+                            if (!rb.bodyID.IsInvalid()) {
+                                physicsManager.RemoveRigidBody(rb.bodyID);
+                                rb.bodyID = JPH::BodyID();
+                                rb.bodyCreated = false;
+                            }
+                        }
+
+                        // Friction and Restitution: These can be mutated directly via Jolt's API instantly
+                        if (ImGui::DragFloat("Friction", &rb.friction, 0.01f, 0.0f, 1.0f))
+                        {
+                            if (!rb.bodyID.IsInvalid()) {
+                                physicsManager.GetBodyInterface().SetFriction(rb.bodyID, rb.friction);
+                            }
+                        }
+
+                        if (ImGui::DragFloat("Restitution", &rb.restitution, 0.01f, 0.0f, 1.0f))
+                        {
+                            if (!rb.bodyID.IsInvalid()) {
+                                physicsManager.GetBodyInterface().SetRestitution(rb.bodyID, rb.restitution);
+                            }
+                        }
+
+                        ImGui::TreePop();
+                    }
+
+                    // Wireframe toggle
+                    ImGui::Checkbox("Show Wireframe", &rb.showWireframe);
+
+                    ImGui::PopID();
+
+                    if (removeComponent)
+                    {
+                        // CRITICAL: unregister the Jolt body first to prevent leaks
+                        if (!rb.bodyID.IsInvalid())
+                        {
+                            physicsManager.RemoveRigidBody(rb.bodyID);
+                        }
+                        scene.registry.remove<Engine::RigidBodyComponent>(m_selectedEntity);
+                    }
+                }
+
+                // MeshRendererComponent UI
+                if (scene.registry.all_of<Engine::MeshRendererComponent>(m_selectedEntity))
+                {
+                    auto& mr = scene.registry.get<Engine::MeshRendererComponent>(m_selectedEntity);
+
+                    ImGui::PushID("MeshRenderer");
+                    ImGui::Checkbox("##Active", &mr.isActive);
+                    ImGui::SameLine();
+                    bool treeOpen = ImGui::TreeNodeEx("Mesh Renderer", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                    bool removeComponent = false;
+                    if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                        if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                        ImGui::EndPopup();
+                    }
+
+                    if (treeOpen)
+                    {
+                        // Mesh Selection & Drop Target
+                        const char* meshTypes[] = { "Cube", "Sphere", "Capsule", "Custom" };
+                        int currentMeshIdx = 3; // Default to 'Custom' so it shows correctly when a custom .obj is loaded
+
+                        // Check if the current mesh matches any of our primitives
+                        if (mr.meshID == scene.GetCubeMeshID()) currentMeshIdx = 0;
+                        else if (mr.meshID == scene.GetSphereMeshID()) currentMeshIdx = 1;
+                        else if (mr.meshID == scene.GetCapsuleMeshID()) currentMeshIdx = 2;
+
+                        if (ImGui::Combo("Mesh Shape", &currentMeshIdx, meshTypes, IM_ARRAYSIZE(meshTypes)))
+                        {
+                            if (currentMeshIdx == 0) mr.meshID = scene.GetCubeMeshID();
+                            else if (currentMeshIdx == 1) mr.meshID = scene.GetSphereMeshID();
+                            else if (currentMeshIdx == 2) mr.meshID = scene.GetCapsuleMeshID();
+                        }
+
+                        // MODEL DROP TARGET
+                        if (ImGui::BeginDragDropTarget())
+                        {
+                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE"))
+                            {
+                                const char* droppedPath = (const char*)payload->Data;
+                                if (scene.GetAssetManager())
+                                {
+                                    // Load the model through the MeshManager to trigger DirectX creation & Asset Registry
+                                    std::vector<Engine::UUID> loadedMeshes = meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
+
+                                    // A single .obj might contain multiple meshes. We assign the first one to the entity.
+                                    if (!loadedMeshes.empty()) {
+                                        mr.meshID = loadedMeshes[0];
+
+                                        // PHYSICS SYNC
+                                        // If this entity has a Mesh Collider, we must update it and rebuild the Jolt body
+                                        if (scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
+                                            auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
+
+                                            if (rb.shape == Engine::RBShape::Mesh) {
+                                                rb.meshID = loadedMeshes[0]; // Sync the physics ID to the new visual ID
+
+                                                // Destroy the old Jolt body. 
+                                                // The PhysicsSystem will detect the invalid ID and automatically regenerate it next frame
+                                                if (!rb.bodyID.IsInvalid()) {
+                                                    physicsManager.RemoveRigidBody(rb.bodyID);
+                                                    rb.bodyID = JPH::BodyID();
+                                                    rb.bodyCreated = false;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+
+                        // Material Settings
+                        const char* matTypes[] = { "LitColor", "UnlitColor", "Textured" };
+                        int currentMatIdx = static_cast<int>(mr.matType);
+                        if (ImGui::Combo("Material Type", &currentMatIdx, matTypes, IM_ARRAYSIZE(matTypes)))
+                        {
+                            mr.matType = static_cast<Engine::MaterialType>(currentMatIdx);
+                        }
+
+                        if (mr.matType == Engine::MaterialType::LitColor || mr.matType == Engine::MaterialType::UnlitColor)
+                        {
+                            ImGui::ColorEdit4("Base Color", &mr.baseColor.x);
+                        }
+
+                        if (mr.matType == Engine::MaterialType::LitColor || mr.matType == Engine::MaterialType::Textured)
+                        {
+                            ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
+                            ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
+                        }
+
+                        if (mr.matType == Engine::MaterialType::Textured)
+                        {
+                            // TEXTURE DROP TARGET
+                            // Fetch the human-readable filename from the UUID to display on the UI
+                            std::string currentTexName = "None";
+                            if (mr.textureID != 0 && scene.GetAssetManager()) {
+                                const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(mr.textureID);
+                                if (meta) {
+                                    currentTexName = std::filesystem::path(meta->filepath).filename().string();
+                                }
+                            }
+
+                            // Create a visual drop zone button that fills the width
+                            std::string buttonLabel = currentTexName + " (Drop Texture Here)";
+                            ImGui::Button(buttonLabel.c_str(), ImVec2(-1, 30));
+
+                            if (ImGui::BeginDragDropTarget())
+                            {
+                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE"))
+                                {
+                                    const char* droppedPath = (const char*)payload->Data;
+                                    if (scene.GetAssetManager())
+                                    {
+                                        // Load the texture through the TextureManager
+                                        Engine::UUID newTexID = textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
+                                        mr.textureID = newTexID;
+                                    }
+                                }
+                                ImGui::EndDragDropTarget();
+                            }
+                        }
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+
+                    if (removeComponent)
+                    {
+                        scene.registry.remove<Engine::MeshRendererComponent>(m_selectedEntity);
+                    }
+                }
+
+                // AudioComponent UI
+                if (scene.registry.all_of<Engine::AudioComponent>(m_selectedEntity))
+                {
+                    auto& ac = scene.registry.get<Engine::AudioComponent>(m_selectedEntity);
+
+                    ImGui::PushID("AudioComponent");
+                    bool treeOpen = ImGui::TreeNodeEx("Audio Emitter", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                    bool removeComponent = false;
+                    if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                        if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                        ImGui::EndPopup();
+                    }
+
+                    if (treeOpen)
+                    {
+                        std::vector<std::string> audioFiles;
+                        audioFiles.push_back("None");
+
+                        std::string audioPath = "assets/audio";
+                        if (!std::filesystem::exists(audioPath)) std::filesystem::create_directories(audioPath);
+
+                        for (const auto& entry : std::filesystem::directory_iterator(audioPath)) {
+                            if (entry.path().extension() == ".wav" || entry.path().extension() == ".mp3") {
+                                audioFiles.push_back(entry.path().filename().string());
+                            }
+                        }
+
+                        // Read the string filename back out of the UUID metadata so the UI can display it
+                        int currentIndex = 0;
+                        std::string currentFilename = "";
+                        if (ac.audioID != 0 && scene.GetAssetManager()) {
+                            const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(ac.audioID);
+                            if (meta) {
+                                currentFilename = std::filesystem::path(meta->filepath).filename().string();
+                                for (int i = 1; i < audioFiles.size(); ++i) {
+                                    if (audioFiles[i] == currentFilename) { currentIndex = i; break; }
+                                }
+                            }
+                        }
+
+                        if (ImGui::BeginCombo("Audio File", audioFiles[currentIndex].c_str()))
+                        {
+                            for (int i = 0; i < audioFiles.size(); i++) {
+                                bool isSelected = (currentIndex == i);
+                                if (ImGui::Selectable(audioFiles[i].c_str(), isSelected)) {
+                                    if (currentIndex != i) {
+                                        // Assign a UUID based on the dropdown selection
+                                        if (i == 0) {
+                                            ac.audioID = 0;
+                                        }
+                                        else {
+                                            std::string newPath = audioPath + "/" + audioFiles[i];
+                                            if (scene.GetAssetManager()) {
+                                                ac.audioID = scene.GetAssetManager()->ImportAsset(newPath, Engine::AssetType::Audio);
+                                            }
+                                        }
+                                        // Safely clear old handle so it reloads on Play
+                                        if (scene.GetAudioManager() && ac.soundHandle) {
+                                            scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                                            ac.soundHandle = nullptr;
+                                            ac.isPlaying = false;
+                                        }
+                                    }
+                                }
+                                if (isSelected) ImGui::SetItemDefaultFocus();
+                            }
+                            ImGui::EndCombo();
+                        }
+
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("AUDIO_FILE")) {
+                                const char* droppedPath = (const char*)payload->Data;
+                                // Generate a UUID from the dropped file path
+                                if (scene.GetAssetManager()) {
+                                    Engine::UUID newID = scene.GetAssetManager()->ImportAsset(droppedPath, Engine::AssetType::Audio);
+                                    if (ac.audioID != newID) {
+                                        ac.audioID = newID;
+                                        if (scene.GetAudioManager() && ac.soundHandle) {
+                                            scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                                            ac.soundHandle = nullptr;
+                                            ac.isPlaying = false;
+                                        }
+                                    }
+                                }
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+
+                        bool is3dChanged = ImGui::Checkbox("Is 3D", &ac.is3D);
+                        bool loopChanged = ImGui::Checkbox("Looping", &ac.loop);
+                        ImGui::Checkbox("Play On Create", &ac.playOnCreate);
+
+                        // Slider clamps value between 0.0f (Mute) and 1.0f (Max)
+                        ImGui::SliderFloat("Volume", &ac.volume, 0.0f, 1.0f);
+
+                        // Rebuild handle if physical parameters change
+                        if (is3dChanged || loopChanged) {
+                            if (scene.GetAudioManager() && ac.soundHandle) {
+                                scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                                ac.soundHandle = nullptr;
+                                ac.isPlaying = false;
+                            }
+                        }
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+
+                    if (removeComponent) {
+                        if (scene.GetAudioManager() && ac.soundHandle) {
+                            scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
+                        }
+                        scene.registry.remove<Engine::AudioComponent>(m_selectedEntity);
+                    }
+                }
+
+                // LuaScriptComponent UI
+                if (scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity))
+                {
+                    auto& scriptComp = scene.registry.get<Engine::LuaScriptComponent>(m_selectedEntity);
+
+                    ImGui::PushID("LuaScript");
+                    bool treeOpen = ImGui::TreeNodeEx("Lua Scripts", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                    bool removeComponent = false;
+                    if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                        if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                        ImGui::EndPopup();
+                    }
+
+                    if (treeOpen)
+                    {
+                        // Scan assets/scripts for .lua files
+                        std::vector<std::string> scriptFiles;
+                        scriptFiles.push_back("None");  // Option to clear script
+
+                        std::string scriptsPath = "assets/scripts";
+
+                        // Ensure directory exists to prevent crashes
+                        if (!std::filesystem::exists(scriptsPath)) {
+                            std::filesystem::create_directories(scriptsPath);
+                        }
+
+                        for (const auto& entry : std::filesystem::directory_iterator(scriptsPath)) {
+                            if (entry.path().extension() == ".lua") {
+                                scriptFiles.push_back(entry.path().filename().string());
+                            }
+                        }
+
+                        // Display each script slot with a dropdown and remove button
+                        int scriptToRemove = -1;
+
+                        // Iterate through each script slot in the LuaScriptComponent
+                        for (size_t s = 0; s < scriptComp.scripts.size(); ++s)
+                        {
+                            ImGui::PushID(static_cast<int>(s));
+                            auto& script = scriptComp.scripts[s];
+
+                            // Find current active script index in the dropdown
+
+                            int currentIndex = 0;
+                            std::string currentFilename = "";
+                            if (!script.filepath.empty()) {
+                                currentFilename = std::filesystem::path(script.filepath).filename().string();
+                                for (int i = 1; i < scriptFiles.size(); ++i) {
+                                    if (scriptFiles[i] == currentFilename) {
+                                        currentIndex = i;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30.0f);
+
+                            // Dropdown for selecting a script file
+                            if (ImGui::BeginCombo("##ScriptFile", scriptFiles[currentIndex].c_str()))
+                            {
+                                for (int i = 0; i < scriptFiles.size(); i++)
+                                {
+                                    bool isSelected = (currentIndex == i);
+                                    if (ImGui::Selectable(scriptFiles[i].c_str(), isSelected))
+                                    {
+                                        if (i == 0) script.filepath = "";
+                                        else script.filepath = scriptsPath + "/" + scriptFiles[i];
+                                    }
+                                    if (isSelected) ImGui::SetItemDefaultFocus();
+                                }
+                                ImGui::EndCombo();
+                            }
+
+                            // Drag-and-drop support for assigning scripts directly from the Content Browser
+                            if (ImGui::BeginDragDropTarget())
+                            {
+                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
+                                {
+                                    const char* droppedPath = (const char*)payload->Data;
+                                    script.filepath = droppedPath;
+                                }
+                                ImGui::EndDragDropTarget();
+                            }
+
+                            ImGui::SameLine();
+
+                            // Remove button for the script slot
+                            if (ImGui::Button("X")) {
+                                scriptToRemove = static_cast<int>(s);
+                            }
+                            ImGui::PopID();
+                        }
+
+                        // Remove the script slot if the "X" button was clicked
+                        if (scriptToRemove >= 0) {
+                            scriptComp.scripts.erase(scriptComp.scripts.begin() + scriptToRemove);
+                        }
+
+                        // Button to add a new script slot
+                        if (ImGui::Button("Add Script Slot", ImVec2(-1, 0))) {
+                            scriptComp.scripts.push_back(Engine::ScriptInstance{});
+                        }
+                        // Allow dropping directly onto the "Add" button to quickly append
+                        if (ImGui::BeginDragDropTarget())
+                        {
+                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
+                            {
+                                const char* droppedPath = (const char*)payload->Data;
+                                Engine::ScriptInstance newScript;
+                                newScript.filepath = droppedPath;
+                                scriptComp.scripts.push_back(newScript);
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+
+                    if (removeComponent)
+                    {
+                        scene.registry.remove<Engine::LuaScriptComponent>(m_selectedEntity);
+                    }
+                }
+
+                // Add Component Menu
+                ImGui::Separator();
+                ImGui::Spacing();
+                if (ImGui::Button("Add Component", ImVec2(-1, 30))) {
+                    ImGui::OpenPopup("AddComponentPopup");
+                }
+
+                if (ImGui::BeginPopup("AddComponentPopup"))
+                {
+                    if (!scene.registry.all_of<Engine::MeshRendererComponent>(m_selectedEntity)) {
+                        if (ImGui::MenuItem("Mesh Renderer")) scene.registry.emplace<Engine::MeshRendererComponent>(m_selectedEntity);
+                    }
+                    if (!scene.registry.all_of<Engine::LightComponent>(m_selectedEntity)) {
+                        if (ImGui::MenuItem("Light")) scene.registry.emplace<Engine::LightComponent>(m_selectedEntity);
+                    }
+                    if (!scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
+                        if (ImGui::MenuItem("Rigidbody")) scene.registry.emplace<Engine::RigidBodyComponent>(m_selectedEntity);
+                    }
+                    if (!scene.registry.all_of<Engine::AudioComponent>(m_selectedEntity)) {
+                        if (ImGui::MenuItem("Audio Component")) scene.registry.emplace<Engine::AudioComponent>(m_selectedEntity);
+                    }
+                    if (!scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity)) {
+                        if (ImGui::MenuItem("Lua Script")) scene.registry.emplace<Engine::LuaScriptComponent>(m_selectedEntity);
+                    }
+                    ImGui::EndPopup();
+                }
+            }
+            else {
+                ImGui::Text("No entity selected.");
+            }
+        }
+        ImGui::End();
+    }
+
+
+    void EditorUI::DrawSceneView(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window, const std::string& sceneWindowTitle)
+    {
         // SCENE WINDOW
         // Scene View (dockable): drives the render-to-texture size
         ImGui::Begin(sceneWindowTitle.c_str());
+
         // Get the available size for the viewport (this is the size of the content region inside the "Scene" window)
         ImVec2 viewportSize = ImGui::GetContentRegionAvail();
 
@@ -415,13 +1332,12 @@ namespace Engine
         ImGuizmo::AllowAxisFlip(false);
         ImGuizmo::SetRect(imagePos.x, imagePos.y, viewportSize.x, viewportSize.y);
 
-        // Generate Screen-to-World ray based on the active camera using the same math as CameraMatrixSystem
+        // Generate Screen-to-World ray based on the active camera
         // NOTE: ImGuizmo needs the camera matrices every single frame to render handles.
         DirectX::XMMATRIX view = DirectX::XMMatrixIdentity();
         DirectX::XMMATRIX proj = DirectX::XMMatrixIdentity();
         DirectX::XMFLOAT4X4 view4x4{}, proj4x4{};
 
-        // Generate Screen-to-World ray based on the active camera using the same math as CameraMatrixSystem
         if (scene.m_activeRenderCamera != entt::null &&
             scene.registry.valid(scene.m_activeRenderCamera) &&
             scene.registry.all_of<Engine::TransformComponent, Engine::CameraComponent>(scene.m_activeRenderCamera))
@@ -442,11 +1358,11 @@ namespace Engine
             proj = DirectX::XMMatrixPerspectiveFovLH(camc.FOV, aspect, camc.nearClip, camc.farClip);
         }
 
-		// Store the camera matrices in XMFLOAT4X4 format for ImGuizmo
+        // Store the camera matrices in XMFLOAT4X4 format for ImGuizmo
         DirectX::XMStoreFloat4x4(&view4x4, view);
         DirectX::XMStoreFloat4x4(&proj4x4, proj);
 
-		// Handle mouse click in the Scene panel to generate a Screen-to-World ray for potential object picking (Edit mode only)
+        // Handle mouse click in the Scene panel to generate a Screen-to-World ray for potential object picking
         if (m_state == EditorState::Edit && ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsOver())
         {
             ImVec2 mousePos = ImGui::GetMousePos();
@@ -479,7 +1395,6 @@ namespace Engine
                 m_gizmoType = (m_gizmoType + 1) % 3;
             }
 
-            // Store mouse position on RMB down to restore it on release (prevents warping issues if cursor leaves panel while flying)
             static int storedMouseX = 0;
             static int storedMouseY = 0;
 
@@ -509,12 +1424,12 @@ namespace Engine
             if (m_gizmoType == 1) op = ImGuizmo::ROTATE;
             if (m_gizmoType == 2) op = ImGuizmo::SCALE;
 
-            // 1. Get the current World Matrix from the TransformComponent
+            // Get the current World Matrix from the TransformComponent
             DirectX::XMMATRIX worldMat = DirectX::XMLoadFloat4x4(&tc.worldMatrix);
             DirectX::XMFLOAT4X4 worldMatFloat;
             DirectX::XMStoreFloat4x4(&worldMatFloat, worldMat);
 
-            // 2. Pass the World Matrix to ImGuizmo
+            // Pass the World Matrix to ImGuizmo
             ImGuizmo::Manipulate(
                 &view4x4.m[0][0],
                 &proj4x4.m[0][0],
@@ -523,7 +1438,7 @@ namespace Engine
                 &worldMatFloat.m[0][0]
             );
 
-            // 3. If the user is dragging the Gizmo, convert the new World Matrix back to Local Space
+            // If the user is dragging the Gizmo, convert the new World Matrix back to Local Space
             if (ImGuizmo::IsUsing())
             {
                 DirectX::XMMATRIX modifiedWorld = DirectX::XMLoadFloat4x4(&worldMatFloat);
@@ -543,900 +1458,19 @@ namespace Engine
                 DirectX::XMMATRIX parentInv = DirectX::XMMatrixInverse(&det, parentWorld);
                 DirectX::XMMATRIX newLocal = modifiedWorld * parentInv;
 
-                // 4. Decompose the new Local Matrix back into the TransformComponent
+                // Decompose the new Local Matrix back into the TransformComponent
                 DirectX::XMVECTOR s, r, t;
                 DirectX::XMMatrixDecompose(&s, &r, &t, newLocal);
 
                 // Check for gimbal lock / Euler conversion if Euler angles are being cached for the UI here
-
                 DirectX::XMStoreFloat3(&tc.scale, s);
                 DirectX::XMStoreFloat4(&tc.rotation, r);
                 DirectX::XMStoreFloat3(&tc.position, t);
 
-                tc.isDirty = true; // Force the TransformSystem to recalculate matrices next frame
+                tc.isDirty = true;  // Force the TransformSystem to recalculate matrices next frame
             }
         }
 
         ImGui::End();
-
-		// Only show these windows in Edit mode
-        if (m_state == EditorState::Edit) {
-
-            // HIERARCHY WINDOW
-            ImGui::Begin("Hierarchy");
-            {
-                // Right-click empty space in the Hierarchy to create entities
-                if (ImGui::BeginPopupContextWindow("HierarchyContextMenu", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
-                {
-                    if (ImGui::BeginMenu("Create New Entity"))
-                    {
-                        // EMPTY ENTITY
-                        if (ImGui::MenuItem("Empty Entity")) {
-                            scene.CreateEntity("New Entity");
-                        }
-
-						// CAMERA ENTITY
-                        if (ImGui::MenuItem("Camera")) {
-                            scene.CreateGameCamera("Camera", 1280, 720);
-                        }
-
-						// PRIMITIVE SHAPES
-                        if (ImGui::BeginMenu("Shapes"))
-                        {
-                            if (ImGui::MenuItem("Cube")) scene.CreateCube("Cube");
-                            if (ImGui::MenuItem("Sphere")) scene.CreateSphere("Sphere");
-                            if (ImGui::MenuItem("Capsule")) scene.CreateCapsule("Capsule");
-                            ImGui::EndMenu();
-                        }
-
-						// LIGHT ENTITIES
-                        if (ImGui::BeginMenu("Lights"))
-                        {
-                            if (ImGui::MenuItem("Directional Light")) scene.CreateDirectionalLight("Directional Light");
-                            if (ImGui::MenuItem("Point Light")) scene.CreatePointLight("Point Light", {0, 0, 0}, {1, 1, 1}, 1.0f, 10.0f);
-                            if (ImGui::MenuItem("Spot Light")) scene.CreateSpotLight("Spot Light", {0, 0, 0}, {0, 0, 1}, {1, 1, 1}, 1.0f, 10.0f, 0.785f);
-                            ImGui::EndMenu();
-                        }
-                        ImGui::EndMenu();
-                    }
-
-                    ImGui::EndPopup();
-                }
-
-				// We cannot destroy entities while iterating, so we defer destruction until after the loop
-                entt::entity entityToDestroy = entt::null;
-
-                // Find all roots (every entity has a NameComponent)
-                auto view = scene.registry.view<NameComponent>();
-                for (auto entity : view)
-                {
-					auto& nameComp = view.get<NameComponent>(entity);
-
-                    // Prevent editor camera from showing in the hierarchy
-                    if (scene.registry.all_of<Engine::EditorCamControlComponent>(entity)) continue;
-
-                    // Grey-out inactive entities in the list so state is obvious
-                    if (!nameComp.isActive) {
-                        ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-                    }
-
-                    auto* rel = scene.registry.try_get<RelationshipComponent>(entity);
-                    // Only draw root nodes (no relationship comp, or parent is null)
-                    if (!rel || rel->parent == entt::null) {
-                        DrawEntityNode(scene, entity, entityToDestroy);
-                    }
-
-                    if (!nameComp.isActive) {
-                        ImGui::PopStyleColor();
-                    }
-                }
-
-                // Fill the remaining vertical space with a dummy item to act as a drop zone for unparenting
-                ImVec2 availSpace = ImGui::GetContentRegionAvail();
-                if (availSpace.y > 0.0f) {
-                    ImGui::Dummy(availSpace);
-                    if (ImGui::BeginDragDropTarget()) {
-                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ENTITY_PAYLOAD")) {
-                            entt::entity droppedEntity = *(const entt::entity*)payload->Data;
-                            scene.UnparentEntity(droppedEntity);
-                        }
-                        ImGui::EndDragDropTarget();
-                    }
-                }
-
-                // Safe deferred destruction
-                if (entityToDestroy != entt::null) {
-                    scene.DestroyEntity(entityToDestroy, physicsManager);
-                }
-
-                // Deselection: click empty space in the window to clear selection
-                if (ImGui::IsMouseDown(0) && ImGui::IsWindowHovered())
-                {
-                    m_selectedEntity = entt::null;
-                }
-
-                if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity))
-                {
-                    if (ImGui::IsWindowFocused() && ImGui::IsKeyPressed(ImGuiKey_Delete))
-                    {
-                        scene.DestroyEntity(m_selectedEntity, physicsManager);
-                        m_selectedEntity = entt::null;
-                    }
-                }
-
-            }
-            ImGui::End();
-
-            // INSPECTOR WINDOW
-            ImGui::Begin("Inspector");
-            {
-                if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity))
-                {
-                    // NameComponent UI
-                    if (scene.registry.all_of<Engine::NameComponent>(m_selectedEntity))
-                    {
-                        auto& nameComp = scene.registry.get<Engine::NameComponent>(m_selectedEntity);
-
-                        // Master active toggle next to name (entity-wide active state)
-                        ImGui::Checkbox("##EntityActive", &nameComp.isActive);
-                        ImGui::SameLine();
-
-                        static char buffer[256] = {};
-#ifdef _MSC_VER
-                        strncpy_s(buffer, nameComp.name.c_str(), sizeof(buffer) - 1);
-#else
-                        std::strncpy(buffer, nameComp.name.c_str(), sizeof(buffer) - 1);
-#endif
-
-                        if (ImGui::InputText("##Name", buffer, sizeof(buffer)))
-                        {
-                            nameComp.name = buffer;
-                        }
-                    }
-
-                    // TransformComponent UI
-                    if (scene.registry.all_of<Engine::TransformComponent>(m_selectedEntity))
-                    {
-                        auto& tc = scene.registry.get<Engine::TransformComponent>(m_selectedEntity);
-
-                        if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
-                        {
-                            ImGui::DragFloat3("Position", &tc.position.x, 0.1f);
-                            ImGui::DragFloat3("Scale", &tc.scale.x, 0.1f, 0.01f, 10000.0f);
-
-                            // Static cache to hold UI state between frames
-                            static entt::entity s_lastEntity = entt::null;
-                            static DirectX::XMFLOAT3 s_cachedEuler{ 0.0f, 0.0f, 0.0f };
-
-                            // 1. Check if the selection changed
-                            bool selectionChanged = (s_lastEntity != m_selectedEntity);
-                            s_lastEntity = m_selectedEntity;
-
-                            // 2. Check if the quaternion was changed externally (e.g., by Physics)
-                            // Compare the actual quaternion against the one generated by cached Euler angles.
-                            DirectX::XMFLOAT4 expectedQuat = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
-                            DirectX::XMVECTOR q1 = DirectX::XMLoadFloat4(&expectedQuat);
-                            DirectX::XMVECTOR q2 = DirectX::XMLoadFloat4(&tc.rotation);
-
-                            // Use dot product to check if quaternions are virtually identical
-                            float dot = fabs(DirectX::XMVectorGetX(DirectX::XMQuaternionDot(q1, q2)));
-                            bool externallyChanged = (dot < 0.9999f);
-
-                            // 3. Update the cache ONLY if selection changed or physics moved the object
-                            if (selectionChanged || externallyChanged)
-                            {
-                                s_cachedEuler = Engine::Math::QuaternionToEulerDegrees(tc.rotation);
-								tc.isDirty = true;
-                            }
-
-                            // 4. Draw the UI using the stable cached values
-                            if (ImGui::DragFloat3("Rotation", &s_cachedEuler.x, 1.0f))
-                            {
-                                // 5. If the user drags the slider, push the new rotation to the component
-                                tc.rotation = Engine::Math::EulerDegreesToQuaternion(s_cachedEuler);
-								tc.isDirty = true;
-                            }
-                        }
-                    }
-
-                    // LightComponent UI
-                    if (scene.registry.all_of<Engine::LightComponent>(m_selectedEntity))
-                    {
-                        auto& lc = scene.registry.get<Engine::LightComponent>(m_selectedEntity);
-
-                        ImGui::PushID("Light");
-                        ImGui::Checkbox("##Active", &lc.isActive);
-                        ImGui::SameLine();
-                        bool treeOpen = ImGui::TreeNodeEx("Light", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
-
-                        bool removeComponent = false;
-                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
-                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
-                            ImGui::EndPopup();
-                        }
-
-                        if (treeOpen)
-                        {
-                            // Fundamental Light type picker
-                            const char* lightTypes[] = { "Directional", "Point", "Spot" };
-                            // Assuming LightType enum maps 0=Directional, 1=Point, 2=Spot
-                            int currentLightIdx = static_cast<int>(lc.type);
-
-                            if (ImGui::Combo("Light Type", &currentLightIdx, lightTypes, IM_ARRAYSIZE(lightTypes)))
-                            {
-                                lc.type = static_cast<Engine::LightType>(currentLightIdx);
-                            }
-
-                            ImGui::ColorEdit3("Color", &lc.color.x);
-                            ImGui::DragFloat("Intensity", &lc.intensity, 0.1f, 0.0f, 1000.0f);
-                            ImGui::DragFloat("Range", &lc.range, 0.5f, 0.0f, 1000.0f);
-
-                            ImGui::TreePop();
-                        }
-                        ImGui::PopID();
-
-                        if (removeComponent)
-                        {
-                            scene.registry.remove<Engine::LightComponent>(m_selectedEntity);
-                        }
-                    }
-
-                    // RigidbodyComponent UI
-                    if (scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity))
-                    {
-                        auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
-
-                        ImGui::PushID("Rigidbody");
-                        ImGui::Checkbox("##Active", &rb.isActive);
-                        ImGui::SameLine();
-                        bool treeOpen = ImGui::TreeNodeEx("Rigidbody", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
-
-                        bool removeComponent = false;
-                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
-                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
-                            ImGui::EndPopup();
-                        }
-
-                        if (treeOpen)
-                        {
-                            // Fundamental rigid body settings: Shape + Motion
-                            // CRUCIAL: on change, destroy the Jolt body so PhysicsSystem rebuilds it next frame.
-                            const char* rbShapes[] = { "Box", "Sphere", "Capsule", "Mesh" };
-                            int currentShapeIdx = static_cast<int>(rb.shape);
-                            if (ImGui::Combo("Shape", &currentShapeIdx, rbShapes, IM_ARRAYSIZE(rbShapes)))
-                            {
-                                rb.shape = static_cast<Engine::RBShape>(currentShapeIdx);
-                                // Invalidate body to force a rebuild with the new shape
-                                if (!rb.bodyID.IsInvalid()) {
-                                    physicsManager.RemoveRigidBody(rb.bodyID);
-                                    rb.bodyID = JPH::BodyID();
-                                    rb.bodyCreated = false;
-                                }
-                            }
-
-                            const char* rbMotions[] = { "Static", "Dynamic" };
-                            int currentMotionIdx = static_cast<int>(rb.motionType);
-                            if (ImGui::Combo("Motion Type", &currentMotionIdx, rbMotions, IM_ARRAYSIZE(rbMotions)))
-                            {
-                                rb.motionType = static_cast<Engine::RBMotion>(currentMotionIdx);
-                                // Invalidate body to force a rebuild with the new mass properties
-                                if (!rb.bodyID.IsInvalid()) {
-                                    physicsManager.RemoveRigidBody(rb.bodyID);
-                                    rb.bodyID = JPH::BodyID();
-                                    rb.bodyCreated = false;
-                                }
-                            }
-
-                            // Physical dimensions (force Jolt rebuild on change)
-							// NOTE* min/max values are hardcoded for now
-                            bool shapeChanged = false;
-                            if (rb.shape == Engine::RBShape::Box) {
-                                if (ImGui::DragFloat3("Half Extents", &rb.halfExtent.x, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
-                            }
-                            else if (rb.shape == Engine::RBShape::Sphere) {
-                                if (ImGui::DragFloat("Radius", &rb.radius, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
-                            }
-                            else if (rb.shape == Engine::RBShape::Capsule) {
-                                if (ImGui::DragFloat("Radius", &rb.radius, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
-                                if (ImGui::DragFloat("Height", &rb.height, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
-                            }
-                            else if (rb.shape == Engine::RBShape::Mesh) {
-                                if (ImGui::DragFloat3("Collider Scale", &rb.colliderScale.x, 0.05f, 0.01f, 100.0f)) shapeChanged = true;
-                            }
-
-                            // Force Jolt to rebuild the body with the new dimensions
-                            if (shapeChanged && !rb.bodyID.IsInvalid()) {
-                                physicsManager.RemoveRigidBody(rb.bodyID);
-                                rb.bodyID = JPH::BodyID();
-                                rb.bodyCreated = false;
-                            }
-
-                            // Mass and Linear Damping: These require a core physical structural rebuild
-                            if (ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.01f, 1000.0f) ||
-                                ImGui::DragFloat("Linear Damping", &rb.linearDamping, 0.01f, 0.0f, 1.0f))
-                            {
-                                if (!rb.bodyID.IsInvalid()) {
-                                    physicsManager.RemoveRigidBody(rb.bodyID);
-                                    rb.bodyID = JPH::BodyID();
-                                    rb.bodyCreated = false;
-                                }
-                            }
-
-                            // Friction and Restitution: These can be mutated directly via Jolt's API instantly
-                            if (ImGui::DragFloat("Friction", &rb.friction, 0.01f, 0.0f, 1.0f))
-                            {
-                                if (!rb.bodyID.IsInvalid()) {
-                                    physicsManager.GetBodyInterface().SetFriction(rb.bodyID, rb.friction);
-                                }
-                            }
-
-                            if (ImGui::DragFloat("Restitution", &rb.restitution, 0.01f, 0.0f, 1.0f))
-                            {
-                                if (!rb.bodyID.IsInvalid()) {
-                                    physicsManager.GetBodyInterface().SetRestitution(rb.bodyID, rb.restitution);
-                                }
-                            }
-
-                            ImGui::TreePop();
-                        }
-
-                        // Wireframe toggle
-						ImGui::Checkbox("Show Wireframe", &rb.showWireframe);
-
-                        ImGui::PopID();
-
-                        if (removeComponent)
-                        {
-                            // CRITICAL: unregister the Jolt body first to prevent leaks
-                            if (!rb.bodyID.IsInvalid())
-                            {
-                                physicsManager.RemoveRigidBody(rb.bodyID);
-                            }
-                            scene.registry.remove<Engine::RigidBodyComponent>(m_selectedEntity);
-                        }
-                    }
-
-                    // MeshRendererComponent UI
-                    if (scene.registry.all_of<Engine::MeshRendererComponent>(m_selectedEntity))
-                    {
-                        auto& mr = scene.registry.get<Engine::MeshRendererComponent>(m_selectedEntity);
-
-                        ImGui::PushID("MeshRenderer");
-                        ImGui::Checkbox("##Active", &mr.isActive);
-                        ImGui::SameLine();
-                        bool treeOpen = ImGui::TreeNodeEx("Mesh Renderer", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
-
-                        bool removeComponent = false;
-                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
-                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
-                            ImGui::EndPopup();
-                        }
-
-                        if (treeOpen)
-                        {
-                            // Mesh Selection & Drop Target
-                            const char* meshTypes[] = { "Cube", "Sphere", "Capsule", "Custom" };
-                            int currentMeshIdx = 3; // Default to 'Custom' so it shows correctly when a custom .obj is loaded
-
-                            // Check if the current mesh matches any of our primitives
-                            if (mr.meshID == scene.GetCubeMeshID()) currentMeshIdx = 0;
-                            else if (mr.meshID == scene.GetSphereMeshID()) currentMeshIdx = 1;
-                            else if (mr.meshID == scene.GetCapsuleMeshID()) currentMeshIdx = 2;
-
-                            if (ImGui::Combo("Mesh Shape", &currentMeshIdx, meshTypes, IM_ARRAYSIZE(meshTypes)))
-                            {
-                                if (currentMeshIdx == 0) mr.meshID = scene.GetCubeMeshID();
-                                else if (currentMeshIdx == 1) mr.meshID = scene.GetSphereMeshID();
-                                else if (currentMeshIdx == 2) mr.meshID = scene.GetCapsuleMeshID();
-                            }
-
-                            // MODEL DROP TARGET
-                            if (ImGui::BeginDragDropTarget())
-                            {
-                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE"))
-                                {
-                                    const char* droppedPath = (const char*)payload->Data;
-                                    if (scene.GetAssetManager())
-                                    {
-                                        // Load the model through the MeshManager to trigger DirectX creation & Asset Registry
-                                        std::vector<Engine::UUID> loadedMeshes = meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
-
-                                        // A single .obj might contain multiple meshes. We assign the first one to the entity.
-                                        if (!loadedMeshes.empty()) {
-                                            mr.meshID = loadedMeshes[0];
-
-                                            // PHYSICS SYNC
-                                            // If this entity has a Mesh Collider, we must update it and rebuild the Jolt body
-                                            if (scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
-                                                auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
-
-                                                if (rb.shape == Engine::RBShape::Mesh) {
-                                                    rb.meshID = loadedMeshes[0]; // Sync the physics ID to the new visual ID
-
-                                                    // Destroy the old Jolt body. 
-                                                    // The PhysicsSystem will detect the invalid ID and automatically regenerate it next frame
-                                                    if (!rb.bodyID.IsInvalid()) {
-                                                        physicsManager.RemoveRigidBody(rb.bodyID);
-                                                        rb.bodyID = JPH::BodyID();
-                                                        rb.bodyCreated = false;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                ImGui::EndDragDropTarget();
-                            }
-
-                            // Material Settings
-                            const char* matTypes[] = { "LitColor", "UnlitColor", "Textured" };
-                            int currentMatIdx = static_cast<int>(mr.matType);
-                            if (ImGui::Combo("Material Type", &currentMatIdx, matTypes, IM_ARRAYSIZE(matTypes)))
-                            {
-                                mr.matType = static_cast<Engine::MaterialType>(currentMatIdx);
-                            }
-
-                            if (mr.matType == Engine::MaterialType::LitColor || mr.matType == Engine::MaterialType::UnlitColor)
-                            {
-                                ImGui::ColorEdit4("Base Color", &mr.baseColor.x);
-                            }
-
-                            if (mr.matType == Engine::MaterialType::LitColor || mr.matType == Engine::MaterialType::Textured)
-                            {
-                                ImGui::DragFloat("Roughness", &mr.roughness, 0.01f, 0.0f, 1.0f);
-                                ImGui::DragFloat("Metallic", &mr.metallic, 0.01f, 0.0f, 1.0f);
-                            }
-
-                            if (mr.matType == Engine::MaterialType::Textured)
-                            {
-                                // TEXTURE DROP TARGET
-                                // Fetch the human-readable filename from the UUID to display on the UI
-                                std::string currentTexName = "None";
-                                if (mr.textureID != 0 && scene.GetAssetManager()) {
-                                    const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(mr.textureID);
-                                    if (meta) {
-                                        currentTexName = std::filesystem::path(meta->filepath).filename().string();
-                                    }
-                                }
-
-                                // Create a visual drop zone button that fills the width
-                                std::string buttonLabel = currentTexName + " (Drop Texture Here)";
-                                ImGui::Button(buttonLabel.c_str(), ImVec2(-1, 30));
-
-                                if (ImGui::BeginDragDropTarget())
-                                {
-                                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE"))
-                                    {
-                                        const char* droppedPath = (const char*)payload->Data;
-                                        if (scene.GetAssetManager())
-                                        {
-                                            // Load the texture through the TextureManager
-                                            Engine::UUID newTexID = textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
-                                            mr.textureID = newTexID;
-                                        }
-                                    }
-                                    ImGui::EndDragDropTarget();
-                                }
-                            }
-
-                            ImGui::TreePop();
-                        }
-                        ImGui::PopID();
-
-                        if (removeComponent)
-                        {
-                            scene.registry.remove<Engine::MeshRendererComponent>(m_selectedEntity);
-                        }
-                    }
-
-                    // AudioComponent UI
-                    if (scene.registry.all_of<Engine::AudioComponent>(m_selectedEntity))
-                    {
-                        auto& ac = scene.registry.get<Engine::AudioComponent>(m_selectedEntity);
-
-                        ImGui::PushID("AudioComponent");
-                        bool treeOpen = ImGui::TreeNodeEx("Audio Emitter", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
-
-                        bool removeComponent = false;
-                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
-                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
-                            ImGui::EndPopup();
-                        }
-
-                        if (treeOpen)
-                        {
-                            std::vector<std::string> audioFiles;
-                            audioFiles.push_back("None");
-
-                            std::string audioPath = "assets/audio";
-                            if (!std::filesystem::exists(audioPath)) std::filesystem::create_directories(audioPath);
-
-                            for (const auto& entry : std::filesystem::directory_iterator(audioPath)) {
-                                if (entry.path().extension() == ".wav" || entry.path().extension() == ".mp3") {
-                                    audioFiles.push_back(entry.path().filename().string());
-                                }
-                            }
-
-                            // Read the string filename back out of the UUID metadata so the UI can display it
-                            int currentIndex = 0;
-                            std::string currentFilename = "";
-                            if (ac.audioID != 0 && scene.GetAssetManager()) {
-                                const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(ac.audioID);
-                                if (meta) {
-                                    currentFilename = std::filesystem::path(meta->filepath).filename().string();
-                                    for (int i = 1; i < audioFiles.size(); ++i) {
-                                        if (audioFiles[i] == currentFilename) { currentIndex = i; break; }
-                                    }
-                                }
-                            }
-
-                            if (ImGui::BeginCombo("Audio File", audioFiles[currentIndex].c_str()))
-                            {
-                                for (int i = 0; i < audioFiles.size(); i++) {
-                                    bool isSelected = (currentIndex == i);
-                                    if (ImGui::Selectable(audioFiles[i].c_str(), isSelected)) {
-                                        if (currentIndex != i) {
-                                            // Assign a UUID based on the dropdown selection
-                                            if (i == 0) {
-                                                ac.audioID = 0;
-                                            }
-                                            else {
-                                                std::string newPath = audioPath + "/" + audioFiles[i];
-                                                if (scene.GetAssetManager()) {
-                                                    ac.audioID = scene.GetAssetManager()->ImportAsset(newPath, Engine::AssetType::Audio);
-                                                }
-                                            }
-                                            // Safely clear old handle so it reloads on Play
-                                            if (scene.GetAudioManager() && ac.soundHandle) {
-                                                scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
-                                                ac.soundHandle = nullptr;
-                                                ac.isPlaying = false;
-                                            }
-                                        }
-                                    }
-                                    if (isSelected) ImGui::SetItemDefaultFocus();
-                                }
-                                ImGui::EndCombo();
-                            }
-
-                            if (ImGui::BeginDragDropTarget()) {
-                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("AUDIO_FILE")) {
-                                    const char* droppedPath = (const char*)payload->Data;
-                                    // Generate a UUID from the dropped file path
-                                    if (scene.GetAssetManager()) {
-                                        Engine::UUID newID = scene.GetAssetManager()->ImportAsset(droppedPath, Engine::AssetType::Audio);
-                                        if (ac.audioID != newID) {
-                                            ac.audioID = newID;
-                                            if (scene.GetAudioManager() && ac.soundHandle) {
-                                                scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
-                                                ac.soundHandle = nullptr;
-                                                ac.isPlaying = false;
-                                            }
-                                        }
-                                    }
-                                }
-                                ImGui::EndDragDropTarget();
-                            }
-
-                            bool is3dChanged = ImGui::Checkbox("Is 3D", &ac.is3D);
-                            bool loopChanged = ImGui::Checkbox("Looping", &ac.loop);
-                            ImGui::Checkbox("Play On Create", &ac.playOnCreate);
-
-                            // Slider clamps value between 0.0f (Mute) and 1.0f (Max)
-                            ImGui::SliderFloat("Volume", &ac.volume, 0.0f, 1.0f);
-
-                            // Rebuild handle if physical parameters change
-                            if (is3dChanged || loopChanged) {
-                                if (scene.GetAudioManager() && ac.soundHandle) {
-                                    scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
-                                    ac.soundHandle = nullptr;
-                                    ac.isPlaying = false;
-                                }
-                            }
-
-                            ImGui::TreePop();
-                        }
-                        ImGui::PopID();
-
-                        if (removeComponent) {
-                            if (scene.GetAudioManager() && ac.soundHandle) {
-                                scene.GetAudioManager()->DestroyAudio(ac.soundHandle);
-                            }
-                            scene.registry.remove<Engine::AudioComponent>(m_selectedEntity);
-                        }
-                    }
-
-                    // LuaScriptComponent UI
-                    if (scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity))
-                    {
-                        auto& scriptComp = scene.registry.get<Engine::LuaScriptComponent>(m_selectedEntity);
-
-                        ImGui::PushID("LuaScript");
-                        bool treeOpen = ImGui::TreeNodeEx("Lua Scripts", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
-
-                        bool removeComponent = false;
-                        if (ImGui::BeginPopupContextItem("RemoveMenu")) {
-                            if (ImGui::MenuItem("Remove Component")) removeComponent = true;
-                            ImGui::EndPopup();
-                        }
-
-                        if (treeOpen)
-                        {
-                            // Scan assets/scripts for .lua files
-                            std::vector<std::string> scriptFiles;
-                            scriptFiles.push_back("None");  // Option to clear script
-
-                            std::string scriptsPath = "assets/scripts";
-
-                            // Ensure directory exists to prevent crashes
-                            if (!std::filesystem::exists(scriptsPath)) {
-                                std::filesystem::create_directories(scriptsPath);
-                            }
-
-                            for (const auto& entry : std::filesystem::directory_iterator(scriptsPath)) {
-                                if (entry.path().extension() == ".lua") {
-                                    scriptFiles.push_back(entry.path().filename().string());
-                                }
-                            }
-
-							// Display each script slot with a dropdown and remove button
-                            int scriptToRemove = -1;
-
-							// Iterate through each script slot in the LuaScriptComponent
-                            for (size_t s = 0; s < scriptComp.scripts.size(); ++s)
-                            {
-                                ImGui::PushID(static_cast<int>(s));
-                                auto& script = scriptComp.scripts[s];
-
-                                // Find current active script index in the dropdown
-
-                                int currentIndex = 0;
-                                std::string currentFilename = "";
-                                if (!script.filepath.empty()) {
-                                    currentFilename = std::filesystem::path(script.filepath).filename().string();
-                                    for (int i = 1; i < scriptFiles.size(); ++i) {
-                                        if (scriptFiles[i] == currentFilename) {
-                                            currentIndex = i;
-                                            break;
-                                        }
-                                    }
-                                }
-
-                                ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 30.0f);
-
-								// Dropdown for selecting a script file
-                                if (ImGui::BeginCombo("##ScriptFile", scriptFiles[currentIndex].c_str()))
-                                {
-                                    for (int i = 0; i < scriptFiles.size(); i++)
-                                    {
-                                        bool isSelected = (currentIndex == i);
-                                        if (ImGui::Selectable(scriptFiles[i].c_str(), isSelected))
-                                        {
-                                            if (i == 0) script.filepath = "";
-                                            else script.filepath = scriptsPath + "/" + scriptFiles[i];
-                                        }
-                                        if (isSelected) ImGui::SetItemDefaultFocus();
-                                    }
-                                    ImGui::EndCombo();
-                                }
-
-								// Drag-and-drop support for assigning scripts directly from the Content Browser
-                                if (ImGui::BeginDragDropTarget())
-                                {
-                                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
-                                    {
-                                        const char* droppedPath = (const char*)payload->Data;
-                                        script.filepath = droppedPath;
-                                    }
-                                    ImGui::EndDragDropTarget();
-                                }
-
-                                ImGui::SameLine();
-
-								// Remove button for the script slot
-                                if (ImGui::Button("X")) {
-                                    scriptToRemove = static_cast<int>(s);
-                                }
-                                ImGui::PopID();
-                            }
-
-							// Remove the script slot if the "X" button was clicked
-                            if (scriptToRemove >= 0) {
-                                scriptComp.scripts.erase(scriptComp.scripts.begin() + scriptToRemove);
-                            }
-
-							// Button to add a new script slot
-                            if (ImGui::Button("Add Script Slot", ImVec2(-1, 0))) {
-                                scriptComp.scripts.push_back(Engine::ScriptInstance{});
-                            }
-                            // Allow dropping directly onto the "Add" button to quickly append
-                            if (ImGui::BeginDragDropTarget())
-                            {
-                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("SCRIPT_FILE"))
-                                {
-                                    const char* droppedPath = (const char*)payload->Data;
-                                    Engine::ScriptInstance newScript;
-                                    newScript.filepath = droppedPath;
-                                    scriptComp.scripts.push_back(newScript);
-                                }
-                                ImGui::EndDragDropTarget();
-                            }
-
-                            ImGui::TreePop();
-                        }
-                        ImGui::PopID();
-
-                        if (removeComponent)
-                        {
-                            scene.registry.remove<Engine::LuaScriptComponent>(m_selectedEntity);
-                        }
-                    }
-
-					// Add Component (only show what the entity doesn't currently have)
-                    ImGui::Separator();
-                    ImGui::Spacing();
-                    if (ImGui::Button("Add Component", ImVec2(-1, 30))) {
-                        ImGui::OpenPopup("AddComponentPopup");
-                    }
-
-                    if (ImGui::BeginPopup("AddComponentPopup"))
-                    {
-                        if (!scene.registry.all_of<Engine::MeshRendererComponent>(m_selectedEntity)) {
-                            if (ImGui::MenuItem("Mesh Renderer")) scene.registry.emplace<Engine::MeshRendererComponent>(m_selectedEntity);
-                        }
-                        if (!scene.registry.all_of<Engine::LightComponent>(m_selectedEntity)) {
-                            if (ImGui::MenuItem("Light")) scene.registry.emplace<Engine::LightComponent>(m_selectedEntity);
-                        }
-                        if (!scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
-                            if (ImGui::MenuItem("Rigidbody")) scene.registry.emplace<Engine::RigidBodyComponent>(m_selectedEntity);
-                        }
-                        if (!scene.registry.all_of<Engine::AudioComponent>(m_selectedEntity)) {
-                            if (ImGui::MenuItem("Audio Component")) scene.registry.emplace<Engine::AudioComponent>(m_selectedEntity);
-                        }
-                        if (!scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity)) {
-                            if (ImGui::MenuItem("Lua Script")) scene.registry.emplace<Engine::LuaScriptComponent>(m_selectedEntity);
-                        }
-                        // Add other components like CameraComponent, etc.
-                        ImGui::EndPopup();
-                    }
-                }
-                else {
-                    ImGui::Text("No entity selected.");
-                }
-            }
-            ImGui::End();
-
-            // CONTENT BROWSER WINDOW
-            ImGui::Begin("Content Browser");
-            {
-				// Right-click context menu for creating a new scene
-                if (ImGui::BeginPopupContextWindow("ContentBrowserContextMenu", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems))
-                {
-                    if (ImGui::MenuItem("Create New Scene"))
-                    {
-                        m_openCreateScenePopup = true;
-                    }
-                    ImGui::EndPopup();
-                }
-
-                // Back button: only when inside a subfolder (never go above assets root)
-                if (m_currentDirectory != m_assetPath)
-                {
-                    if (ImGui::Button("<- Back"))
-                    {
-                        m_currentDirectory = m_currentDirectory.parent_path();
-                    }
-                }
-
-                // Iterate and display the current directory
-                for (auto& directoryEntry : std::filesystem::directory_iterator(m_currentDirectory))
-                {
-                    const auto& path = directoryEntry.path();
-                    std::string filenameString = path.filename().string();
-
-                    // Directories: clickable to navigate into
-                    if (directoryEntry.is_directory())
-                    {
-                        if (ImGui::Selectable(("[DIR] " + filenameString).c_str()))
-                        {
-                            m_currentDirectory /= path.filename();
-                        }
-                    }
-                    else
-                    {
-                        // SCENE LOADING
-                        // If it's a JSON scene file, make it clickable to load
-                        if (path.extension() == ".json")
-                        {
-                            // Display the scene file as selectable
-                            if (ImGui::Selectable(("[SCENE] " + filenameString).c_str()))
-                            {
-                                // Prevent loading scenes while the game is currently playing
-                                if (m_state == EditorState::Edit) {
-                                    std::string errorMsg;
-                                    bool success = Engine::SceneSerializer::Deserialize(path.string(), scene, physicsManager, *scene.GetAssetManager(), errorMsg);
-
-                                    if (!success) {
-                                        m_showLoadError = true;
-                                        m_loadErrorMsg = errorMsg;
-                                    }
-                                    else {
-                                        // Preload the loaded scene's assets into VRAM
-                                        for (const auto& [uuid, meta] : scene.GetAssetManager()->GetRegistry())
-                                        {
-                                            // Load custom models
-                                            if (meta.type == Engine::AssetType::ModelFile && meta.filepath.find(".mtl") == std::string::npos) {
-                                                meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), meta.filepath);
-                                            }
-                                            // Load custom textures
-                                            else if (meta.type == Engine::AssetType::Texture && meta.filepath.find("primitive://") == std::string::npos && meta.filepath.find("cubemap://") == std::string::npos) {
-                                                textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), meta.filepath);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else {
-                            // Files: display as selectable so it highlights on hover
-                            ImGui::Selectable(("[FILE] " + filenameString).c_str());
-
-                            // If the file is a Lua script, make it a Drag Source
-                            if (path.extension() == ".lua")
-                            {
-                                if (ImGui::BeginDragDropSource())
-                                {
-                                    // Get path and normalize Windows backslashes to forward slashes
-                                    std::string relativePath = path.string();
-                                    std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
-
-                                    // Attach the string path as the payload
-                                    ImGui::SetDragDropPayload("SCRIPT_FILE", relativePath.c_str(), relativePath.size() + 1);
-
-                                    // Tooltip next to the cursor while dragging
-                                    ImGui::Text("Assign %s", filenameString.c_str());
-
-                                    ImGui::EndDragDropSource();
-                                }
-                            }
-                            // If the file is an audio file, make it a Drag Source
-                            else if (path.extension() == ".wav" || path.extension() == ".mp3")
-                            {
-                                if (ImGui::BeginDragDropSource()) {
-                                    std::string relativePath = path.string();
-                                    std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
-                                    ImGui::SetDragDropPayload("AUDIO_FILE", relativePath.c_str(), relativePath.size() + 1);
-                                    ImGui::Text("Assign %s", filenameString.c_str());
-                                    ImGui::EndDragDropSource();
-                                }
-                            }
-                            // If the file is a 3D Model, make it a Drag Source
-                            else if (path.extension() == ".obj")
-                            {
-                                if (ImGui::BeginDragDropSource()) {
-                                    std::string relativePath = path.string();
-                                    std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
-                                    ImGui::SetDragDropPayload("MODEL_FILE", relativePath.c_str(), relativePath.size() + 1);
-                                    ImGui::Text("Assign Model %s", filenameString.c_str());
-                                    ImGui::EndDragDropSource();
-                                }
-                            }
-                            // If the file is a Texture, make it a Drag Source
-                            else if (path.extension() == ".png" || path.extension() == ".jpg" || path.extension() == ".jpeg")
-                            {
-                                if (ImGui::BeginDragDropSource()) {
-                                    std::string relativePath = path.string();
-                                    std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
-                                    ImGui::SetDragDropPayload("TEXTURE_FILE", relativePath.c_str(), relativePath.size() + 1);
-                                    ImGui::Text("Assign Texture %s", filenameString.c_str());
-                                    ImGui::EndDragDropSource();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            ImGui::End();
-        }
     }
 }
