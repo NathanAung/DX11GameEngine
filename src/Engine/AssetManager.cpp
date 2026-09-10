@@ -4,15 +4,13 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+
 #include <filesystem>
 
 // RapidJSON includes
 #include <rapidjson/document.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
-
-#include "Engine/Scene.h"
-#include "Engine/SceneSerializer.h"
 
 namespace Engine
 {
@@ -347,68 +345,5 @@ namespace Engine
     bool AssetManager::IsInVFS(UUID handle) const
     {
         return m_vfsTable.find(handle) != m_vfsTable.end();
-    }
-
-
-    bool AssetManager::ExportProject(Engine::Scene& activeScene, std::string& outErrorMsg) const
-    {
-        if (activeScene.GetCurrentScenePath().empty())
-        {
-            outErrorMsg = "You must save the current scene before exporting the game.";
-            return false;
-        }
-
-        try {
-			// Determine the paths for the current working directory, runtime template, and export directory
-            std::filesystem::path currentPath = std::filesystem::current_path();
-            std::filesystem::path runtimeTemplate = currentPath / "RuntimeTemplate";
-            std::filesystem::path exportDir = currentPath / "ExportedGame";
-
-            // Prepare a clean export directory
-            if (std::filesystem::exists(exportDir)) {
-                std::filesystem::remove_all(exportDir);
-            }
-            std::filesystem::create_directory(exportDir);
-
-            // Serialize the scene first so the registry tracks all new scripts
-            Engine::SceneSerializer::Serialize(activeScene.GetCurrentScenePath(), activeScene);
-
-            // Generate the data.pak archive directly into the export folder
-            std::filesystem::path pakPath = exportDir / "data.pak";
-            PackAssets(pakPath.string());
-
-            // Copy the compiled runtime executable and DLLs
-            if (std::filesystem::exists(runtimeTemplate)) {
-                std::filesystem::copy(runtimeTemplate, exportDir, std::filesystem::copy_options::recursive);
-            }
-            else {
-                outErrorMsg = "RuntimeTemplate folder not found! Build the project in Visual Studio first.";
-                return false;
-            }
-
-            // Copy the enginefiles (only Launch.txt)
-            if (std::filesystem::exists(currentPath / "enginefiles" / "Launch.txt")) {
-                std::filesystem::create_directory(exportDir / "enginefiles");
-                std::filesystem::copy(currentPath / "enginefiles" / "Launch.txt", exportDir / "enginefiles" / "Launch.txt");
-            }
-
-            // Write Launch.txt inside the ExportedGame folder so it targets the correct scene
-            std::ofstream launchFile(exportDir / "enginefiles" / "Launch.txt");
-            if (launchFile.is_open()) {
-                launchFile << activeScene.GetCurrentScenePath();
-                launchFile.close();
-            }
-
-            // Open the exported folder in Windows File Explorer automatically
-#ifdef _WIN32
-            std::string openCmd = "explorer " + exportDir.string();
-            std::system(openCmd.c_str());
-#endif
-            return true;
-        }
-        catch (const std::exception& e) {
-            outErrorMsg = e.what();
-            return false;
-        }
     }
 }

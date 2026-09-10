@@ -1,6 +1,5 @@
 #pragma once
 #include <DirectXMath.h>
-#include <DirectXCollision.h>
 
 namespace Engine::Math
 {
@@ -98,17 +97,5 @@ namespace Engine::Math
         XMStoreFloat3(&ray.origin, nearPoint);
         XMStoreFloat3(&ray.direction, dir);
         return ray;
-    }
-
-	// Check if a ray intersects with an Oriented Bounding Box (OBB) defined by its position, scale, and rotation.
-    inline bool RayIntersectsOBB(const Ray& ray, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& scale, const DirectX::XMFLOAT4& rotation, float& outDistance)
-    {
-        DirectX::BoundingOrientedBox obb;
-        obb.Center = position;
-        // Assuming a standard 1x1x1 unit volume, half-extents are 0.5 * scale
-        obb.Extents = DirectX::XMFLOAT3(scale.x * 0.5f, scale.y * 0.5f, scale.z * 0.5f);
-        obb.Orientation = rotation;
-
-        return obb.Intersects(DirectX::XMLoadFloat3(&ray.origin), DirectX::XMLoadFloat3(&ray.direction), outDistance);
     }
 }

@@ -8,8 +8,6 @@
 
 namespace Engine
 {
-    class Scene;
-
     enum class AssetType
     {
         None = 0,
@@ -82,9 +80,6 @@ namespace Engine
 
         // Checks if an asset currently exists inside the mounted VFS
         bool IsInVFS(UUID handle) const;
-
-        // Centralized project export pipeline
-        bool ExportProject(Engine::Scene& activeScene, std::string& outErrorMsg) const;
 
     private:
 		// Internal registry mapping UUIDs to their corresponding asset metadata
