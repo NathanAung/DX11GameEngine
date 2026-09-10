@@ -1490,7 +1490,7 @@ namespace Engine
                                         for (const auto& [uuid, meta] : scene.GetAssetManager()->GetRegistry())
                                         {
                                             // Load custom models
-                                            if (meta.type == Engine::AssetType::ModelFile && meta.filepath.find(".mtl") == std::string::npos) {
+                                            if (meta.type == Engine::AssetType::ModelFile) {
                                                 meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), meta.filepath);
                                             }
                                             // Load custom textures

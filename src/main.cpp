@@ -1,5 +1,4 @@
 #include <fstream>
-#include <iostream>
 #include "Engine/Core.h"
 #include "Engine/UUID.h"
 #include "Engine/AssetManager.h"
@@ -262,27 +261,14 @@ static void LoadContent()
 // Preloads all game assets into VRAM to reduce runtime loading stutter. This is especially useful for large models and textures.
 static void PreloadGameAssets()
 {
-    // Snapshot the assets we need to load to avoid iterator invalidation
-    std::vector<Engine::AssetMetadata> loadSnapshot;
-
+    // Iterate through the entire Asset Ledger and push physical files to VRAM
     for (const auto& [uuid, meta] : g_assetManager.GetRegistry())
     {
-        // Only snapshot the types we actively want to push to VRAM
-        if (meta.type == Engine::AssetType::ModelFile || meta.type == Engine::AssetType::Texture)
-        {
-            loadSnapshot.push_back(meta);
-        }
-    }
-
-	// Iterate safely through the isolated snapshot and push physical files to VRAM
-    for (const auto& meta : loadSnapshot)
-    {
-		// Skip .mtl files since they are loaded automatically by Assimp when loading the corresponding .obj model
-        if (meta.type == Engine::AssetType::ModelFile && meta.filepath.find(".mtl") == std::string::npos) {
+        if (meta.type == Engine::AssetType::ModelFile) {
             g_meshManager.LoadModel(g_renderer.GetDevice(), g_assetManager, meta.filepath);
         }
-        else if (meta.type == Engine::AssetType::Texture){
-            if (meta.filepath.find("primitive://") == std::string::npos && meta.filepath.find("cubemap://") == std::string::npos){
+        else if (meta.type == Engine::AssetType::Texture) {
+            if (meta.filepath.find("primitive://") == std::string::npos && meta.filepath.find("cubemap://") == std::string::npos) {
                 g_textureManager.LoadTexture(g_renderer.GetDevice(), g_assetManager, meta.filepath);
             }
         }
@@ -392,14 +378,6 @@ int main(int argc, char** argv)
     g_assetManager.LoadRegistry("enginefiles/AssetRegistry.json");
 
     try {
-#ifdef DIST_BUILD
-        // GAME MODE:
-        // Mount the packed binary archive first before attempting to load any assets
-        if (!g_assetManager.MountVFS("data.pak"))
-        {
-            throw std::runtime_error("Failed to mount data.pak archive! Ensure it was exported correctly.");
-        }
-#endif
         // Always load core shaders and primitives, regardless of build type
         LoadCoreAssets();
 
@@ -408,6 +386,13 @@ int main(int argc, char** argv)
         LoadContent();
 #else
         // GAME MODE:
+        
+        // Mount the packed binary archive instead of relying on loose files
+        if (!g_assetManager.MountVFS("data.pak"))
+        {
+            throw std::runtime_error("Failed to mount data.pak archive! Ensure it was exported correctly.");
+        }
+
         // Pre-load all external assets from the registry into VRAM
         PreloadGameAssets();
 
@@ -454,10 +439,6 @@ int main(int argc, char** argv)
     catch (const std::exception& e)
     {
         std::fprintf(stderr, "Content load failed: %s\n", e.what());
-		// pause and wait for user input before closing the console window (useful for debugging)
-		std::fprintf(stderr, "Press Enter to exit...");
-		std::cin.get();
-
         g_audioManager.Shutdown();
         g_physicsManager.Shutdown();
 

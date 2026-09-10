@@ -306,10 +306,4 @@ namespace Engine
 
         return buffer;
     }
-
-
-    bool AssetManager::IsInVFS(UUID handle) const
-    {
-        return m_vfsTable.find(handle) != m_vfsTable.end();
-    }
 }
