@@ -426,10 +426,10 @@ namespace Engine
 						std::filesystem::copy(currentPath / "enginefiles" / "Launch.txt", exportDir / "enginefiles" / "Launch.txt");
 					}
 
-                    //// Copy shaders (required for rendering)
-                    //if (std::filesystem::exists(currentPath / "shaders")) {
-                    //    std::filesystem::copy(currentPath / "shaders", exportDir / "shaders", std::filesystem::copy_options::recursive);
-                    //}
+                    // Copy shaders (required for rendering)
+                    if (std::filesystem::exists(currentPath / "shaders")) {
+                        std::filesystem::copy(currentPath / "shaders", exportDir / "shaders", std::filesystem::copy_options::recursive);
+                    }
 
                     // Write Launch.txt inside the ExportedGame folder so it targets the correct scene
                     if (!scene.GetCurrentScenePath().empty()) {
