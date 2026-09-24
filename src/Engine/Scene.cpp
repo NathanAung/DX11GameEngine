@@ -8,6 +8,9 @@
 #include "Engine/ScriptEntity.h"
 #include "Engine/Systems.h"
 #include "Engine/MathUtils.h"
+#include "Engine/Renderer.h"
+#include "Engine/MeshManager.h"
+#include <filesystem>
 
 using namespace DirectX;
 
@@ -694,5 +697,43 @@ namespace Engine
         }
 
         return hitEntity;
+    }
+
+
+    entt::entity Scene::InstantiateModel(const std::string& filepath, Engine::Renderer& renderer, Engine::MeshManager& meshManager)
+    {
+        if (!m_assetManager) return entt::null;
+
+        // Trigger the MeshManager to parse the file via Assimp.
+        // This will return an array of UUIDs representing the separated sub-meshes.
+        std::vector<Engine::UUID> loadedMeshes = meshManager.LoadModel(renderer.GetDevice(), *m_assetManager, filepath);
+
+        if (loadedMeshes.empty()) return entt::null;
+
+        // Create the Parent Entity
+        // We extract the filename (e.g., "model") to name the parent logically.
+        std::string modelName = std::filesystem::path(filepath).stem().string();
+        entt::entity parentEntity = CreateEntity(modelName);
+
+        // Iterate through all discovered sub-meshes and generate children
+        for (size_t i = 0; i < loadedMeshes.size(); ++i)
+        {
+            // Name the child dynamically (e.g., "model_mesh_0")
+            std::string childName = modelName + "_mesh_" + std::to_string(i);
+            entt::entity childEntity = CreateEntity(childName);
+
+            // Attach a MeshRenderer to the child and assign the specific sub-mesh UUID
+            auto& mr = registry.emplace<MeshRendererComponent>(childEntity);
+            mr.meshID = loadedMeshes[i];
+
+            // Set a default material so it renders visibly
+            mr.matType = MaterialType::LitColor;
+            mr.baseColor = DirectX::XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+
+            // Snap the child to the parent hierarchy
+            ParentEntity(childEntity, parentEntity);
+        }
+
+        return parentEntity;
     }
 }

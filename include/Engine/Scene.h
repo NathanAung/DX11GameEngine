@@ -16,6 +16,8 @@ namespace Engine
     class InputManager;
     class AudioManager;
 	class AssetManager;
+    class Renderer;
+    class MeshManager;
 
     class Scene
     {
@@ -92,6 +94,9 @@ namespace Engine
 		UUID GetDefaultShaderID() const { return m_defaultShaderID; }
         UUID GetDebugShaderID() const { return m_debugShaderID; }
         UUID GetSkyboxShaderID() const { return m_skyboxShaderID; }
+
+        // Generates a parent entity and child sub-meshes for imported files (.obj, .gltf, .fbx)
+        entt::entity InstantiateModel(const std::string& filepath, Engine::Renderer& renderer, Engine::MeshManager& meshManager);
 
         // Intrusive hierarchy helpers
         void ParentEntity(entt::entity child, entt::entity parent);

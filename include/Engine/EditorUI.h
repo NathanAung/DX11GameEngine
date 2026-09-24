@@ -80,7 +80,7 @@ namespace Engine
         void DrawContentBrowser(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::PhysicsManager& physicsManager);
 
 		// Draws the Hierarchy panel, displaying the scene's entity hierarchy and allowing users to select, manipulate, and delete entities, while also handling user interactions and updating the selected entity state.
-        void DrawHierarchy(Engine::Scene& scene, Engine::PhysicsManager& physicsManager);
+        void DrawHierarchy(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::PhysicsManager& physicsManager);
         
 		// Draws the Inspector panel, displaying the properties of the selected entity and allowing users to modify its components, while also handling user interactions and updating the scene accordingly.
         void DrawInspector(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::PhysicsManager& physicsManager);

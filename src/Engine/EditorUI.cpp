@@ -111,7 +111,7 @@ namespace Engine
 
 		// Only show these windows in Edit mode
         if (m_state == EditorState::Edit) {
-            DrawHierarchy(scene, physicsManager);
+            DrawHierarchy(scene, renderer, meshManager, physicsManager);
             DrawInspector(scene, renderer, meshManager, textureManager, physicsManager);
             DrawContentBrowser(scene, renderer, meshManager, textureManager, physicsManager);
         }
@@ -515,13 +515,13 @@ namespace Engine
                             }
                         }
                         // If the file is a 3D Model, make it a Drag Source
-                        else if (path.extension() == ".obj")
+                        else if (path.extension() == ".obj" || path.extension() == ".fbx" || path.extension() == ".gltf" || path.extension() == ".glb")
                         {
                             if (ImGui::BeginDragDropSource()) {
                                 std::string relativePath = path.string();
                                 std::replace(relativePath.begin(), relativePath.end(), '\\', '/');
                                 ImGui::SetDragDropPayload("MODEL_FILE", relativePath.c_str(), relativePath.size() + 1);
-                                ImGui::Text("Assign Model %s", filenameString.c_str());
+                                ImGui::Text("Instantiate Model %s", filenameString.c_str());
                                 ImGui::EndDragDropSource();
                             }
                         }
@@ -544,7 +544,7 @@ namespace Engine
     }
 
 
-    void EditorUI::DrawHierarchy(Engine::Scene& scene, Engine::PhysicsManager& physicsManager)
+    void EditorUI::DrawHierarchy(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::PhysicsManager& physicsManager)
     {
         ImGui::Begin("Hierarchy");
         {
@@ -623,6 +623,15 @@ namespace Engine
                         entt::entity droppedEntity = *(const entt::entity*)payload->Data;
                         scene.UnparentEntity(droppedEntity);
                     }
+
+                    // Handle dropping new 3D models into the scene
+                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE")) {
+                        const char* droppedPath = (const char*)payload->Data;
+
+						// Instantiate the model in the scene at the origin with the child meshes if present
+                        scene.InstantiateModel(droppedPath, renderer, meshManager);
+                    }
+
                     ImGui::EndDragDropTarget();
                 }
             }
@@ -913,44 +922,6 @@ namespace Engine
                             if (currentMeshIdx == 0) mr.meshID = scene.GetCubeMeshID();
                             else if (currentMeshIdx == 1) mr.meshID = scene.GetSphereMeshID();
                             else if (currentMeshIdx == 2) mr.meshID = scene.GetCapsuleMeshID();
-                        }
-
-                        // MODEL DROP TARGET
-                        if (ImGui::BeginDragDropTarget())
-                        {
-                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MODEL_FILE"))
-                            {
-                                const char* droppedPath = (const char*)payload->Data;
-                                if (scene.GetAssetManager())
-                                {
-                                    // Load the model through the MeshManager to trigger DirectX creation & Asset Registry
-                                    std::vector<Engine::UUID> loadedMeshes = meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
-
-                                    // A single .obj might contain multiple meshes. We assign the first one to the entity.
-                                    if (!loadedMeshes.empty()) {
-                                        mr.meshID = loadedMeshes[0];
-
-                                        // PHYSICS SYNC
-                                        // If this entity has a Mesh Collider, we must update it and rebuild the Jolt body
-                                        if (scene.registry.all_of<Engine::RigidBodyComponent>(m_selectedEntity)) {
-                                            auto& rb = scene.registry.get<Engine::RigidBodyComponent>(m_selectedEntity);
-
-                                            if (rb.shape == Engine::RBShape::Mesh) {
-                                                rb.meshID = loadedMeshes[0]; // Sync the physics ID to the new visual ID
-
-                                                // Destroy the old Jolt body. 
-                                                // The PhysicsSystem will detect the invalid ID and automatically regenerate it next frame
-                                                if (!rb.bodyID.IsInvalid()) {
-                                                    physicsManager.RemoveRigidBody(rb.bodyID);
-                                                    rb.bodyID = JPH::BodyID();
-                                                    rb.bodyCreated = false;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            ImGui::EndDragDropTarget();
                         }
 
                         // Material Settings
