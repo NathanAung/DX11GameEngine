@@ -24,6 +24,7 @@ namespace Engine
         DirectX::XMFLOAT3 position;
         DirectX::XMFLOAT3 normal;    // per-vertex normal
         DirectX::XMFLOAT2 texCoord;  // per-vertex UV
+		DirectX::XMFLOAT3 tangent;   // per-vertex tangent
     };
 
     // Structure to hold mesh buffers

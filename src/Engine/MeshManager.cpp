@@ -176,21 +176,21 @@ namespace Engine
         if (m_meshes.find(assetID) != m_meshes.end()) return assetID;
 
         const float s = 0.5f;
-        // 24 vertices (4 per face * 6 faces), with positions, normals, and UVs
+        // 24 vertices (4 per face * 6 faces), with positions, normals, UVs, and default tangents
         std::vector<Vertex> vertices =
         {
             // +Z (front)
-            {{-s,-s,+s},{0,0,1},{0,1}}, {{-s,+s,+s},{0,0,1},{0,0}}, {{+s,+s,+s},{0,0,1},{1,0}}, {{+s,-s,+s},{0,0,1},{1,1}},
+            {{-s,-s,+s},{0,0,1},{0,1},{1,0,0}}, {{-s,+s,+s},{0,0,1},{0,0},{1,0,0}}, {{+s,+s,+s},{0,0,1},{1,0},{1,0,0}}, {{+s,-s,+s},{0,0,1},{1,1},{1,0,0}},
             // -Z (back)
-            {{+s,-s,-s},{0,0,-1},{0,1}}, {{+s,+s,-s},{0,0,-1},{0,0}}, {{-s,+s,-s},{0,0,-1},{1,0}}, {{-s,-s,-s},{0,0,-1},{1,1}},
+            {{+s,-s,-s},{0,0,-1},{0,1},{1,0,0}}, {{+s,+s,-s},{0,0,-1},{0,0},{1,0,0}}, {{-s,+s,-s},{0,0,-1},{1,0},{1,0,0}}, {{-s,-s,-s},{0,0,-1},{1,1},{1,0,0}},
             // +X (right)
-            {{+s,-s,+s},{1,0,0},{0,1}}, {{+s,+s,+s},{1,0,0},{0,0}}, {{+s,+s,-s},{1,0,0},{1,0}}, {{+s,-s,-s},{1,0,0},{1,1}},
+            {{+s,-s,+s},{1,0,0},{0,1},{0,0,-1}}, {{+s,+s,+s},{1,0,0},{0,0},{0,0,-1}}, {{+s,+s,-s},{1,0,0},{1,0},{0,0,-1}}, {{+s,-s,-s},{1,0,0},{1,1},{0,0,-1}},
             // -X (left)
-            {{-s,-s,-s},{-1,0,0},{0,1}}, {{-s,+s,-s},{-1,0,0},{0,0}}, {{-s,+s,+s},{-1,0,0},{1,0}}, {{-s,-s,+s},{-1,0,0},{1,1}},
+            {{-s,-s,-s},{-1,0,0},{0,1},{0,0,1}}, {{-s,+s,-s},{-1,0,0},{0,0},{0,0,1}}, {{-s,+s,+s},{-1,0,0},{1,0},{0,0,1}}, {{-s,-s,+s},{-1,0,0},{1,1},{0,0,1}},
             // +Y (top)
-            {{-s,+s,+s},{0,1,0},{0,1}}, {{-s,+s,-s},{0,1,0},{0,0}}, {{+s,+s,-s},{0,1,0},{1,0}}, {{+s,+s,+s},{0,1,0},{1,1}},
+            {{-s,+s,+s},{0,1,0},{0,1},{1,0,0}}, {{-s,+s,-s},{0,1,0},{0,0},{1,0,0}}, {{+s,+s,-s},{0,1,0},{1,0},{1,0,0}}, {{+s,+s,+s},{0,1,0},{1,1},{1,0,0}},
             // -Y (bottom)
-            {{-s,-s,-s},{0,-1,0},{0,1}}, {{-s,-s,+s},{0,-1,0},{0,0}}, {{+s,-s,+s},{0,-1,0},{1,0}}, {{+s,-s,-s},{0,-1,0},{1,1}},
+            {{-s,-s,-s},{0,-1,0},{0,1},{1,0,0}}, {{-s,-s,+s},{0,-1,0},{0,0},{1,0,0}}, {{+s,-s,+s},{0,-1,0},{1,0},{1,0,0}}, {{+s,-s,-s},{0,-1,0},{1,1},{1,0,0}},
         };
 
         // 36 indices (2 triangles per face * 3 indices per triangle * 6 faces)
@@ -282,7 +282,8 @@ namespace Engine
                                     aiProcess_FlipUVs | 
                                     aiProcess_MakeLeftHanded | 
                                     aiProcess_FlipWindingOrder |
-                                    aiProcess_PreTransformVertices;
+                                    aiProcess_PreTransformVertices |
+                                    aiProcess_CalcTangentSpace;
 
         // Read the asset from the virtual file system (VFS)
         Engine::UUID handle = assetManager.ImportAsset(filename, Engine::AssetType::ModelFile);
@@ -364,12 +365,27 @@ namespace Engine
             // Position
             if (mesh->mVertices) v.position = XMFLOAT3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
             else v.position = XMFLOAT3(0, 0, 0);
+
             // Normal
             if (mesh->mNormals) v.normal = XMFLOAT3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
             else v.normal = XMFLOAT3(0, 0, 1);   // default normal
+
             // TexCoord (first channel)
             if (mesh->mTextureCoords[0]) v.texCoord = XMFLOAT2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
             else v.texCoord = XMFLOAT2(0.0f, 0.0f);
+
+            // Tangent
+            if (mesh->HasTangentsAndBitangents())
+            {
+                v.tangent.x = mesh->mTangents[i].x;
+                v.tangent.y = mesh->mTangents[i].y;
+                v.tangent.z = mesh->mTangents[i].z;
+            }
+            else
+            {
+                // Fallback if the model has no UVs and therefore no tangents
+                v.tangent = DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f);
+            }
 
             vertices.push_back(v);
         }
@@ -469,7 +485,7 @@ namespace Engine
                 float u = theta / twoPi;
                 float v = phi / pi;
 
-                vertices.push_back(Vertex{ pos, normal, XMFLOAT2(u, v) });
+                vertices.push_back(Vertex{ pos, normal, XMFLOAT2(u, v), DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f) });
             }
         }
 
@@ -538,7 +554,7 @@ namespace Engine
                 float u = theta / twoPi;
                 float v = (phi) / pi;   // map top hemi v [0..0.5]
 
-                vertices.push_back(Vertex{ pos, normal, XMFLOAT2(u, v) });
+                vertices.push_back(Vertex{ pos, normal, XMFLOAT2(u, v), DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f) });
             }
         }
 
@@ -556,7 +572,7 @@ namespace Engine
                 float u = eqV.texCoord.x;
                 float v = 0.5f;
 
-                vertices.push_back(Vertex{ pos, normal, XMFLOAT2(u, v) });
+                vertices.push_back(Vertex{ pos, normal, XMFLOAT2(u, v), DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f) });
             }
         }
 
@@ -579,7 +595,7 @@ namespace Engine
                 float u = theta / twoPi;
                 float v = phi / pi;
 
-                vertices.push_back(Vertex{ pos, normal, XMFLOAT2(u, v) });
+                vertices.push_back(Vertex{ pos, normal, XMFLOAT2(u, v), DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f) });
             }
         }
 

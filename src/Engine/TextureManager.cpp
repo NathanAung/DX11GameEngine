@@ -50,7 +50,7 @@ namespace Engine
         if (!imgData)
         {
             std::cerr << "TextureManager Failed to load: " << filepath << std::endl;
-            return m_defaultUUID;   // fallback to white pixel if loading fails
+            return m_defaultTextureID;   // fallback to white pixel if loading fails
         }
 
         // D3D11 Texture Description
@@ -82,7 +82,7 @@ namespace Engine
 
         if (FAILED(hr))
         {
-            return m_defaultUUID;   // fallback to white pixel if creation fails
+            return m_defaultTextureID;   // fallback to white pixel if creation fails
         }
 
         // Shader Resource View (SRV) Description
@@ -97,7 +97,7 @@ namespace Engine
         hr = device->CreateShaderResourceView(texture.Get(), &srvDesc, srv.GetAddressOf());
         if (FAILED(hr))
         {
-            return m_defaultUUID;   // fallback to white pixel if SRV creation fails
+            return m_defaultTextureID;   // fallback to white pixel if SRV creation fails
         }
 
         // Register safely in memory pool (ComPtr increments reference count here)
@@ -110,74 +110,32 @@ namespace Engine
 
     UUID TextureManager::CreateDefaultTexture(ID3D11Device* device, Engine::AssetManager& assetManager)
     {
-        // Register a virtual path for the primitive texture
-        // a primitive path is used to avoid conflicts with real file paths
-        UUID assetID = assetManager.ImportAsset("primitive://default_texture", Engine::AssetType::Texture);
+        // Default Albedo (White)
+        m_defaultTextureID = Create1x1Texture(device, assetManager, "primitive://white", 255, 255, 255, 255);
 
-        // Memory Pool Check
-        if (m_textures.find(assetID) != m_textures.end()) return assetID;
+        // Default Normal Map (Flat Tangent-Space Z-up)
+        // RGB(128, 128, 255) maps mathematically to XYZ(0, 0, 1)
+        m_defaultNormalID = Create1x1Texture(device, assetManager, "primitive://default_normal", 128, 128, 255, 255);
 
-        // 1x1 White Pixel (RGBA: 255, 255, 255, 255)
-        const uint32_t pixel = 0xFFFFFFFF;
+        // Default ORM Map (Occlusion, Roughness, Metallic)
+        // Occlusion = 255 (Full white, no shadowing)
+        // Roughness = 128 (Mid-gray, 50% rough)
+        // Metallic  = 0   (Black, fully dielectric/non-metal)
+        m_defaultORMID = Create1x1Texture(device, assetManager, "primitive://default_orm", 255, 128, 0, 255);
 
-        // Texture Description
-        D3D11_TEXTURE2D_DESC texDesc{};
-        texDesc.Width = 1;
-        texDesc.Height = 1;
-        texDesc.MipLevels = 1;
-        texDesc.ArraySize = 1;
-        texDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-        texDesc.SampleDesc.Count = 1;
-        texDesc.SampleDesc.Quality = 0;
-        texDesc.Usage = D3D11_USAGE_DEFAULT;
-        texDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-
-        // Initialize with the white pixel data
-        D3D11_SUBRESOURCE_DATA initData{};
-        initData.pSysMem = &pixel;
-        initData.SysMemPitch = sizeof(uint32_t);    // 4 bytes for 1 pixel
-        initData.SysMemSlicePitch = 0;
-
-        // Create Texture2D
-        ComPtr<ID3D11Texture2D> texture;
-        HRESULT hr = device->CreateTexture2D(&texDesc, &initData, texture.GetAddressOf());
-        if (FAILED(hr))
-        {
-            std::cerr << "Failed to create default texture." << std::endl;
-            return 0;   // fallback to invalid UUID if creation fails
+        // Keep the legacy fallback pointer assigned just in case GetTexture() needs it
+        if (m_textures.find(m_defaultTextureID) != m_textures.end()) {
+            m_defaultSRV = m_textures[m_defaultTextureID];
         }
 
-        // Create Shader Resource View (SRV) for the texture
-        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-        srvDesc.Format = texDesc.Format;
-        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-        srvDesc.Texture2D.MostDetailedMip = 0;
-        srvDesc.Texture2D.MipLevels = 1;
-
-        // Create the SRV for the texture
-        ComPtr<ID3D11ShaderResourceView> srv;
-        hr = device->CreateShaderResourceView(texture.Get(), &srvDesc, srv.GetAddressOf());
-        if (FAILED(hr))
-        {
-            std::cerr << "Failed to create default texture SRV." << std::endl;
-            return 0;   // fallback to invalid UUID if SRV creation fails
-        }
-
-        // Register in memory pool
-        m_textures[assetID] = srv;
-        m_defaultSRV = srv;
-        m_defaultUUID = assetID;
-
-        assetManager.SetAssetLoaded(assetID, true);
-
-        return assetID;
+        return m_defaultTextureID;
     }
 
 
     UUID TextureManager::LoadCubemap(ID3D11Device* device, Engine::AssetManager& assetManager, const std::vector<std::string>& filepaths)
     {
         // Expect exactly 6 faces: +X, -X, +Y, -Y, +Z, -Z
-        if (filepaths.size() != 6) return m_defaultUUID;
+        if (filepaths.size() != 6) return m_defaultTextureID;
 
         // Use the first face's path as the identifier for the whole cubemap
         std::string virtualPath = "cubemap://" + filepaths[0];
@@ -226,7 +184,7 @@ namespace Engine
             {
                 std::cerr << "TextureManager Failed to load cubemap face: " << filepaths[i] << std::endl;
                 for (int j = 0; j < i; ++j) stbi_image_free(images[j]); // Cleanup previous faces
-                return m_defaultUUID;
+                return m_defaultTextureID;
             }
 
             // Set the texture description only once, using the dimensions of the first face
@@ -256,7 +214,7 @@ namespace Engine
 		// Cleanup staging resources
         for (int i = 0; i < 6; ++i) stbi_image_free(images[i]);
 
-        if (FAILED(hr)) return m_defaultUUID;
+        if (FAILED(hr)) return m_defaultTextureID;
 
         // Shader Resource View (SRV) Description for Cubemap
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
@@ -269,7 +227,7 @@ namespace Engine
         ComPtr<ID3D11ShaderResourceView> srv;
         hr = device->CreateShaderResourceView(texture.Get(), &srvDesc, srv.GetAddressOf());
 
-        if (FAILED(hr)) return m_defaultUUID;
+        if (FAILED(hr)) return m_defaultTextureID;
 
         // Register in memory pool
         m_textures[assetID] = srv;
@@ -289,5 +247,48 @@ namespace Engine
             return it->second.Get();
         }
         return m_defaultSRV.Get();
+    }
+
+
+    UUID TextureManager::Create1x1Texture(ID3D11Device* device, Engine::AssetManager& assetManager, const std::string& virtualPath, uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+    {
+        UUID assetID = assetManager.ImportAsset(virtualPath, Engine::AssetType::Texture);
+        if (m_textures.find(assetID) != m_textures.end()) return assetID;
+
+        // 1 pixel color data
+        uint32_t pixel = (a << 24) | (b << 16) | (g << 8) | r;
+
+        D3D11_TEXTURE2D_DESC desc{};
+        desc.Width = 1;
+        desc.Height = 1;
+        desc.MipLevels = 1;
+        desc.ArraySize = 1;
+        desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        desc.SampleDesc.Count = 1;
+        desc.Usage = D3D11_USAGE_IMMUTABLE;
+        desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+        D3D11_SUBRESOURCE_DATA initData{};
+        initData.pSysMem = &pixel;
+        initData.SysMemPitch = 4; // 4 bytes per row
+
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> tex;
+        HRESULT hr = device->CreateTexture2D(&desc, &initData, tex.GetAddressOf());
+        if (FAILED(hr)) return 0;
+
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = desc.Format;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+        srvDesc.Texture2D.MipLevels = 1;
+
+        // Store directly into a ComPtr instead of TextureData
+        Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+        hr = device->CreateShaderResourceView(tex.Get(), &srvDesc, srv.GetAddressOf());
+        if (FAILED(hr)) return 0;
+
+        m_textures[assetID] = srv;
+        assetManager.SetAssetLoaded(assetID, true);
+
+        return assetID;
     }
 }

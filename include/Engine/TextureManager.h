@@ -25,14 +25,23 @@ namespace Engine
 
 		// Fetching uses the UUID to retrieve the corresponding SRV from the cache
         ID3D11ShaderResourceView* GetTexture(UUID uuid) const;
-        ID3D11ShaderResourceView* GetDefaultTexture() const { return m_defaultSRV.Get(); }
+
+		// Accessors for default texture UUIDs
+        UUID GetDefaultTexture() const { return m_defaultTextureID; }
+        UUID GetDefaultNormalMap() const { return m_defaultNormalID; }
+        UUID GetDefaultORMMap() const { return m_defaultORMID; }
 
     private:
         // The master memory pool for textures (Safely managed by ComPtr)
         std::unordered_map<UUID, Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>> m_textures;
 
-		// Cache mapping filenames to UUIDs for quick lookup
+        // Cache mapping filenames to UUIDs for quick lookup
         Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_defaultSRV;
-        UUID m_defaultUUID = 0;
+        UUID m_defaultTextureID = 0;
+        UUID m_defaultNormalID = 0;
+        UUID m_defaultORMID = 0;
+
+        // Helper to create a 1x1 pixel texture dynamically
+        UUID Create1x1Texture(ID3D11Device* device, Engine::AssetManager& assetManager, const std::string& virtualPath, uint8_t r, uint8_t g, uint8_t b, uint8_t a);
     };
 }

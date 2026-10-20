@@ -369,7 +369,7 @@ namespace Engine
                     renderer.BindShader(shaderManager, scene.GetDefaultShaderID());
 
                     // Bind a default 1x1 white texture so the color isn't tinted black
-                    ID3D11ShaderResourceView* defaultTex = textureManager.GetDefaultTexture();
+                    ID3D11ShaderResourceView* defaultTex = textureManager.GetTexture(textureManager.GetDefaultTexture());
                     context->PSSetShaderResources(0, 1, &defaultTex);
 
                     // Update PBR material constants (PS b4)
@@ -399,7 +399,7 @@ namespace Engine
                     }
                     else
                     {
-                        ID3D11ShaderResourceView* defaultTex = textureManager.GetDefaultTexture();
+                        ID3D11ShaderResourceView* defaultTex = textureManager.GetTexture(textureManager.GetDefaultTexture());
                         context->PSSetShaderResources(0, 1, &defaultTex);
                     }
 
