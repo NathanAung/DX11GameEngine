@@ -281,7 +281,8 @@ namespace Engine
         const unsigned int flags = aiProcess_Triangulate | 
                                     aiProcess_FlipUVs | 
                                     aiProcess_MakeLeftHanded | 
-                                    aiProcess_FlipWindingOrder;
+                                    aiProcess_FlipWindingOrder |
+                                    aiProcess_PreTransformVertices;
 
         // Read the asset from the virtual file system (VFS)
         Engine::UUID handle = assetManager.ImportAsset(filename, Engine::AssetType::ModelFile);
