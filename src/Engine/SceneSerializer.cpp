@@ -65,7 +65,9 @@ namespace Engine
                     writer.StartObject();
                     writer.Key("IsActive"); writer.Bool(mr.isActive);
                     writer.Key("MeshID"); writer.Uint64(mr.meshID);
-                    writer.Key("TextureID"); writer.Uint64(mr.textureID);
+                    writer.Key("albedoMapID"); writer.Uint64(mr.albedoMapID);
+                    writer.Key("normalMapID"); writer.Uint64(mr.normalMapID);
+                    writer.Key("ormMapID"); writer.Uint64(mr.ormMapID);
                     writer.Key("MatType"); writer.Int(static_cast<int>(mr.matType));
                     writer.Key("BaseColor");
                     writer.StartArray(); writer.Double(mr.baseColor.x); writer.Double(mr.baseColor.y); writer.Double(mr.baseColor.z); writer.Double(mr.baseColor.w); writer.EndArray();
@@ -287,10 +289,25 @@ namespace Engine
             const auto& item = entities[i];
 
             if (item.HasMember("MeshRendererComponent")) {
+                const auto& mrObj = item["MeshRendererComponent"];
+
                 if (!checkAsset(item["MeshRendererComponent"]["MeshID"].GetUint64())) {
                     outErrorMsg = "Missing Mesh Asset in Scene."; return false;
                 }
-                if (!checkAsset(item["MeshRendererComponent"]["TextureID"].GetUint64())) {
+
+                // Validate new PBR maps safely
+                if (mrObj.HasMember("albedoMapID") && !checkAsset(mrObj["albedoMapID"].GetUint64())) {
+                    outErrorMsg = "Missing Albedo Asset in Scene."; return false;
+                }
+                if (mrObj.HasMember("normalMapID") && !checkAsset(mrObj["normalMapID"].GetUint64())) {
+                    outErrorMsg = "Missing Normal Asset in Scene."; return false;
+                }
+                if (mrObj.HasMember("ormMapID") && !checkAsset(mrObj["ormMapID"].GetUint64())) {
+                    outErrorMsg = "Missing ORM Asset in Scene."; return false;
+                }
+
+                // Legacy fallback validation
+                if (mrObj.HasMember("TextureID") && !checkAsset(mrObj["TextureID"].GetUint64())) {
                     outErrorMsg = "Missing Texture Asset in Scene."; return false;
                 }
             }
@@ -353,16 +370,24 @@ namespace Engine
             }
 
             if (item.HasMember("MeshRendererComponent")) {
-                const auto& color = item["MeshRendererComponent"]["BaseColor"];
-                scene.registry.emplace<MeshRendererComponent>(entity, MeshRendererComponent{
-                    item["MeshRendererComponent"]["IsActive"].GetBool(),
-                    item["MeshRendererComponent"]["MeshID"].GetUint64(),
-                    item["MeshRendererComponent"]["TextureID"].GetUint64(),
-                    static_cast<MaterialType>(item["MeshRendererComponent"]["MatType"].GetInt()),
-                    DirectX::XMFLOAT4(static_cast<float>(color[0].GetDouble()), static_cast<float>(color[1].GetDouble()), static_cast<float>(color[2].GetDouble()), static_cast<float>(color[3].GetDouble())),
-                    static_cast<float>(item["MeshRendererComponent"]["Roughness"].GetDouble()),
-                    static_cast<float>(item["MeshRendererComponent"]["Metallic"].GetDouble())
-                    });
+                const auto& mrObj = item["MeshRendererComponent"];
+                const auto& color = mrObj["BaseColor"];
+
+                auto& mr = scene.registry.emplace<MeshRendererComponent>(entity);
+                mr.isActive = mrObj["IsActive"].GetBool();
+                mr.meshID = mrObj["MeshID"].GetUint64();
+                mr.matType = static_cast<MaterialType>(mrObj["MatType"].GetInt());
+                mr.baseColor = DirectX::XMFLOAT4(static_cast<float>(color[0].GetDouble()), static_cast<float>(color[1].GetDouble()), static_cast<float>(color[2].GetDouble()), static_cast<float>(color[3].GetDouble()));
+                mr.roughness = static_cast<float>(mrObj["Roughness"].GetDouble());
+                mr.metallic = static_cast<float>(mrObj["Metallic"].GetDouble());
+
+                // Load new PBR maps safely
+                if (mrObj.HasMember("albedoMapID")) mr.albedoMapID = mrObj["albedoMapID"].GetUint64();
+                if (mrObj.HasMember("normalMapID")) mr.normalMapID = mrObj["normalMapID"].GetUint64();
+                if (mrObj.HasMember("ormMapID"))    mr.ormMapID = mrObj["ormMapID"].GetUint64();
+
+                // Legacy support: map old textureID directly into the albedo slot
+                if (mrObj.HasMember("TextureID"))   mr.albedoMapID = mrObj["TextureID"].GetUint64();
             }
 
             if (item.HasMember("RigidBodyComponent")) {

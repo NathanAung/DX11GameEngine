@@ -159,7 +159,7 @@ static void LoadContent()
 
 		// example texture loading via TextureManager and AssetManager
         UUID texID = g_textureManager.LoadTexture(g_renderer.GetDevice(), g_assetManager, "assets/Textures/MyTexture.png");
-        mr.textureID = texID; // assign texture to component
+        mr.albedoMapID = texID; // assign texture to component
 		mr.matType = Engine::MaterialType::Textured; // switch to textured shader path
         // PBR value testing
         mr.roughness = 0.3f; // shiny

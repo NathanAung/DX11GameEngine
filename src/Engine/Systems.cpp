@@ -392,9 +392,9 @@ namespace Engine
                     renderer.BindShader(shaderManager, scene.GetDefaultShaderID());
 
 					// Bind the texture if available, otherwise bind a default 1x1 white texture (now looks up the texture dynamically using a UUID)
-                    if (mr.textureID != 0)
+                    if (mr.albedoMapID != 0)
                     {
-                        ID3D11ShaderResourceView* tex = textureManager.GetTexture(mr.textureID);
+                        ID3D11ShaderResourceView* tex = textureManager.GetTexture(mr.albedoMapID);
                         context->PSSetShaderResources(0, 1, &tex);
                     }
                     else

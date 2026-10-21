@@ -59,7 +59,12 @@ namespace Engine
         bool isActive = true;
 
 		UUID meshID = 0;    // Mesh asset ID
-		UUID textureID = 0; // Texture asset ID (no longer using a direct pointer to the texture resource)
+
+		// The existing textureID has now been replaced with three separate texture IDs for PBR materials
+		// Texture asset IDs for PBR materials
+		UUID albedoMapID = 0;   // Albedo/Diffuse texture
+		UUID normalMapID = 0;   // Normal map texture
+		UUID ormMapID = 0;      // Occlusion-Roughness-Metallic texture
 
         // Material switching
         MaterialType matType = MaterialType::LitColor;

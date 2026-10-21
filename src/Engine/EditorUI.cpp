@@ -664,6 +664,53 @@ namespace Engine
     {
         ImGui::Begin("Inspector");
         {
+            // HELPER LAMBDA: To draw a texture drop zone and clear button
+            auto DrawTextureSlot = [&](const char* slotName, Engine::UUID& currentTextureID)
+                {
+                    ImGui::Text("%s", slotName);
+
+                    // Fetch the human-readable filename from the UUID
+                    std::string currentTexName = "None";
+                    if (currentTextureID != 0 && scene.GetAssetManager()) {
+                        const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(currentTextureID);
+                        if (meta) {
+                            currentTexName = std::filesystem::path(meta->filepath).filename().string();
+                        }
+                    }
+
+                    // Create a visual drop zone button
+                    std::string buttonLabel = currentTexName + " (Drop Here)###" + slotName;
+
+                    // Layout: Button takes up most width, leave room for "X" clear button
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.15f, 0.15f, 1.0f));
+                    ImGui::Button(buttonLabel.c_str(), ImVec2(ImGui::GetContentRegionAvail().x - 30.0f, 30));
+                    ImGui::PopStyleColor();
+
+                    // Accept dropped files
+                    if (ImGui::BeginDragDropTarget())
+                    {
+                        if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE"))
+                        {
+                            const char* droppedPath = (const char*)payload->Data;
+                            if (scene.GetAssetManager())
+                            {
+                                // Load the texture and assign its UUID
+                                Engine::UUID newTexID = textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
+                                currentTextureID = newTexID;
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
+
+                    // Add the clear button (X)
+                    ImGui::SameLine();
+                    std::string clearLabel = "X###Clear" + std::string(slotName);
+                    if (ImGui::Button(clearLabel.c_str(), ImVec2(24, 30))) {
+                        currentTextureID = 0; // Return to fallback 1x1 pixel state
+                    }
+                };
+
+
             if (m_selectedEntity != entt::null && scene.registry.valid(m_selectedEntity))
             {
                 // NameComponent UI
@@ -945,34 +992,15 @@ namespace Engine
 
                         if (mr.matType == Engine::MaterialType::Textured)
                         {
-                            // TEXTURE DROP TARGET
-                            // Fetch the human-readable filename from the UUID to display on the UI
-                            std::string currentTexName = "None";
-                            if (mr.textureID != 0 && scene.GetAssetManager()) {
-                                const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(mr.textureID);
-                                if (meta) {
-                                    currentTexName = std::filesystem::path(meta->filepath).filename().string();
-                                }
-                            }
+                            ImGui::Spacing();
+                            ImGui::SeparatorText("PBR Textures");
 
-                            // Create a visual drop zone button that fills the width
-                            std::string buttonLabel = currentTexName + " (Drop Texture Here)";
-                            ImGui::Button(buttonLabel.c_str(), ImVec2(-1, 30));
+                            // Draw all three slots using the lambda helper
+                            DrawTextureSlot("Albedo (Color)", mr.albedoMapID);
+                            DrawTextureSlot("Normal Map", mr.normalMapID);
+                            DrawTextureSlot("ORM (Occlusion/Roughness/Metallic)", mr.ormMapID);
 
-                            if (ImGui::BeginDragDropTarget())
-                            {
-                                if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("TEXTURE_FILE"))
-                                {
-                                    const char* droppedPath = (const char*)payload->Data;
-                                    if (scene.GetAssetManager())
-                                    {
-                                        // Load the texture through the TextureManager
-                                        Engine::UUID newTexID = textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), droppedPath);
-                                        mr.textureID = newTexID;
-                                    }
-                                }
-                                ImGui::EndDragDropTarget();
-                            }
+                            ImGui::Spacing();
                         }
 
                         ImGui::TreePop();
