@@ -368,16 +368,20 @@ namespace Engine
                     // Bind the PBR Shader
                     renderer.BindShader(shaderManager, scene.GetDefaultShaderID());
 
-                    // Bind a default 1x1 white texture so the color isn't tinted black
-                    ID3D11ShaderResourceView* defaultTex = textureManager.GetTexture(textureManager.GetDefaultTexture());
-                    context->PSSetShaderResources(0, 1, &defaultTex);
+                    // Bind safe default textures to ALL 3 slots to prevent state leakage
+                    ID3D11ShaderResourceView* srvs[3] = {
+                        textureManager.GetTexture(textureManager.GetDefaultTexture()),   // t0: White Albedo
+                        textureManager.GetTexture(textureManager.GetDefaultNormalMap()), // t1: Flat Normal
+                        textureManager.GetTexture(textureManager.GetDefaultORMMap())     // t2: Default ORM
+                    };
+                    context->PSSetShaderResources(0, 3, srvs);
 
                     // Update PBR material constants (PS b4)
                     {
                         Engine::MaterialConstants mat{};
                         mat.baseColor = mr.baseColor;
                         mat.roughness = mr.roughness;
-                        mat.metallic  = mr.metallic;
+                        mat.metallic = mr.metallic;
                         renderer.UpdateMaterialConstants(mat);
                     }
 
@@ -391,24 +395,34 @@ namespace Engine
                     // Bind the PBR Shader
                     renderer.BindShader(shaderManager, scene.GetDefaultShaderID());
 
-					// Bind the texture if available, otherwise bind a default 1x1 white texture (now looks up the texture dynamically using a UUID)
-                    if (mr.albedoMapID != 0)
-                    {
-                        ID3D11ShaderResourceView* tex = textureManager.GetTexture(mr.albedoMapID);
-                        context->PSSetShaderResources(0, 1, &tex);
-                    }
-                    else
-                    {
-                        ID3D11ShaderResourceView* defaultTex = textureManager.GetTexture(textureManager.GetDefaultTexture());
-                        context->PSSetShaderResources(0, 1, &defaultTex);
-                    }
+                    // Prepare an array of 3 SRVs: Albedo, Normal, ORM
+                    ID3D11ShaderResourceView* srvs[3] = { nullptr, nullptr, nullptr };
 
-                    // Update the material buffer with baseColor white, so texture shows accurately
+                    // Albedo (t0)
+                    srvs[0] = (mr.albedoMapID != 0)
+                        ? textureManager.GetTexture(mr.albedoMapID)
+                        : textureManager.GetTexture(textureManager.GetDefaultTexture());
+
+                    // Normal (t1)
+                    srvs[1] = (mr.normalMapID != 0)
+                        ? textureManager.GetTexture(mr.normalMapID)
+                        : textureManager.GetTexture(textureManager.GetDefaultNormalMap());
+
+                    // ORM (t2)
+                    srvs[2] = (mr.ormMapID != 0)
+                        ? textureManager.GetTexture(mr.ormMapID)
+                        : textureManager.GetTexture(textureManager.GetDefaultORMMap());
+
+                    // Bind all three textures at once
+                    context->PSSetShaderResources(0, 3, srvs);
+
+                    // Update the material buffer 
+                    // The texture values are multiplied by these constants in the shader to allow tinting/scaling
                     {
                         Engine::MaterialConstants mat{};
-                        mat.baseColor = DirectX::XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+                        mat.baseColor = mr.baseColor;
                         mat.roughness = mr.roughness;
-                        mat.metallic  = mr.metallic;
+                        mat.metallic = mr.metallic;
                         renderer.UpdateMaterialConstants(mat);
                     }
 

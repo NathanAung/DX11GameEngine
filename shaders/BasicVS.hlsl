@@ -17,15 +17,17 @@ struct VSInput
     float3 position : POSITION;
     float3 normal : NORMAL;
     float2 texCoord : TEXCOORD;
+    float3 Tangent : TANGENT;
 };
 
 
 struct VSOutput
 {
     float4 position : SV_POSITION;
+    float3 worldPos : POSITION; // pass world space pos
     float3 normal : NORMAL;
     float2 texCoord : TEXCOORD;
-    float3 worldPos : POSITION; // pass world space pos
+    float3 Tangent : TANGENT;
 };
 
 
@@ -43,6 +45,9 @@ VSOutput main(VSInput input)
     // Pass through texCoord (no tangent basis transform yet)
     o.normal = normalize(mul(input.normal, (float3x3) g_World));
     o.texCoord = input.texCoord;
+    
+    // Transform tangent by World's upper-left 3x3 (rotation/scale) and normalize
+    o.Tangent = normalize(mul(input.Tangent, (float3x3) g_World));
 
     // world position for view direction
     o.worldPos = worldPos4.xyz;

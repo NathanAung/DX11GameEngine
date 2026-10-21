@@ -1,8 +1,10 @@
-Texture2D g_Texture : register(t0);
+Texture2D albedoMap : register(t0);
+Texture2D normalMap : register(t1);
+Texture2D ormMap : register(t2);
 SamplerState g_Sampler : register(s0);
 
 // Texture sampling is the process where the GPU looks up a color from a texture (an image) using UV coordinates,
-// and returns that color to your shader
+// and returns that color to the shader
 
 // Flow of pixel shader: input from vertex shader -> sample texture -> compute lighting -> output final color
 
@@ -23,9 +25,10 @@ SamplerState g_Sampler : register(s0);
 struct PSInput
 {
     float4 position : SV_POSITION;
+    float3 worldPos : POSITION; // match VSOutput
     float3 normal : NORMAL;
     float2 texCoord : TEXCOORD;
-    float3 worldPos : POSITION; // match VSOutput
+    float3 Tangent : TANGENT;
 };
 
 
@@ -137,16 +140,39 @@ float ComputeAttenuation(float distance, float range)
 float4 main(PSInput input) : SV_Target
 {
     // step 1: Sample base color (albedo)
-    float4 texColor = g_Texture.Sample(g_Sampler, input.texCoord) * baseColor;
+    float4 texColor = albedoMap.Sample(g_Sampler, input.texCoord) * baseColor;
     float3 albedo = texColor.rgb;
 
-    // step 2: compute base vectors
-    float3 N = normalize(input.normal); // normal
+    // Sample ORM map and scale by material constants
+    float3 orm = ormMap.Sample(g_Sampler, input.texCoord).rgb;
+    float ao = orm.r;
+    float roughness = orm.g * g_Roughness;
+    float metallic = orm.b * g_Metallic;
+
+    // Tangent Space Normal Mapping (TBN)
+    float3 N = normalize(input.normal);
+    float3 T = normalize(input.Tangent);
+    
+    // Gram-Schmidt orthogonalization to ensure T is perpendicular to N
+    T = normalize(T - dot(T, N) * N);
+    float3 B = cross(N, T);
+    
+    // Construct the TBN matrix to transform from tangent space to world space
+    float3x3 TBN = float3x3(T, B, N);
+
+    // Sample the normal map and convert from [0, 1] color space to [-1, 1] vector space
+    float3 sampledNormal = normalMap.Sample(g_Sampler, input.texCoord).xyz;
+    sampledNormal = sampledNormal * 2.0f - 1.0f;
+
+    // Calculate final bumped normal and overwrite N
+    N = normalize(mul(sampledNormal, TBN));
+
+    // step 2: compute view vector
     float3 V = normalize(g_CameraPos - input.worldPos); // view (camera) direction
 
-    // step 3: compute base reflectivity F0: ~0.04 for dielectrics, albedo for metals
-    // For non-metals, use constant 0.04; for metals, use albedo color
-    float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, saturate(g_Metallic));
+    // step 3: compute base reflectivity F0
+    // Use the unpacked local 'metallic' variable instead of the global 'g_Metallic'
+    float3 F0 = lerp(float3(0.04, 0.04, 0.04), albedo, saturate(metallic));
 
     // step 4: accumulate lighting from all active lights
     float3 Lo = float3(0.0, 0.0, 0.0); // outgoing light
@@ -204,9 +230,9 @@ float4 main(PSInput input) : SV_Target
         // half-vector, calculated as the normalized sum of view and light directions
         float3 H = normalize(V + L);
         // Distribution term, describes microfacet orientation
-        float D = DistributionGGX(N, H, g_Roughness);
+        float D = DistributionGGX(N, H, roughness);
         // Geometry term, accounts for shadowing/masking
-        float G = GeometrySmith(N, V, L, g_Roughness);
+        float G = GeometrySmith(N, V, L, roughness);
         // cosine of angle between normal and view direction, for energy conservation
         float NdotV = saturate(dot(N, V));
         // cosine of angle between normal and light direction, for energy conservation
@@ -224,7 +250,7 @@ float4 main(PSInput input) : SV_Target
         // Energy conservation; ensures that the surface does not reflect more light than it receives
         float3 kS = F; // specular reflection component
         float3 kD = 1.0 - kS; // diffuse reflection component
-        kD *= (1.0 - saturate(g_Metallic)); // metals have no diffuse
+        kD *= (1.0 - saturate(metallic));
 
         // Lambertian diffuse term, scaled by albedo and PI 
         float3 diffuse = (kD * albedo) / PI;
@@ -233,8 +259,8 @@ float4 main(PSInput input) : SV_Target
         Lo += (diffuse + specular) * radiance * NdotL;
     }
 
-    // step 5: add a small ambient term to avoid pure black in unlit areas
-    float3 ambient = 0.03 * albedo;
+    // step 5: add a small ambient term, shadowed by ambient occlusion
+    float3 ambient = 0.03 * albedo * ao; // Multiplied by ao
     float3 color = ambient + Lo;
 
     return float4(color, texColor.a);
