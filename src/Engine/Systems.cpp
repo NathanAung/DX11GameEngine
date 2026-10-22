@@ -11,7 +11,9 @@
 #include "Engine/TextureManager.h"
 #include "Engine/ScriptEntity.h"
 #include <DirectXMath.h>
+#include <DirectXCollision.h>
 #include <Jolt/Physics/Body/BodyInterface.h>
+#include <algorithm>
 
 using namespace DirectX;
 
@@ -248,30 +250,56 @@ namespace Engine
                 context->PSSetSamplers(0, 1, &sampler);
             }
 
-            // Global lights update: collect up to MAX_LIGHTS
+            // Global lights update: collect, cull, sort, and upload up to MAX_LIGHTS
             {
                 Engine::LightConstants lc{};
                 lc.lightCount = 0;
 
-                // Camera position for specular calculations
+                DirectX::BoundingFrustum frustum;
+                bool hasCamera = false;
+
+                // Camera position for specular calculations and distance sorting
                 if (scene.m_activeRenderCamera != entt::null &&
                     scene.registry.valid(scene.m_activeRenderCamera) &&
-                    scene.registry.all_of<TransformComponent>(scene.m_activeRenderCamera))
+                    scene.registry.all_of<TransformComponent, CameraComponent, ViewportComponent>(scene.m_activeRenderCamera))
                 {
                     const auto& camTf = scene.registry.get<TransformComponent>(scene.m_activeRenderCamera);
+                    const auto& camc = scene.registry.get<CameraComponent>(scene.m_activeRenderCamera);
+                    const auto& vp = scene.registry.get<ViewportComponent>(scene.m_activeRenderCamera);
+
                     lc.cameraPos = camTf.position;
+                    hasCamera = true;
+
+                    // Build camera matrices to create the culling frustum
+                    XMVECTOR qn = XMQuaternionNormalize(XMLoadFloat4(&camTf.rotation));
+                    XMMATRIX R = XMMatrixRotationQuaternion(qn);
+                    XMMATRIX T = XMMatrixTranslation(camTf.position.x, camTf.position.y, camTf.position.z);
+                    XMMATRIX view = XMMatrixInverse(nullptr, R * T);
+
+                    float aspect = static_cast<float>(vp.width) / static_cast<float>(vp.height ? vp.height : 1u);
+                    XMMATRIX proj = XMMatrixPerspectiveFovLH(camc.FOV, aspect, camc.nearClip, camc.farClip);
+
+                    // Create frustum in local space, then transform to world space
+                    DirectX::BoundingFrustum::CreateFromMatrix(frustum, proj);
+                    XMMATRIX invView = XMMatrixInverse(nullptr, view);
+                    frustum.Transform(frustum, invView);
                 }
                 else
                 {
                     lc.cameraPos = XMFLOAT3(0.0f, 0.0f, -100.0f);
                 }
 
+                // Temporary container for distance sorting
+                struct SortableLight {
+                    Engine::LightData data;
+                    float distanceSq;
+                };
+                std::vector<SortableLight> activeLights;
+
                 // Search for light entities and extract info
                 auto lightView = scene.registry.view<TransformComponent, LightComponent>();
                 for (auto lightEnt : lightView)
                 {
-                    if (lc.lightCount >= MAX_LIGHTS) break;
-
                     // Respect master entity toggle (skip inactive entities entirely)
                     if (scene.registry.all_of<NameComponent>(lightEnt)) {
                         if (!scene.registry.get<NameComponent>(lightEnt).isActive) continue;
@@ -283,8 +311,16 @@ namespace Engine
                     // Respect component active toggle
                     if (!lt.isActive) continue;
 
+                    // Frustum Culling (Ignore Directional Lights, cull Point/Spot)
+                    if (hasCamera && lt.type != Engine::LightType::Directional)
+                    {
+                        DirectX::BoundingSphere sphere(ltTf.position, lt.range);
+                        if (!frustum.Intersects(sphere)) {
+                            continue; // Skip this light, it is completely off-screen
+                        }
+                    }
+
                     // Direction: forward vector from quaternion rotated +Z (LH)
-					// forward is used because directional light shines along its forward axis
                     XMVECTOR q = XMLoadFloat4(&ltTf.rotation);
                     q = XMQuaternionNormalize(q);
                     XMVECTOR forward = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), q);
@@ -293,31 +329,56 @@ namespace Engine
 
                     // Fill per-light data
                     Engine::LightData ld{};
-                    ld.position  = ltTf.position;  // used by point/spot
-                    ld.range     = lt.range;       // attenuation range for point/spot
-                    ld.direction = fwd;            // used by directional/spot
+                    ld.position = ltTf.position;
+                    ld.range = lt.range;
+                    ld.direction = fwd;
                     ld.spotAngle = lt.spotAngle;
-                    ld.color     = lt.color;
+                    ld.color = lt.color;
                     ld.intensity = lt.intensity;
-                    ld.type      = static_cast<unsigned int>(lt.type);
-                    ld.padding   = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                    ld.type = static_cast<unsigned int>(lt.type);
+                    ld.padding = XMFLOAT3(0.0f, 0.0f, 0.0f);
 
-                    lc.lights[lc.lightCount] = ld;
-                    lc.lightCount++;
+                    // Calculate distance squared to camera
+                    float distSq = 0.0f;
+                    if (lt.type == Engine::LightType::Directional) {
+                        // Directional lights affect the whole scene; force them to the front of the list
+                        distSq = -1.0f;
+                    }
+                    else {
+                        XMVECTOR camPosVec = XMLoadFloat3(&lc.cameraPos);
+                        XMVECTOR lightPosVec = XMLoadFloat3(&ltTf.position);
+                        XMVECTOR diff = XMVectorSubtract(camPosVec, lightPosVec);
+                        XMVECTOR lengthSq = XMVector3LengthSq(diff);
+                        XMStoreFloat(&distSq, lengthSq);
+                    }
+
+                    activeLights.push_back({ ld, distSq });
+                }
+
+                // Sort lights by distance squared (closest first)
+                std::sort(activeLights.begin(), activeLights.end(), [](const SortableLight& a, const SortableLight& b) {
+                    return a.distanceSq < b.distanceSq;
+                    });
+
+                // Cap at MAX_LIGHTS and push to the constant buffer
+                lc.lightCount = static_cast<uint32_t>(std::min(activeLights.size(), static_cast<size_t>(MAX_LIGHTS)));
+                for (uint32_t i = 0; i < lc.lightCount; ++i)
+                {
+                    lc.lights[i] = activeLights[i].data;
                 }
 
                 // If no light present, push a default directional light
                 if (lc.lightCount == 0)
                 {
                     Engine::LightData ld{};
-                    ld.position  = XMFLOAT3(0,0,0);
-                    ld.range     = 10.0f;
+                    ld.position = XMFLOAT3(0, 0, 0);
+                    ld.range = 10.0f;
                     ld.direction = XMFLOAT3(0.0f, -1.0f, 0.0f);
                     ld.spotAngle = XM_PIDIV4;
-                    ld.color     = XMFLOAT3(1.0f, 1.0f, 1.0f);
+                    ld.color = XMFLOAT3(1.0f, 1.0f, 1.0f);
                     ld.intensity = 1.0f;
-                    ld.type      = static_cast<unsigned int>(Engine::LightType::Directional);
-                    ld.padding   = XMFLOAT3(0.0f, 0.0f, 0.0f);
+                    ld.type = static_cast<unsigned int>(Engine::LightType::Directional);
+                    ld.padding = XMFLOAT3(0.0f, 0.0f, 0.0f);
                     lc.lights[0] = ld;
                     lc.lightCount = 1;
                 }

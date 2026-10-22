@@ -51,7 +51,7 @@ cbuffer CB_Light : register(b3)
 {
     float3 g_CameraPos;
     uint g_LightCount;
-    LightData g_Lights[4]; // MUST MATCH MAX_LIGHTS
+    LightData g_Lights[16]; // MUST MATCH MAX_LIGHTS
 }
 
 

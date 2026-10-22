@@ -43,7 +43,7 @@ struct LightData
     DirectX::XMFLOAT3 padding;   // Pad to 16-byte alignment
 };
 
-#define MAX_LIGHTS 4 // temporary maximum number of lights
+#define MAX_LIGHTS 16 // maximum number of lights
 
 // Light constant buffer layout (must match HLSL CB_Light register(b3))
 // padding added to ensure 16-byte alignment
