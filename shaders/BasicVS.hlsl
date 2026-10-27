@@ -24,10 +24,11 @@ struct VSInput
 struct VSOutput
 {
     float4 position : SV_POSITION;
-    float3 worldPos : POSITION; // pass world space pos
+    float3 worldPos : POSITION;     // pass world space pos
     float3 normal : NORMAL;
     float2 texCoord : TEXCOORD;
     float3 Tangent : TANGENT;
+    float viewZ : VIEWZ;            // Camera-relative Z depth
 };
 
 
@@ -51,5 +52,6 @@ VSOutput main(VSInput input)
 
     // world position for view direction
     o.worldPos = worldPos4.xyz;
+    o.viewZ = viewPos.z;
     return o;
 }

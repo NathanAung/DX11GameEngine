@@ -64,6 +64,13 @@ struct MaterialConstants
     float padding[2]; // Pad to 16-byte alignment
 };
 
+// Shadow mapping constants (PS b5)
+struct ShadowConstants
+{
+    DirectX::XMFLOAT4X4 cascadeViewProj[3];
+    DirectX::XMFLOAT4 cascadeSplits; // x=near split, y=mid split, z=far split
+};
+
 class Renderer
 {
 public:
@@ -86,6 +93,8 @@ public:
     void UpdateMaterialConstants(const MaterialConstants& material);
     // upload color constants to GPU (Unlit PS b0)
     void UpdateColorConstants(const DirectX::XMFLOAT4& color);
+	// upload shadow constants to GPU (PS b5)
+    void UpdateShadowConstants(const ShadowConstants& data);
     // Binds shaders from ShaderManager
     void BindShader(const Engine::ShaderManager& shaderMan, UUID shaderID);
     // Submits mesh buffers for drawing
@@ -124,6 +133,29 @@ public:
 	// Debug draw mode toggle (wireframe vs solid)
     void SetWireframeMode(bool enable);
 
+	// ----- CASCADED SHADOW MAPS (CSM) SUPPORT -----
+
+	// Number of cascades for CSM (3 cascades: near, mid, far)
+    static const int NUM_CASCADES = 3;
+
+	// Structure to hold cascade data (view-projection matrix and split depth)
+    struct CascadeData
+    {
+        DirectX::XMMATRIX viewProj;
+        float splitDepth;
+    };
+
+    // Calculates the orthographic matrices for all 3 cascades based on the main camera
+    void CalculateCascadeMatrices(const DirectX::XMMATRIX& camView, float camFov, float aspect, float camNear, float camFar, const DirectX::XMFLOAT3& lightDir);
+
+    // Retrieve the generated cascade data
+    const std::vector<CascadeData>& GetCascades() const { return m_cascades; }
+
+	// Binds the shadow map DSV for rendering the shadow pass for a specific cascade
+    void BindShadowPass(int cascadeIndex);
+	// Get the shader resource view for the shadow map texture (for sampling in shaders)
+    ID3D11ShaderResourceView* GetShadowSRV() const { return m_shadowSRV.Get(); }
+
 private:
 	// DirectX 11 context and resources
 	// Encapsulates device, context, swap chain, RTV, DSV, and feature level
@@ -139,6 +171,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbLight;    // light cbuffer (PS b3)
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbMaterial; // material cbuffer (PS b4)
     Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbColor;    // color cbuffer (PS b0)
+	Microsoft::WRL::ComPtr<ID3D11Buffer> m_cbShadow;   // shadow cbuffer (PS b5)
 
     // Wireframe / solid rasterizer states for debug draw pass
     Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_solidRasterizerState;
@@ -160,8 +193,20 @@ private:
     Microsoft::WRL::ComPtr<ID3D11RasterizerState>   m_skyboxRasterState;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_skyboxSRV;
 
+	// Cascaded Shadow Map (CSM) data
+    std::vector<CascadeData> m_cascades;
+
+    // Cascaded Shadow Map Resources
+    Microsoft::WRL::ComPtr<ID3D11Texture2D> m_shadowTex;
+    Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_shadowSRV;
+    std::vector<Microsoft::WRL::ComPtr<ID3D11DepthStencilView>> m_shadowDSVs;
+    Microsoft::WRL::ComPtr<ID3D11RasterizerState> m_shadowRasterState;
+
     // Helper for initial resource creation (Rasterizer, Depth/Stencil, CBs)
     bool CreateInitialResources();
+
+	// Helper for shadow map resource creation (CSM)
+    bool CreateShadowResources();
 
     // Internal helpers
     bool CreateDeviceAndSwapChain(HWND hwnd);

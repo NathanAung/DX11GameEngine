@@ -1,6 +1,7 @@
 Texture2D albedoMap : register(t0);
 Texture2D normalMap : register(t1);
 Texture2D ormMap : register(t2);
+Texture2DArray shadowMap : register(t3); // Cascade Array
 SamplerState g_Sampler : register(s0);
 
 // Texture sampling is the process where the GPU looks up a color from a texture (an image) using UV coordinates,
@@ -29,6 +30,7 @@ struct PSInput
     float3 normal : NORMAL;
     float2 texCoord : TEXCOORD;
     float3 Tangent : TANGENT;
+    float viewZ : VIEWZ;
 };
 
 
@@ -62,6 +64,14 @@ cbuffer CB_Material : register(b4)
     float g_Roughness;
     float g_Metallic;
     float2 g_Padding; // pad to 16B
+}
+
+
+// Shadow Matrices and cascade split boundaries
+cbuffer CB_Shadow : register(b5)
+{
+    row_major float4x4 cascadeViewProj[3];
+    float4 cascadeSplits;
 }
 
 
@@ -177,6 +187,47 @@ float4 main(PSInput input) : SV_Target
     // step 4: accumulate lighting from all active lights
     float3 Lo = float3(0.0, 0.0, 0.0); // outgoing light
 
+    // --- CASCADE SHADOW MAPPING ---
+    uint cascadeIndex = 0;
+    if (input.viewZ > cascadeSplits.x)
+        cascadeIndex = 1;
+    if (input.viewZ > cascadeSplits.y)
+        cascadeIndex = 2;
+
+    // Transform world position into light-space using the selected cascade matrix
+    float4 lightSpacePos = mul(float4(input.worldPos, 1.0f), cascadeViewProj[cascadeIndex]);
+    float3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+    
+    // Convert from NDC (-1 to 1) to UV (0 to 1) space
+    float2 shadowUV;
+    shadowUV.x = projCoords.x * 0.5f + 0.5f;
+    shadowUV.y = -projCoords.y * 0.5f + 0.5f;
+    float currentDepth = projCoords.z;
+
+    float shadow = 0.0f;
+    // Check bounds (prevent shadow rendering outside the frustum limits)
+    if (shadowUV.x >= 0.0f && shadowUV.x <= 1.0f && shadowUV.y >= 0.0f && shadowUV.y <= 1.0f && currentDepth <= 1.0f)
+    {
+        float2 texelSize = 1.0f / 2048.0f; // Must match your hardware shadow map resolution
+        float bias = 0.0001f; // Extremely small bias because we use hardware depth biasing
+        
+        // 3x3 Percentage-Closer Filtering (PCF) to soften shadow edges
+        for (int x = -1; x <= 1; ++x)
+        {
+            for (int y = -1; y <= 1; ++y)
+            {
+                // Using SampleLevel instead of Sample inside a dynamic branch
+                float pcfDepth = shadowMap.SampleLevel(g_Sampler, float3(shadowUV + float2(x, y) * texelSize, cascadeIndex), 0).r;
+                shadow += (currentDepth - bias > pcfDepth) ? 0.0f : 1.0f;
+            }
+        }
+        shadow /= 9.0f;
+    }
+    else
+    {
+        shadow = 1.0f; // Completely unshadowed outside the light's view
+    }
+    
     [loop]
     for (uint i = 0; i < g_LightCount; ++i)
     {
@@ -224,6 +275,11 @@ float4 main(PSInput input) : SV_Target
 
         // Radiance per light
         float3 radiance = light.color * light.intensity * attenuation;
+        
+        if (light.type == 0) // Directional
+        {
+            radiance *= shadow; // Multiply directional light intensity by the computed shadow factor
+        }
 
         // Cook-Torrance BRDF terms per-light
         

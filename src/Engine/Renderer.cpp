@@ -25,6 +25,10 @@ namespace Engine
         if (!CreateInitialResources())
             return false;
 
+		// Create shadow map resources (Cascaded Shadow Maps)
+        if (!CreateShadowResources()) 
+            return false;
+
 #ifndef DIST_BUILD
         // Create editor framebuffer (Render-to-Texture)
         if (!CreateFramebuffer(m_dx.width, m_dx.height))
@@ -490,6 +494,21 @@ namespace Engine
             if (FAILED(hr)) return false;
         }
 
+        // Shadow constant buffer (PS b5)
+        {
+            D3D11_BUFFER_DESC cb = {};
+            cb.Usage = D3D11_USAGE_DEFAULT;
+            cb.ByteWidth = static_cast<UINT>(sizeof(ShadowConstants));
+            cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+            cb.CPUAccessFlags = 0;
+            cb.MiscFlags = 0;
+
+            // Ensure 16-byte multiple
+            cb.ByteWidth = (cb.ByteWidth + 15) & ~15u;
+
+            if (FAILED(m_dx.device->CreateBuffer(&cb, nullptr, m_cbShadow.GetAddressOf()))) return false;
+        }
+
         return true;
     }
 
@@ -673,5 +692,177 @@ namespace Engine
         // Restore default states (so subsequent draws aren't affected)
         if (m_depthStencilState) ctx->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
         if (m_rasterState)       ctx->RSSetState(m_rasterState.Get());
+    }
+
+
+    void Renderer::CalculateCascadeMatrices(const DirectX::XMMATRIX& camView, float camFov, float aspect, float camNear, float camFar, const DirectX::XMFLOAT3& lightDir)
+    {
+		// Clear and resize the cascade vector to hold NUM_CASCADES elements
+        m_cascades.clear();
+        m_cascades.resize(NUM_CASCADES);
+
+        // Define the manual split percentages (5%, 20%, 100%)
+        float cascadeSplits[NUM_CASCADES + 1] = { 0.0f, 0.05f, 0.2f, 1.0f };
+
+		// Normalize the light direction vector for consistent calculations
+        DirectX::XMVECTOR lightDirV = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&lightDir));
+
+		// Loop through each cascade to calculate its view-projection matrix and split depth
+        for (int i = 0; i < NUM_CASCADES; ++i)
+        {
+            // Calculate exact depth distances for this specific cascade slice
+            float sliceNear = camNear + cascadeSplits[i] * (camFar - camNear);
+            float sliceFar = camNear + cascadeSplits[i + 1] * (camFar - camNear);
+
+            // Create a temporary projection matrix strictly for this sub-frustum
+            DirectX::XMMATRIX sliceProj = DirectX::XMMatrixPerspectiveFovLH(camFov, aspect, sliceNear, sliceFar);
+
+            // Get the 8 corners of this slice in world space
+            std::vector<DirectX::XMVECTOR> corners = Engine::Math::GetFrustumCornersWorldSpace(camView * sliceProj);
+
+            // Calculate the geometric center of the frustum slice
+            DirectX::XMVECTOR center = DirectX::XMVectorZero();
+            for (const auto& v : corners) {
+                center = DirectX::XMVectorAdd(center, v);
+            }
+            center = DirectX::XMVectorScale(center, 1.0f / 8.0f);
+
+            // Find the radius of the bounding sphere (distance from center to furthest corner)
+            float radius = 0.0f;
+            for (const auto& v : corners) {
+                float dist = DirectX::XMVectorGetX(DirectX::XMVector3Length(DirectX::XMVectorSubtract(v, center)));
+                radius = std::max(radius, dist);
+            }
+
+            // Keep radius exact for X/Y bounds to maximize shadow resolution
+            // Use a separate large padding for the Z axis to catch casters behind the camera
+            float zPadding = 500.0f;
+
+            // Build Light View Matrix (Looking back towards the center from the light's direction)
+            DirectX::XMVECTOR lightEye = DirectX::XMVectorSubtract(center, DirectX::XMVectorScale(lightDirV, radius + zPadding));
+            DirectX::XMMATRIX lightView = DirectX::XMMatrixLookAtLH(lightEye, center, DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+
+            // Build Light Orthographic Matrix based strictly on the bounding sphere's X/Y dimensions, but extended Z
+            DirectX::XMMATRIX lightOrtho = DirectX::XMMatrixOrthographicOffCenterLH(-radius, radius, -radius, radius, 0.0f, (radius + zPadding) * 2.0f);
+
+            // TEXEL SNAPPING: Prevents shadow shimmering when the camera moves
+            // We map the center position to light-space, round it to texel increments, and shift the projection matrix
+            const float shadowMapResolution = 2048.0f; // Assumed shadow map resolution
+            DirectX::XMMATRIX shadowMatrix = lightView * lightOrtho;
+            DirectX::XMVECTOR shadowOrigin = DirectX::XMVector4Transform(DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f), shadowMatrix);
+
+            float shadowOriginX = DirectX::XMVectorGetX(shadowOrigin);
+            float shadowOriginY = DirectX::XMVectorGetY(shadowOrigin);
+
+            float texelSize = 2.0f / shadowMapResolution;
+            float dx = shadowOriginX - std::round(shadowOriginX / texelSize) * texelSize;
+            float dy = shadowOriginY - std::round(shadowOriginY / texelSize) * texelSize;
+
+            // Apply the offset back to the orthographic matrix
+            lightOrtho.r[3] = DirectX::XMVectorSet(
+                DirectX::XMVectorGetX(lightOrtho.r[3]) + dx,
+                DirectX::XMVectorGetY(lightOrtho.r[3]) + dy,
+                DirectX::XMVectorGetZ(lightOrtho.r[3]),
+                DirectX::XMVectorGetW(lightOrtho.r[3])
+            );
+
+            // Store final matrices and split depth
+            m_cascades[i].viewProj = lightView * lightOrtho;
+            m_cascades[i].splitDepth = sliceFar;
+        }
+    }
+
+
+    bool Renderer::CreateShadowResources()
+    {
+        const UINT shadowResolution = 2048; // Must match the resolution in CalculateCascadeMatrices
+
+		// Create a 2D texture array for the shadow maps (one slice per cascade)
+        D3D11_TEXTURE2D_DESC texDesc{};
+        texDesc.Width = shadowResolution;
+        texDesc.Height = shadowResolution;
+        texDesc.MipLevels = 1;
+        texDesc.ArraySize = NUM_CASCADES;
+        texDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+        texDesc.SampleDesc.Count = 1;
+        texDesc.Usage = D3D11_USAGE_DEFAULT;
+        texDesc.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+
+        if (FAILED(m_dx.device->CreateTexture2D(&texDesc, nullptr, m_shadowTex.GetAddressOf()))) return false;
+
+        // Create a Depth Stencil View for EACH cascade slice so we can render to them individually
+        m_shadowDSVs.resize(NUM_CASCADES);
+        D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc{};
+        dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+        dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2DARRAY;
+        dsvDesc.Texture2DArray.ArraySize = 1;
+
+        for (int i = 0; i < NUM_CASCADES; ++i)
+        {
+            dsvDesc.Texture2DArray.FirstArraySlice = i;
+            if (FAILED(m_dx.device->CreateDepthStencilView(m_shadowTex.Get(), &dsvDesc, m_shadowDSVs[i].GetAddressOf()))) return false;
+        }
+
+        // Create one Shader Resource View covering the ENTIRE array for the Pixel Shader to read
+        D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+        srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+        srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+        srvDesc.Texture2DArray.MostDetailedMip = 0;
+        srvDesc.Texture2DArray.MipLevels = 1;
+        srvDesc.Texture2DArray.FirstArraySlice = 0;
+        srvDesc.Texture2DArray.ArraySize = NUM_CASCADES;
+
+        if (FAILED(m_dx.device->CreateShaderResourceView(m_shadowTex.Get(), &srvDesc, m_shadowSRV.GetAddressOf()))) return false;
+
+        // Shadow Rasterizer (Adds slope-scaled depth bias to prevent "shadow acne")
+        D3D11_RASTERIZER_DESC rsDesc = {};
+        rsDesc.FillMode = D3D11_FILL_SOLID;
+        rsDesc.CullMode = D3D11_CULL_BACK;
+        rsDesc.DepthClipEnable = TRUE;
+        rsDesc.DepthBias = 0;
+        rsDesc.DepthBiasClamp = 0.0f;
+        rsDesc.SlopeScaledDepthBias = 1.5f;
+
+        if (FAILED(m_dx.device->CreateRasterizerState(&rsDesc, m_shadowRasterState.GetAddressOf()))) return false;
+
+        return true;
+    }
+
+
+    void Renderer::BindShadowPass(int cascadeIndex)
+    {
+        if (cascadeIndex < 0 || cascadeIndex >= NUM_CASCADES) return;
+
+        // Unbind SRVs from pixel shaders to avoid read/write hazards
+        ID3D11ShaderResourceView* nullSRVs[16] = { nullptr };
+        m_dx.context->PSSetShaderResources(0, 16, nullSRVs);
+
+        // Bind the specific cascade slice DSV (No Render Target View needed)
+        m_dx.context->OMSetRenderTargets(0, nullptr, m_shadowDSVs[cascadeIndex].Get());
+
+        // Clear the depth slice
+        m_dx.context->ClearDepthStencilView(m_shadowDSVs[cascadeIndex].Get(), D3D11_CLEAR_DEPTH, 1.0f, 0);
+
+		// Set viewport to match shadow map resolution
+        D3D11_VIEWPORT vp{};
+        vp.Width = 2048.0f;
+        vp.Height = 2048.0f;
+        vp.MaxDepth = 1.0f;
+        m_dx.context->RSSetViewports(1, &vp);
+
+        m_dx.context->RSSetState(m_shadowRasterState.Get());
+        m_dx.context->PSSetShader(nullptr, nullptr, 0); // Disable Pixel Shader execution entirely
+    }
+
+
+    void Renderer::UpdateShadowConstants(const ShadowConstants& data)
+    {
+        if (m_cbShadow)
+        {
+			// Upload shadow data to GPU
+            m_dx.context->UpdateSubresource(m_cbShadow.Get(), 0, nullptr, &data, 0, 0);
+            ID3D11Buffer* cbs[] = { m_cbShadow.Get() };
+            m_dx.context->PSSetConstantBuffers(5, 1, cbs);
+        }
     }
 }

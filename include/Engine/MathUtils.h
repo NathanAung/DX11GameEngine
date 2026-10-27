@@ -11,6 +11,8 @@ namespace Engine::Math
         DirectX::XMFLOAT3 direction;
     };
 
+
+	// Convert a quaternion to Euler angles in degrees (pitch, yaw, roll).
     inline DirectX::XMFLOAT3 QuaternionToEulerDegrees(const DirectX::XMFLOAT4& q)
     {
         using namespace DirectX;
@@ -52,6 +54,8 @@ namespace Engine::Math
         return XMFLOAT3{ degPitch, degYaw, degRoll };
     }
 
+
+	// Convert Euler angles in degrees to a quaternion representation.
     inline DirectX::XMFLOAT4 EulerDegreesToQuaternion(const DirectX::XMFLOAT3& euler)
     {
         using namespace DirectX;
@@ -68,6 +72,7 @@ namespace Engine::Math
         XMStoreFloat4(&out, q);
         return out;
     }
+
 
 	// Generate a world ray from screen coordinates (e.g., mouse position) using the camera's view and projection matrices.
     inline Ray ScreenToWorldRay(float mouseX, float mouseY, float screenW, float screenH, const DirectX::XMMATRIX& view, const DirectX::XMMATRIX& proj)
@@ -100,6 +105,7 @@ namespace Engine::Math
         return ray;
     }
 
+
 	// Check if a ray intersects with an Oriented Bounding Box (OBB) defined by its position, scale, and rotation.
     inline bool RayIntersectsOBB(const Ray& ray, const DirectX::XMFLOAT3& position, const DirectX::XMFLOAT3& scale, const DirectX::XMFLOAT4& rotation, float& outDistance)
     {
@@ -110,5 +116,41 @@ namespace Engine::Math
         obb.Orientation = rotation;
 
         return obb.Intersects(DirectX::XMLoadFloat3(&ray.origin), DirectX::XMLoadFloat3(&ray.direction), outDistance);
+    }
+
+
+    // Calculates the 8 corners of a frustum in world space from a view-projection matrix
+    inline std::vector<DirectX::XMVECTOR> GetFrustumCornersWorldSpace(const DirectX::XMMATRIX& viewProj)
+    {
+		DirectX::XMVECTOR det;  // Determinant for the inverse matrix
+		DirectX::XMMATRIX invViewProj = DirectX::XMMatrixInverse(&det, viewProj);   // Inverse of the view-projection matrix
+
+		// Reserve space for 8 corners of the frustum
+        std::vector<DirectX::XMVECTOR> corners;
+        corners.reserve(8);
+
+        // 8 corners of the NDC cube (DirectX uses Z: 0 to 1)
+        for (unsigned int x = 0; x < 2; ++x)
+        {
+            for (unsigned int y = 0; y < 2; ++y)
+            {
+                for (unsigned int z = 0; z < 2; ++z)
+                {
+                    DirectX::XMFLOAT4 pt(
+                        2.0f * x - 1.0f,
+                        2.0f * y - 1.0f,
+                        1.0f * z, // Z: 0 for near, 1 for far
+                        1.0f);
+
+                    DirectX::XMVECTOR ptV = DirectX::XMLoadFloat4(&pt);
+                    DirectX::XMVECTOR transformed = DirectX::XMVector4Transform(ptV, invViewProj);
+
+                    // Perspective divide
+                    transformed = DirectX::XMVectorScale(transformed, 1.0f / DirectX::XMVectorGetW(transformed));
+                    corners.push_back(transformed);
+                }
+            }
+        }
+        return corners;
     }
 }

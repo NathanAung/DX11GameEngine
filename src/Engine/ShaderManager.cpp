@@ -210,4 +210,35 @@ namespace Engine
             return buffer;
         }
     }
+
+
+    UUID ShaderManager::LoadShadowShaders(ID3D11Device* device, Engine::AssetManager& assetManager)
+    {
+        UUID assetID = assetManager.ImportAsset("shader://shadow", Engine::AssetType::Shader);
+        if (m_shaders.find(assetID) != m_shaders.end()) return assetID;
+
+        std::vector<char> vsBytecode = GetShaderBytecode(assetManager, L"shaders/ShadowVS.hlsl", "shaders/ShadowVS.cso", "main", "vs_5_0");
+
+        ShaderData sd{};
+        HRESULT hr = device->CreateVertexShader(vsBytecode.data(), vsBytecode.size(), nullptr, sd.vs.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreateVertexShader failed (Shadow)");
+
+        // No Pixel Shader is needed for a depth-only pass
+        sd.ps = nullptr;
+
+        D3D11_INPUT_ELEMENT_DESC layout[] =
+        {
+            { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT,    0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+            { "TANGENT",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 32, D3D11_INPUT_PER_VERTEX_DATA, 0 }
+        };
+
+        hr = device->CreateInputLayout(layout, _countof(layout), vsBytecode.data(), vsBytecode.size(), sd.inputLayout.GetAddressOf());
+        if (FAILED(hr)) throw std::runtime_error("CreateInputLayout failed (Shadow)");
+
+        m_shaders[assetID] = std::move(sd);
+        assetManager.SetAssetLoaded(assetID, true);
+        return assetID;
+    }
 }

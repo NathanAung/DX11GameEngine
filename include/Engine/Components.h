@@ -80,7 +80,7 @@ namespace Engine
     {
         float FOV = DirectX::XM_PIDIV4; // 45 degrees in radians
         float nearClip = 0.1f;
-        float farClip = 5000.0f;
+		float farClip = 500.0f;         // far clip reduced from 5000.0f to concentrate shadow resolution
         bool invertY = true;
     };
 

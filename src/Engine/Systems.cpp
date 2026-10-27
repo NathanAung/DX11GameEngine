@@ -241,6 +241,78 @@ namespace Engine
     {
         void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager)
         {
+            // ----- CASCADED SHADOW PASS -----
+			// Identify the directional light for shadow mapping
+            DirectX::XMFLOAT3 dirLightVec(0, -1, 0); // Default fallback
+            auto lightViewIter = scene.registry.view<TransformComponent, LightComponent>();
+
+			// Find the first active directional light
+            for (auto ent : lightViewIter) {
+                const auto& lt = lightViewIter.get<LightComponent>(ent);
+
+				// Only consider active directional lights for shadow mapping
+                if (lt.type == Engine::LightType::Directional && lt.isActive) {
+                    const auto& tf = lightViewIter.get<TransformComponent>(ent);
+                    XMVECTOR q = XMLoadFloat4(&tf.rotation);
+                    XMVECTOR fwd = XMVector3Rotate(XMVectorSet(0, 0, 1, 0), XMQuaternionNormalize(q));
+                    XMStoreFloat3(&dirLightVec, XMVector3Normalize(fwd));
+                    break;
+                }
+            }
+
+            // Calculate active camera bounds
+            if (scene.m_activeRenderCamera != entt::null && scene.registry.valid(scene.m_activeRenderCamera))
+            {
+                const auto& camTf = scene.registry.get<TransformComponent>(scene.m_activeRenderCamera);
+                const auto& camc = scene.registry.get<CameraComponent>(scene.m_activeRenderCamera);
+                const auto& vp = scene.registry.get<ViewportComponent>(scene.m_activeRenderCamera);
+
+                XMVECTOR qn = XMQuaternionNormalize(XMLoadFloat4(&camTf.rotation));
+                XMMATRIX camView = XMMatrixInverse(nullptr, XMMatrixRotationQuaternion(qn) * XMMatrixTranslation(camTf.position.x, camTf.position.y, camTf.position.z));
+                float aspect = static_cast<float>(vp.width) / static_cast<float>(vp.height ? vp.height : 1u);
+
+                renderer.CalculateCascadeMatrices(camView, camc.FOV, aspect, camc.nearClip, camc.farClip, dirLightVec);
+            }
+
+            // Ensure the shadow shader is loaded
+            UUID shadowShaderID = scene.GetAssetManager()->ImportAsset("shader://shadow", Engine::AssetType::Shader);
+            ID3D11InputLayout* shadowLayout = shaderManager.GetInputLayout(shadowShaderID);
+
+            // Draw scene into each cascade slice
+            auto meshView = scene.registry.view<MeshRendererComponent, TransformComponent>();
+            const auto& cascades = renderer.GetCascades();
+            for (int i = 0; i < renderer.NUM_CASCADES; ++i)
+            {
+                renderer.BindShadowPass(i);
+
+                // Route the light's matrix through b0 (Projection slot maps to g_LightViewProj in ShadowVS)
+                renderer.UpdateProjectionMatrix(cascades[i].viewProj);
+
+                renderer.BindShader(shaderManager, shadowShaderID);
+
+                for (auto entity : meshView)
+                {
+					// Respect master entity toggle (skip inactive entities entirely)
+                    if (scene.registry.all_of<NameComponent>(entity) && !scene.registry.get<NameComponent>(entity).isActive) continue;
+                    auto& mr = meshView.get<MeshRendererComponent>(entity);
+                    if (!mr.isActive || mr.matType == Engine::MaterialType::UnlitColor) continue; // Skip unlit/debug objects
+
+                    auto& tc = meshView.get<TransformComponent>(entity);
+                    renderer.UpdateWorldMatrix(DirectX::XMLoadFloat4x4(&tc.worldMatrix));
+
+					// Retrieve mesh buffers from MeshManager
+                    MeshBuffers buffers{};
+                    if (meshManager.GetMesh(mr.meshID, buffers)) {
+                        renderer.SubmitMesh(buffers, shadowLayout);
+                        renderer.DrawIndexed(buffers.indexCount);
+                    }
+                }
+            }
+
+            // ----- RESTORE MAIN PIPELINE -----
+            // The framebuffer bindings were destroyed by the shadow pass, so we must restore them
+            renderer.BindFramebuffer();
+
             auto* context = renderer.GetContext();
 
             // Bind sampler to PS s0 once per frame
@@ -249,6 +321,18 @@ namespace Engine
             {
                 context->PSSetSamplers(0, 1, &sampler);
             }
+
+            // Upload Cascade matrices and split depths to the new Shadow Constant Buffer
+            Engine::ShadowConstants sc{};
+            for (int i = 0; i < renderer.NUM_CASCADES; ++i) {
+                DirectX::XMStoreFloat4x4(&sc.cascadeViewProj[i], cascades[i].viewProj);
+            }
+            sc.cascadeSplits = DirectX::XMFLOAT4(cascades[0].splitDepth, cascades[1].splitDepth, cascades[2].splitDepth, 0.0f);
+            renderer.UpdateShadowConstants(sc);
+
+            // Bind the Shadow Texture2DArray to slot t3
+            ID3D11ShaderResourceView* shadowSRV = renderer.GetShadowSRV();
+            context->PSSetShaderResources(3, 1, &shadowSRV);
 
             // Global lights update: collect, cull, sort, and upload up to MAX_LIGHTS
             {
@@ -278,6 +362,10 @@ namespace Engine
 
                     float aspect = static_cast<float>(vp.width) / static_cast<float>(vp.height ? vp.height : 1u);
                     XMMATRIX proj = XMMatrixPerspectiveFovLH(camc.FOV, aspect, camc.nearClip, camc.farClip);
+
+                    // The shadow pass overwrote the projection buffer (b0), so we must revert it before the main draw.
+                    renderer.UpdateViewMatrix(view);
+                    renderer.UpdateProjectionMatrix(proj);
 
                     // Create frustum in local space, then transform to world space
                     DirectX::BoundingFrustum::CreateFromMatrix(frustum, proj);

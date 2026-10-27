@@ -78,6 +78,7 @@ static void LoadCoreAssets()
     const UUID shaderID = g_shaderManager.LoadBasicShaders(g_renderer.GetDevice(), g_assetManager); // Create resources with renderer device
     const UUID unlitShaderID = g_shaderManager.LoadUnlitShaders(g_renderer.GetDevice(), g_assetManager);
     const UUID skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice(), g_assetManager);
+    const UUID shadowShaderID = g_shaderManager.LoadShadowShaders(g_renderer.GetDevice(), g_assetManager);
 
     // Create shared primitive meshes
     const UUID cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice(), g_assetManager);
