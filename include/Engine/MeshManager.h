@@ -47,6 +47,9 @@ namespace Engine
         // Capsule (Y-axis aligned). radius = sphere radius, cylinderHeight = straight section height (no caps).
         UUID CreateCapsule(ID3D11Device* device, Engine::AssetManager& assetManager, float radius, float cylinderHeight, int slices, int stacks);
 
+		// Creates a unit quad mesh (XY plane, Z=0)
+        UUID InitializeQuad(ID3D11Device* device, Engine::AssetManager& assetManager);
+
         // Loads a model with Assimp and returns mesh UUIDs for all mesh parts
         std::vector<UUID> LoadModel(ID3D11Device* device, Engine::AssetManager& assetManager, const std::string& filename);
 

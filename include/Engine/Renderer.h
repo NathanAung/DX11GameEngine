@@ -116,6 +116,10 @@ public:
     void SetSkybox(ID3D11ShaderResourceView* srv) { m_skyboxSRV = srv; }
     void DrawSkybox(const Engine::MeshManager& meshMan, const Engine::ShaderManager& shaderMan, const Engine::CameraComponent& camComp, const Engine::TransformComponent& camTrans, UUID cubeMeshID, UUID skyboxShaderID);
 
+    // UI state toggles
+    void SetUIBlendState(bool enable);
+    void SetUIDepthState(bool enable);
+
     // Resource Accessors (for Systems to use if needed)
     ID3D11Device* GetDevice() const { return m_dx.device.Get(); }
     ID3D11DeviceContext* GetContext() const { return m_dx.context.Get(); }
@@ -156,6 +160,8 @@ public:
 	// Get the shader resource view for the shadow map texture (for sampling in shaders)
     ID3D11ShaderResourceView* GetShadowSRV() const { return m_shadowSRV.Get(); }
 
+    // -----------------------------------------------
+
 private:
 	// DirectX 11 context and resources
 	// Encapsulates device, context, swap chain, RTV, DSV, and feature level
@@ -192,6 +198,10 @@ private:
     Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_skyboxDepthState;
     Microsoft::WRL::ComPtr<ID3D11RasterizerState>   m_skyboxRasterState;
     Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> m_skyboxSRV;
+
+    // UI rendering states
+    Microsoft::WRL::ComPtr<ID3D11BlendState> m_alphaBlendState;
+    Microsoft::WRL::ComPtr<ID3D11DepthStencilState> m_uiDepthState;
 
 	// Cascaded Shadow Map (CSM) data
     std::vector<CascadeData> m_cascades;

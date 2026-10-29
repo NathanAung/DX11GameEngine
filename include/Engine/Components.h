@@ -195,4 +195,35 @@ namespace Engine
         void* soundHandle = nullptr;
         bool isPlaying = false;
     };
+
+    // 2D Sprite Renderer for UI and HUD elements
+    struct SpriteRendererComponent
+    {
+        bool isActive = true;
+        UUID textureID = 0;
+
+        // Screen-space pixel coordinates
+        DirectX::XMFLOAT2 position{ 0.0f, 0.0f };
+        DirectX::XMFLOAT2 size{ 100.0f, 100.0f }; // Width, Height in pixels
+        DirectX::XMFLOAT2 pivot{ 0.0f, 0.0f };    // 0,0 is Top-Left, 0.5,0.5 is Center
+        float rotation = 0.0f;                    // Radians
+
+        // Global color and opacity tint
+        DirectX::XMFLOAT4 tintColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+    };
+
+    // 2D Text Renderer for dynamic UI text
+    struct TextRendererComponent
+    {
+        bool isActive = true;
+        std::string text = "New Text";
+        UUID fontID = 0;
+        float fontSize = 24.0f;
+
+        // Screen-space pixel coordinates
+        DirectX::XMFLOAT2 position{ 0.0f, 0.0f };
+
+        // Global color and opacity tint
+        DirectX::XMFLOAT4 color{ 1.0f, 1.0f, 1.0f, 1.0f };
+    };
 }

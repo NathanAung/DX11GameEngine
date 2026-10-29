@@ -49,13 +49,15 @@ namespace Engine
     }
 
 
-    void Scene::SetDefaultAssets(UUID shaderID, UUID debugShaderID, UUID skyboxShaderID, UUID cubeID, UUID sphereID, UUID capsuleID) {
+    void Scene::SetDefaultAssets(UUID shaderID, UUID debugShaderID, UUID skyboxShaderID, UUID spriteShaderID, UUID cubeID, UUID sphereID, UUID capsuleID, UUID quadMeshID) {
         m_defaultShaderID = shaderID;
         m_debugShaderID = debugShaderID;
         m_skyboxShaderID = skyboxShaderID;
         m_cubeMeshID = cubeID;
         m_sphereMeshID = sphereID;
         m_capsuleMeshID = capsuleID;
+        m_quadMeshID = quadMeshID;
+        m_spriteShaderID = spriteShaderID;
     }
 
 
@@ -376,6 +378,8 @@ namespace Engine
             if (registry.all_of<RelationshipComponent>(entity)) m_backupRegistry.emplace<RelationshipComponent>(copy, registry.get<RelationshipComponent>(entity));
 			if (registry.all_of<LuaScriptComponent>(entity)) m_backupRegistry.emplace<LuaScriptComponent>(copy, registry.get<LuaScriptComponent>(entity));
             if (registry.all_of<AudioComponent>(entity)) m_backupRegistry.emplace<AudioComponent>(copy, registry.get<AudioComponent>(entity));
+            if (registry.all_of<SpriteRendererComponent>(entity)) m_backupRegistry.emplace<SpriteRendererComponent>(copy, registry.get<SpriteRendererComponent>(entity));
+            if (registry.all_of<TextRendererComponent>(entity)) m_backupRegistry.emplace<TextRendererComponent>(copy, registry.get<TextRendererComponent>(entity));
         }
     }
 
@@ -429,6 +433,8 @@ namespace Engine
                 ac.isPlaying = false;
                 registry.emplace<AudioComponent>(restored, ac);
             }
+            if (m_backupRegistry.all_of<SpriteRendererComponent>(entity)) registry.emplace<SpriteRendererComponent>(restored, m_backupRegistry.get<SpriteRendererComponent>(entity));
+            if (m_backupRegistry.all_of<TextRendererComponent>(entity)) registry.emplace<TextRendererComponent>(restored, m_backupRegistry.get<TextRendererComponent>(entity));
         }
 
         // NOTE: Bodies are rebuilt by PhysicsSystem on the next frame from restored ECS state.

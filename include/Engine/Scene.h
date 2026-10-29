@@ -82,7 +82,7 @@ namespace Engine
                                      float spotAngleRadians);
 
         // Cached default assets so the editor can autonomously spawn primitives
-        void SetDefaultAssets(UUID shaderID, UUID debugShaderID, UUID skyboxShaderID, UUID cubeID, UUID sphereID, UUID capsuleID);
+        void SetDefaultAssets(UUID shaderID, UUID debugShaderID, UUID skyboxShaderID, UUID spriteShaderID, UUID cubeID, UUID sphereID, UUID capsuleID, UUID quadMeshID);
         entt::entity CreateCube(const std::string& name);
         entt::entity CreateSphere(const std::string& name);
         entt::entity CreateCapsule(const std::string& name);
@@ -94,6 +94,8 @@ namespace Engine
 		UUID GetDefaultShaderID() const { return m_defaultShaderID; }
         UUID GetDebugShaderID() const { return m_debugShaderID; }
         UUID GetSkyboxShaderID() const { return m_skyboxShaderID; }
+        UUID GetSpriteShaderID() const { return m_spriteShaderID; }
+        UUID GetQuadMeshID() const { return m_quadMeshID; }
 
         // Generates a parent entity and child sub-meshes for imported files (.obj, .gltf, .fbx)
         entt::entity InstantiateModel(const std::string& filepath, Engine::Renderer& renderer, Engine::MeshManager& meshManager);
@@ -135,9 +137,11 @@ namespace Engine
         UUID m_defaultShaderID = 0;
         UUID m_debugShaderID = 0;
 		UUID m_skyboxShaderID = 0;
+        UUID m_spriteShaderID = 0;
         UUID m_cubeMeshID = 0;
         UUID m_sphereMeshID = 0;
         UUID m_capsuleMeshID = 0;
+        UUID m_quadMeshID = 0;
 
         Engine::PhysicsManager* m_physicsManager = nullptr;
 

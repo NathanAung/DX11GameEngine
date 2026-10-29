@@ -25,6 +25,9 @@ namespace Engine
         // Compiles UnlitVS/PS and creates a matching Input Layout. Returns a UUID for the shader set.
         UUID LoadUnlitShaders(ID3D11Device* device, Engine::AssetManager& assetManager);
 
+		// Compiles SpriteVS/PS and creates a matching Input Layout. Returns a UUID for the shader set.
+        UUID LoadSpriteShaders(ID3D11Device* device, Engine::AssetManager& assetManager);
+
 		// Compiles ShadowVS/PS and creates a matching Input Layout. Returns a UUID for the shader set.
         UUID LoadShadowShaders(ID3D11Device* device, Engine::AssetManager& assetManager);
 

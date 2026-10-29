@@ -79,14 +79,16 @@ static void LoadCoreAssets()
     const UUID unlitShaderID = g_shaderManager.LoadUnlitShaders(g_renderer.GetDevice(), g_assetManager);
     const UUID skyboxShaderID = g_shaderManager.LoadSkyboxShaders(g_renderer.GetDevice(), g_assetManager);
     const UUID shadowShaderID = g_shaderManager.LoadShadowShaders(g_renderer.GetDevice(), g_assetManager);
+    const UUID spriteShaderID = g_shaderManager.LoadSpriteShaders(g_renderer.GetDevice(), g_assetManager);
 
     // Create shared primitive meshes
     const UUID cubeMeshID = g_meshManager.InitializeCube(g_renderer.GetDevice(), g_assetManager);
     const UUID sphereMeshID = g_meshManager.CreateSphere(g_renderer.GetDevice(), g_assetManager, 0.5f, 32, 32);
     const UUID capsuleMeshID = g_meshManager.CreateCapsule(g_renderer.GetDevice(), g_assetManager, 0.5f, 1.0f, 32, 32);
+    const UUID quadMeshID = g_meshManager.InitializeQuad(g_renderer.GetDevice(), g_assetManager);
 
 	// Cache default assets on the Scene so primitive spawning and editor UI can access them without needing to know the UUIDs
-    g_scene.SetDefaultAssets(shaderID, unlitShaderID, skyboxShaderID, cubeMeshID, sphereMeshID, capsuleMeshID);
+    g_scene.SetDefaultAssets(shaderID, unlitShaderID, skyboxShaderID, spriteShaderID, cubeMeshID, sphereMeshID, capsuleMeshID, quadMeshID);
 
     // Load the default Skybox (order: +X, -X, +Y, -Y, +Z, -Z)
     std::vector<std::string> faces{

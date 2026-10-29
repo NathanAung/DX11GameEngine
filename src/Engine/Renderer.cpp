@@ -49,6 +49,8 @@ namespace Engine
         m_skyboxDepthState.Reset();
         m_skyboxRasterState.Reset();
         m_skyboxSRV.Reset();
+        m_alphaBlendState.Reset();
+        m_uiDepthState.Reset();
 
         m_cbLight.Reset();
         m_cbMaterial.Reset();
@@ -444,6 +446,30 @@ namespace Engine
         sampDesc.MaxLOD = D3D11_FLOAT32_MAX;                    // allow all mip levels
 
         hr = m_dx.device->CreateSamplerState(&sampDesc, m_samplerState.GetAddressOf());
+        if (FAILED(hr)) return false;
+
+        // Alpha Blending State (For transparent images and text)
+        D3D11_BLEND_DESC blendDesc = {};
+        blendDesc.RenderTarget[0].BlendEnable = TRUE;
+        blendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_SRC_ALPHA;
+        blendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+        blendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
+        blendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;
+        blendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA;
+        blendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
+        blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+        hr = m_dx.device->CreateBlendState(&blendDesc, m_alphaBlendState.GetAddressOf());
+        if (FAILED(hr)) return false;
+
+        // UI Depth State (Disables depth testing and writing so UI always draws on top)
+        D3D11_DEPTH_STENCIL_DESC uiDsDesc = {};
+        uiDsDesc.DepthEnable = FALSE;
+        uiDsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
+        uiDsDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;
+        uiDsDesc.StencilEnable = FALSE;
+
+        hr = m_dx.device->CreateDepthStencilState(&uiDsDesc, m_uiDepthState.GetAddressOf());
         if (FAILED(hr)) return false;
 
         // Light constant buffer (PS b3)
@@ -864,5 +890,26 @@ namespace Engine
             ID3D11Buffer* cbs[] = { m_cbShadow.Get() };
             m_dx.context->PSSetConstantBuffers(5, 1, cbs);
         }
+    }
+
+
+    void Renderer::SetUIBlendState(bool enable)
+    {
+        if (!m_dx.context) return;
+        float blendFactor[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+        if (enable)
+            m_dx.context->OMSetBlendState(m_alphaBlendState.Get(), blendFactor, 0xffffffff);
+        else
+            m_dx.context->OMSetBlendState(nullptr, blendFactor, 0xffffffff);
+    }
+
+
+    void Renderer::SetUIDepthState(bool enable)
+    {
+        if (!m_dx.context) return;
+        if (enable)
+            m_dx.context->OMSetDepthStencilState(m_uiDepthState.Get(), 0);
+        else
+            m_dx.context->OMSetDepthStencilState(m_depthStencilState.Get(), 0);
     }
 }

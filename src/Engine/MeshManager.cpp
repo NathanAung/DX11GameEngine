@@ -215,6 +215,37 @@ namespace Engine
     }
 
 
+    UUID MeshManager::InitializeQuad(ID3D11Device* device, Engine::AssetManager& assetManager)
+    {
+        UUID assetID = assetManager.ImportAsset("primitive://quad", Engine::AssetType::Mesh);
+        if (m_meshes.find(assetID) != m_meshes.end()) return assetID;
+
+        // 1x1 Quad. Top-Left is (0,0), Bottom-Right is (1,1).
+        // This maps perfectly to screen coordinates where Y goes down.
+        std::vector<Vertex> vertices =
+        {
+            // Position {x, y, z}, Normal {x,y,z}, UV {u, v}, Tangent {x,y,z}
+            {{0.0f, 0.0f, 0.0f}, {0, 0, -1}, {0.0f, 0.0f}, {1, 0, 0}}, // 0: Top-Left
+            {{1.0f, 0.0f, 0.0f}, {0, 0, -1}, {1.0f, 0.0f}, {1, 0, 0}}, // 1: Top-Right
+            {{0.0f, 1.0f, 0.0f}, {0, 0, -1}, {0.0f, 1.0f}, {1, 0, 0}}, // 2: Bottom-Left
+            {{1.0f, 1.0f, 0.0f}, {0, 0, -1}, {1.0f, 1.0f}, {1, 0, 0}}  // 3: Bottom-Right
+        };
+
+        // Clockwise winding
+        std::vector<uint32_t> indices = {
+            0, 1, 2,
+            2, 1, 3
+        };
+
+        if (CreateMeshBuffers(device, assetID, vertices, indices))
+        {
+            assetManager.SetAssetLoaded(assetID, true);
+        }
+
+        return assetID;
+    }
+
+
     bool MeshManager::CreateMeshBuffers(ID3D11Device* device, UUID assetID,
         const std::vector<Vertex>& vertices,
         const std::vector<uint32_t>& indices)
