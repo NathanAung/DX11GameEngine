@@ -13,16 +13,20 @@ namespace Engine
 	class TextureManager;
 	class AudioManager;
     class AssetManager;
+	class FontManager;
 	class Renderer;
 	class Scene;
 
     namespace RenderSystem
     {
         // pass Renderer to access context and sampler
-        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager);
+        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager, Engine::FontManager& fontManager);
 
 		// Debug draw system for physics colliders. Draws wireframe meshes for entities with ColliderComponent, using the debug shader. Highlights the selected entity's collider if applicable.
         void DrawDebugColliders(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::ShaderManager& shaderManager, entt::entity selectedEntity);
+
+		// UI rendering system for sprites and text. Draws all entities with SpriteRendererComponent and TextRendererComponent, using the sprite shader and font manager.
+        void DrawUI(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::ShaderManager& shaderManager, Engine::TextureManager& textureManager, Engine::FontManager& fontManager);
     }
 
     // demo rotation logic

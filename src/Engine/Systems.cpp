@@ -9,6 +9,7 @@
 #include "Engine/InputManager.h"
 #include "Engine/AudioManager.h"
 #include "Engine/TextureManager.h"
+#include "Engine/FontManager.h"
 #include "Engine/ScriptEntity.h"
 #include <DirectXMath.h>
 #include <DirectXCollision.h>
@@ -239,7 +240,7 @@ namespace Engine
 
     namespace RenderSystem
     {
-        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager)
+        void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager, Engine::FontManager& fontManager)
         {
             // ----- CASCADED SHADOW PASS -----
 			// Identify the directional light for shadow mapping
@@ -657,6 +658,121 @@ namespace Engine
 
             // 5. Restore Solid Mode
             renderer.SetWireframeMode(false);
+        }
+
+
+        void DrawUI(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::ShaderManager& shaderManager, Engine::TextureManager& textureManager, Engine::FontManager& fontManager)
+        {
+            auto* context = renderer.GetContext();
+
+            // Only draw UI if we have an active camera to extract screen dimensions
+            if (scene.m_activeRenderCamera == entt::null || !scene.registry.valid(scene.m_activeRenderCamera)) return;
+            if (!scene.registry.all_of<ViewportComponent>(scene.m_activeRenderCamera)) return;
+
+            const auto& vp = scene.registry.get<ViewportComponent>(scene.m_activeRenderCamera);
+
+            // Setup UI Pipeline State
+            renderer.SetUIBlendState(true);
+            renderer.SetUIDepthState(true); // Disables depth write/test so UI is drawn universally on top
+
+            // Orthographic projection mapping screen pixels directly (Top-Left is 0,0)
+            DirectX::XMMATRIX orthoProj = DirectX::XMMatrixOrthographicOffCenterLH(0.0f, static_cast<float>(vp.width), static_cast<float>(vp.height), 0.0f, 0.0f, 1.0f);
+            renderer.UpdateProjectionMatrix(orthoProj);
+
+            renderer.BindShader(shaderManager, scene.GetSpriteShaderID());
+            ID3D11InputLayout* spriteLayout = shaderManager.GetInputLayout(scene.GetSpriteShaderID());
+
+            MeshBuffers quad{};
+            if (!meshManager.GetMesh(scene.GetQuadMeshID(), quad)) return;
+            renderer.SubmitMesh(quad, spriteLayout);
+
+            ID3D11SamplerState* sampler = renderer.GetSamplerState();
+            if (sampler) context->PSSetSamplers(0, 1, &sampler);
+
+            // Default full UV rect (for standard images)
+            DirectX::XMMATRIX defaultUV = DirectX::XMMatrixIdentity();
+            defaultUV.r[0] = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 1.0f);
+
+            // Draw Sprites
+            auto spriteView = scene.registry.view<SpriteRendererComponent>();
+            for (auto entity : spriteView)
+            {
+                if (scene.registry.all_of<NameComponent>(entity) && !scene.registry.get<NameComponent>(entity).isActive) continue;
+                auto& sprite = spriteView.get<SpriteRendererComponent>(entity);
+                if (!sprite.isActive) continue;
+
+                renderer.UpdateViewMatrix(defaultUV); // Reset UVs
+                renderer.UpdateColorConstants(sprite.tintColor);
+
+                float px = sprite.position.x - (sprite.size.x * sprite.pivot.x);
+                float py = sprite.position.y - (sprite.size.y * sprite.pivot.y);
+
+                DirectX::XMMATRIX S = DirectX::XMMatrixScaling(sprite.size.x, sprite.size.y, 1.0f);
+                DirectX::XMMATRIX R = DirectX::XMMatrixRotationZ(sprite.rotation);
+                DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(px, py, 0.0f);
+                renderer.UpdateWorldMatrix(S * R * T);
+
+                ID3D11ShaderResourceView* srv = (sprite.textureID != 0)
+                    ? textureManager.GetTexture(sprite.textureID)
+                    : textureManager.GetTexture(textureManager.GetDefaultTexture());
+                context->PSSetShaderResources(0, 1, &srv);
+
+                renderer.DrawIndexed(quad.indexCount);
+            }
+
+            // Draw Text
+            auto textView = scene.registry.view<TextRendererComponent>();
+            for (auto entity : textView)
+            {
+                if (scene.registry.all_of<NameComponent>(entity) && !scene.registry.get<NameComponent>(entity).isActive) continue;
+                auto& textComp = textView.get<TextRendererComponent>(entity);
+                if (!textComp.isActive || textComp.text.empty()) continue;
+
+                Engine::FontAsset* font = fontManager.GetFont(textComp.fontID);
+                if (!font) continue;
+
+                ID3D11ShaderResourceView* fontSRV = font->atlasSRV.Get();
+                context->PSSetShaderResources(0, 1, &fontSRV);
+                renderer.UpdateColorConstants(textComp.color);
+
+                float scale = textComp.fontSize / font->fontSize;
+                float startX = textComp.position.x;
+                float startY = textComp.position.y;
+                float x = startX;
+                float y = startY;
+
+                for (char c : textComp.text)
+                {
+                    if (c >= 32 && c < 128) // Only render printable ASCII characters
+                    {
+                        stbtt_aligned_quad q;
+                        stbtt_GetBakedQuad(font->charData, font->atlasWidth, font->atlasHeight, c - 32, &x, &y, &q, 1);
+
+                        float charWidth = (q.x1 - q.x0) * scale;
+                        float charHeight = (q.y1 - q.y0) * scale;
+
+                        // q.x0/y0 are already shifted by stbtt to handle kerning and baseline drops.
+                        // We scale that offset relative to the original start position.
+                        float charX = startX + (q.x0 - startX) * scale;
+                        float charY = startY + (q.y0 - startY) * scale;
+
+                        DirectX::XMMATRIX S = DirectX::XMMatrixScaling(charWidth, charHeight, 1.0f);
+                        DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(charX, charY, 0.0f);
+                        renderer.UpdateWorldMatrix(S * T);
+
+                        // Pass the subset UV data through the View matrix
+                        DirectX::XMMATRIX uvMat = DirectX::XMMatrixIdentity();
+                        uvMat.r[0] = DirectX::XMVectorSet(q.s0, q.t0, q.s1 - q.s0, q.t1 - q.t0);
+                        renderer.UpdateViewMatrix(uvMat);
+
+                        renderer.DrawIndexed(quad.indexCount);
+                    }
+                }
+            }
+
+            // Restore states for next frame
+            renderer.SetUIBlendState(false);
+            renderer.SetUIDepthState(false);
         }
     }
 

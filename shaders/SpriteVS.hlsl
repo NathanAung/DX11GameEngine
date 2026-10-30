@@ -3,6 +3,11 @@ cbuffer CB_Application : register(b0) // Orthographic Screen Matrix
     row_major float4x4 g_Projection;
 };
 
+cbuffer CB_Frame : register(b1) // Hijack the unused View matrix to pass UV rects
+{
+    row_major float4x4 g_View;
+};
+
 cbuffer CB_Object : register(b2) // Pixel Transform (X, Y, Width, Height)
 {
     row_major float4x4 g_World;
@@ -30,9 +35,12 @@ VSOutput main(VSInput input)
     // Scale and translate the 1x1 quad using the World matrix
     float4 worldPos = mul(float4(input.position, 1.0f), g_World);
     
-    // Project directly to the screen (no camera View matrix needed!)
+    // Project directly to the screen (no camera View matrix needed)
     o.position = mul(worldPos, g_Projection);
     
-    o.texCoord = input.texCoord;
+    // Extract UV data from the first row of g_View: [uOffset, vOffset, uScale, vScale]
+    float4 uvData = g_View[0];
+    o.texCoord = input.texCoord * uvData.zw + uvData.xy;
+    
     return o;
 }

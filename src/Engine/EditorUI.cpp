@@ -8,6 +8,7 @@
 #include "Engine/InputManager.h"
 #include "Engine/MeshManager.h"
 #include "Engine/TextureManager.h"
+#include "Engine/FontManager.h"
 #include "Engine/Scene.h"
 #include "Engine/Renderer.h"
 #include "Engine/Systems.h"
@@ -75,7 +76,7 @@ namespace Engine
         }
     }
 
-    void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
+    void EditorUI::Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::FontManager& fontManager, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window)
     {
         // Generate the dynamic scene window title early so the DockBuilder can use it
         std::string sceneName = "Untitled Scene";
@@ -112,7 +113,7 @@ namespace Engine
 		// Only show these windows in Edit mode
         if (m_state == EditorState::Edit) {
             DrawHierarchy(scene, renderer, meshManager, physicsManager);
-            DrawInspector(scene, renderer, meshManager, textureManager, physicsManager);
+            DrawInspector(scene, renderer, meshManager, textureManager, fontManager, physicsManager);
             DrawContentBrowser(scene, renderer, meshManager, textureManager, physicsManager);
         }
     }
@@ -660,7 +661,7 @@ namespace Engine
     }
 
 
-    void EditorUI::DrawInspector(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::PhysicsManager& physicsManager)
+    void EditorUI::DrawInspector(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::FontManager& fontManager, Engine::PhysicsManager& physicsManager)
     {
         ImGui::Begin("Inspector");
         {
@@ -1256,6 +1257,158 @@ namespace Engine
                     }
                 }
 
+                // SpriteRendererComponent UI
+                if (scene.registry.all_of<Engine::SpriteRendererComponent>(m_selectedEntity))
+                {
+                    auto& sprite = scene.registry.get<Engine::SpriteRendererComponent>(m_selectedEntity);
+
+                    ImGui::PushID("SpriteRenderer");
+                    ImGui::Checkbox("##Active", &sprite.isActive);
+                    ImGui::SameLine();
+                    bool treeOpen = ImGui::TreeNodeEx("Sprite Renderer", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                    bool removeComponent = false;
+                    if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                        if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                        ImGui::EndPopup();
+                    }
+
+                    if (treeOpen)
+                    {
+                        DrawTextureSlot("Sprite Texture", sprite.textureID);
+                        ImGui::DragFloat2("Position (X,Y)", &sprite.position.x, 1.0f);
+                        ImGui::DragFloat2("Size (W,H)", &sprite.size.x, 1.0f, 0.0f, 10000.0f);
+                        ImGui::DragFloat2("Pivot (0-1)", &sprite.pivot.x, 0.01f, 0.0f, 1.0f);
+
+                        // Convert internal radians to degrees for the slider
+                        float rotationDeg = DirectX::XMConvertToDegrees(sprite.rotation);
+                        if (ImGui::DragFloat("Rotation", &rotationDeg, 1.0f)) {
+                            sprite.rotation = DirectX::XMConvertToRadians(rotationDeg);
+                        }
+
+                        ImGui::ColorEdit4("Tint Color", &sprite.tintColor.x);
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+
+                    if (removeComponent)
+                    {
+                        scene.registry.remove<Engine::SpriteRendererComponent>(m_selectedEntity);
+                    }
+                }
+
+                // TextRendererComponent UI
+                if (scene.registry.all_of<Engine::TextRendererComponent>(m_selectedEntity))
+                {
+                    auto& textComp = scene.registry.get<Engine::TextRendererComponent>(m_selectedEntity);
+
+                    ImGui::PushID("TextRenderer");
+                    ImGui::Checkbox("##Active", &textComp.isActive);
+                    ImGui::SameLine();
+                    bool treeOpen = ImGui::TreeNodeEx("Text Renderer", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed);
+
+                    bool removeComponent = false;
+                    if (ImGui::BeginPopupContextItem("RemoveMenu")) {
+                        if (ImGui::MenuItem("Remove Component")) removeComponent = true;
+                        ImGui::EndPopup();
+                    }
+
+                    if (treeOpen)
+                    {
+                        // Text String Input
+                        char textBuf[256];
+#ifdef _MSC_VER
+                        strncpy_s(textBuf, textComp.text.c_str(), sizeof(textBuf) - 1);
+#else
+                        std::strncpy(textBuf, textComp.text.c_str(), sizeof(textBuf) - 1);
+#endif
+                        if (ImGui::InputTextMultiline("Text", textBuf, sizeof(textBuf), ImVec2(0, 50))) {
+                            textComp.text = textBuf;
+                        }
+
+                        // Font File Scanning
+                        std::vector<std::string> fontFiles;
+                        fontFiles.push_back("None");
+                        std::string fontPath = "assets/fonts";
+                        if (!std::filesystem::exists(fontPath)) std::filesystem::create_directories(fontPath);
+
+                        for (const auto& entry : std::filesystem::directory_iterator(fontPath)) {
+                            if (entry.path().extension() == ".ttf") {
+                                fontFiles.push_back(entry.path().filename().string());
+                            }
+                        }
+
+                        // Extract physical filename from the Virtual Asset Path string
+                        int currentIndex = 0;
+                        std::string currentPhysicalPath = "";
+                        if (textComp.fontID != 0 && scene.GetAssetManager()) {
+                            const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(textComp.fontID);
+                            if (meta) {
+                                std::string fullPath = meta->filepath;
+                                size_t qMark = fullPath.find('?');
+                                if (qMark != std::string::npos) currentPhysicalPath = fullPath.substr(0, qMark);
+                                else currentPhysicalPath = fullPath;
+
+                                std::string filename = std::filesystem::path(currentPhysicalPath).filename().string();
+                                for (int i = 1; i < fontFiles.size(); ++i) {
+                                    if (fontFiles[i] == filename) { currentIndex = i; break; }
+                                }
+                            }
+                        }
+
+                        bool rebuildFont = false;
+
+                        // Font Dropdown
+                        if (ImGui::BeginCombo("Font", fontFiles[currentIndex].c_str()))
+                        {
+                            for (int i = 0; i < fontFiles.size(); i++) {
+                                bool isSelected = (currentIndex == i);
+                                if (ImGui::Selectable(fontFiles[i].c_str(), isSelected)) {
+                                    if (currentIndex != i) {
+                                        if (i == 0) textComp.fontID = 0;
+                                        else {
+                                            currentPhysicalPath = fontPath + "/" + fontFiles[i];
+                                            rebuildFont = true;
+                                        }
+                                    }
+                                }
+                                if (isSelected) ImGui::SetItemDefaultFocus();
+                            }
+                            ImGui::EndCombo();
+                        }
+
+                        // Drag and Drop support for .ttf files
+                        if (ImGui::BeginDragDropTarget()) {
+                            if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FONT_FILE")) {
+                                currentPhysicalPath = (const char*)payload->Data;
+                                rebuildFont = true;
+                            }
+                            ImGui::EndDragDropTarget();
+                        }
+
+                        // Font Size (Modifying this requires re-baking the texture atlas)
+                        if (ImGui::DragFloat("Font Size", &textComp.fontSize, 1.0f, 8.0f, 256.0f)) {
+                            rebuildFont = true;
+                        }
+
+                        // Rebuild the Font Atlas if the file or size changed
+                        if (rebuildFont && !currentPhysicalPath.empty()) {
+                            textComp.fontID = fontManager.LoadFont(renderer.GetDevice(), *scene.GetAssetManager(), currentPhysicalPath, textComp.fontSize);
+                        }
+
+                        ImGui::DragFloat2("Position (X,Y)", &textComp.position.x, 1.0f);
+                        ImGui::ColorEdit4("Color", &textComp.color.x);
+
+                        ImGui::TreePop();
+                    }
+                    ImGui::PopID();
+
+                    if (removeComponent)
+                    {
+                        scene.registry.remove<Engine::TextRendererComponent>(m_selectedEntity);
+                    }
+                }
+
                 // Add Component Menu
                 ImGui::Separator();
                 ImGui::Spacing();
@@ -1279,6 +1432,12 @@ namespace Engine
                     }
                     if (!scene.registry.all_of<Engine::LuaScriptComponent>(m_selectedEntity)) {
                         if (ImGui::MenuItem("Lua Script")) scene.registry.emplace<Engine::LuaScriptComponent>(m_selectedEntity);
+                    }
+                    if (!scene.registry.all_of<Engine::SpriteRendererComponent>(m_selectedEntity)) {
+                        if (ImGui::MenuItem("Sprite Renderer")) scene.registry.emplace<Engine::SpriteRendererComponent>(m_selectedEntity);
+                    }
+                    if (!scene.registry.all_of<Engine::TextRendererComponent>(m_selectedEntity)) {
+                        if (ImGui::MenuItem("Text Renderer")) scene.registry.emplace<Engine::TextRendererComponent>(m_selectedEntity);
                     }
                     ImGui::EndPopup();
                 }

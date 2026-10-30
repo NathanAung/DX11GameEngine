@@ -11,6 +11,7 @@
 #include "Engine/Systems.h"
 #include "Engine/TextureManager.h"
 #include "Engine/AudioManager.h"
+#include "Engine/FontManager.h"
 #include "Engine/SceneSerializer.h"
 #ifndef DIST_BUILD
 #include "Engine/ImGuiManager.h"
@@ -46,6 +47,7 @@ Engine::ShaderManager g_shaderManager;
 Engine::TextureManager g_textureManager;
 Engine::PhysicsManager g_physicsManager;
 Engine::AudioManager g_audioManager;
+Engine::FontManager g_fontManager;
 
 // ECS: Scene and a sample 3d entity
 Engine::Scene g_scene;
@@ -471,8 +473,12 @@ int main(int argc, char** argv)
 		std::fprintf(stderr, "Press Enter to exit...");
 		std::cin.get();
 
+		// Cleanly destroy all scene entities and subsystem data
+        g_scene.Clear(g_physicsManager);
+
         g_audioManager.Shutdown();
         g_physicsManager.Shutdown();
+		g_fontManager.Shutdown();
 
 #ifndef DIST_BUILD
         g_imGuiManager.Shutdown();
@@ -554,9 +560,13 @@ int main(int argc, char** argv)
     g_assetManager.SaveRegistry("enginefiles/AssetRegistry.json");
 #endif
 
-    // Shutdown and cleanup
-    g_audioManager.Shutdown();
-    g_physicsManager.Shutdown();
+    // Cleanly destroy all scene entities and subsystem data
+	g_scene.Clear(g_physicsManager);
+
+	// Now shutdown managers in the correct order
+	g_audioManager.Shutdown();
+	g_physicsManager.Shutdown();
+	g_fontManager.Shutdown();
 
 #ifndef DIST_BUILD
     g_imGuiManager.Shutdown();
@@ -625,7 +635,7 @@ void Render()
     }
 
     // Render the editor UI (ImGui panels, etc.) first to set up the framebuffer and any UI state
-    g_editorUI.Render(g_scene, g_renderer, g_meshManager, g_textureManager, g_input, g_physicsManager, g_SDLWindow);
+    g_editorUI.Render(g_scene, g_renderer, g_meshManager, g_textureManager, g_fontManager, g_input, g_physicsManager, g_SDLWindow);
 
     // Render the 3D scene into the off-screen framebuffer (Render-to-Texture)
     g_renderer.BindFramebuffer();
@@ -636,7 +646,7 @@ void Render()
 
 
 
-    Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager);
+    Engine::RenderSystem::DrawEntities(g_scene, g_meshManager, g_shaderManager, g_renderer, g_textureManager, g_fontManager);
 
 #ifndef DIST_BUILD
     // Draw debug colliders if in Edit mode
@@ -653,6 +663,9 @@ void Render()
         const auto& camComp = g_scene.registry.get<Engine::CameraComponent>(g_scene.m_activeRenderCamera);
         g_renderer.DrawSkybox(g_meshManager, g_shaderManager, camComp, camTrans, g_scene.GetCubeMeshID(), g_scene.GetSkyboxShaderID());
     }
+
+	// Draw the UI elements (text, sprites, etc.) on top of the 3D scene
+    Engine::RenderSystem::DrawUI(g_scene, g_renderer, g_meshManager, g_shaderManager, g_textureManager, g_fontManager);
 
 #ifndef DIST_BUILD
     // Now bind the real swapchain back buffer.

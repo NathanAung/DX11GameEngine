@@ -45,6 +45,7 @@ set(ENGINE_SOURCE_FILES
     src/Engine/PhysicsManager.cpp
     src/Engine/ImGuiManager.cpp
     src/Engine/AudioManager.cpp
+    src/Engine/FontManager.cpp
     src/Engine/EditorUI.cpp
     external/imguizmo/ImGuizmo.cpp
 )
@@ -65,6 +66,7 @@ set(ENGINE_HEADER_FILES
     include/Engine/PhysicsManager.h
     include/Engine/ImGuiManager.h
     include/Engine/AudioManager.h
+    include/Engine/FontManager.h
     include/Engine/MathUtils.h
     include/Engine/EditorUI.h
     include/Engine/ScriptEntity.h
@@ -107,6 +109,7 @@ find_package(imgui CONFIG REQUIRED)
 find_package(Jolt CONFIG REQUIRED)
 find_package(lua CONFIG REQUIRED)
 find_package(sol2 CONFIG REQUIRED)
+find_path(STB_INCLUDE_DIR "stb_image.h" REQUIRED)
 find_path(MINIAUDIO_INCLUDE_DIR "miniaudio.h" REQUIRED)
 find_path(RAPIDJSON_INCLUDE_DIR "rapidjson/document.h" REQUIRED)
 
@@ -122,6 +125,7 @@ foreach(TARGET IN LISTS ENGINE_TARGETS)
     target_link_libraries(${TARGET} PRIVATE lua)
     target_link_libraries(${TARGET} PRIVATE sol2::sol2)
     
+    target_include_directories(${TARGET} PRIVATE ${STB_INCLUDE_DIR})
     target_include_directories(${TARGET} PRIVATE ${MINIAUDIO_INCLUDE_DIR})
     target_include_directories(${TARGET} PRIVATE ${RAPIDJSON_INCLUDE_DIR})
     

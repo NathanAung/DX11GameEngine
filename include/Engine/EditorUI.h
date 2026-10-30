@@ -14,6 +14,7 @@ namespace Engine
 	class Renderer;
     class MeshManager;
     class TextureManager;
+	class FontManager;
 
     // Editor state machine
     enum class EditorState { Edit, Play };
@@ -21,7 +22,7 @@ namespace Engine
     class EditorUI
     {
     public:
-        void Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window);
+        void Render(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::FontManager& fontManager, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window);
 
         bool IsSceneFocused() const { return m_scenePanelFocused; }
 
@@ -83,7 +84,7 @@ namespace Engine
         void DrawHierarchy(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::PhysicsManager& physicsManager);
         
 		// Draws the Inspector panel, displaying the properties of the selected entity and allowing users to modify its components, while also handling user interactions and updating the scene accordingly.
-        void DrawInspector(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::PhysicsManager& physicsManager);
+        void DrawInspector(Engine::Scene& scene, Engine::Renderer& renderer, Engine::MeshManager& meshManager, Engine::TextureManager& textureManager, Engine::FontManager& fontManager, Engine::PhysicsManager& physicsManager);
 
         // Draws the primary 3D viewport, handles framebuffer rendering, gizmo manipulation, and scene picking.
         void DrawSceneView(Engine::Scene& scene, Engine::Renderer& renderer, Engine::InputManager& input, Engine::PhysicsManager& physicsManager, SDL_Window* window, const std::string& sceneWindowTitle);

@@ -11,6 +11,7 @@
     "lua",
     "sol2",
     "miniaudio",
+    "stb",
     {
       "name": "imgui",
       "features": [
