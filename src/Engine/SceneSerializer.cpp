@@ -127,6 +127,41 @@ namespace Engine
                     writer.EndObject();
                 }
 
+                // UI Sprite Component
+                if (registry.all_of<SpriteRendererComponent>(entity)) {
+                    auto& sc = registry.get<SpriteRendererComponent>(entity);
+                    writer.Key("SpriteRendererComponent");
+                    writer.StartObject();
+                    writer.Key("IsActive"); writer.Bool(sc.isActive);
+                    writer.Key("TextureID"); writer.Uint64(sc.textureID);
+                    writer.Key("Position");
+                    writer.StartArray(); writer.Double(sc.position.x); writer.Double(sc.position.y); writer.EndArray();
+                    writer.Key("Size");
+                    writer.StartArray(); writer.Double(sc.size.x); writer.Double(sc.size.y); writer.EndArray();
+                    writer.Key("Pivot");
+                    writer.StartArray(); writer.Double(sc.pivot.x); writer.Double(sc.pivot.y); writer.EndArray();
+                    writer.Key("Rotation"); writer.Double(sc.rotation);
+                    writer.Key("TintColor");
+                    writer.StartArray(); writer.Double(sc.tintColor.x); writer.Double(sc.tintColor.y); writer.Double(sc.tintColor.z); writer.Double(sc.tintColor.w); writer.EndArray();
+                    writer.EndObject();
+                }
+
+                // UI Text Component
+                if (registry.all_of<TextRendererComponent>(entity)) {
+                    auto& tc = registry.get<TextRendererComponent>(entity);
+                    writer.Key("TextRendererComponent");
+                    writer.StartObject();
+                    writer.Key("IsActive"); writer.Bool(tc.isActive);
+                    writer.Key("Text"); writer.String(tc.text.c_str());
+                    writer.Key("FontID"); writer.Uint64(tc.fontID);
+                    writer.Key("FontSize"); writer.Double(tc.fontSize);
+                    writer.Key("Position");
+                    writer.StartArray(); writer.Double(tc.position.x); writer.Double(tc.position.y); writer.EndArray();
+                    writer.Key("Color");
+                    writer.StartArray(); writer.Double(tc.color.x); writer.Double(tc.color.y); writer.Double(tc.color.z); writer.Double(tc.color.w); writer.EndArray();
+                    writer.EndObject();
+                }
+
                 // LuaScript Component
                 if (registry.all_of<LuaScriptComponent>(entity)) {
                     auto& lsc = registry.get<LuaScriptComponent>(entity);
@@ -331,6 +366,16 @@ namespace Engine
                     }
                 }
             }
+            if (item.HasMember("SpriteRendererComponent")) {
+                if (!checkAsset(item["SpriteRendererComponent"]["TextureID"].GetUint64())) {
+                    outErrorMsg = "Missing UI Sprite Asset in Scene."; return false;
+                }
+            }
+            if (item.HasMember("TextRendererComponent")) {
+                if (!checkAsset(item["TextRendererComponent"]["FontID"].GetUint64())) {
+                    outErrorMsg = "Missing UI Font Asset in Scene."; return false;
+                }
+            }
         }
 
         // --- PASS 2: CLEAR CURRENT SCENE ---
@@ -431,6 +476,39 @@ namespace Engine
                     item["AudioComponent"]["PlayOnCreate"].GetBool(),
                     static_cast<float>(item["AudioComponent"]["Volume"].GetDouble()),
                     nullptr, false
+                    });
+            }
+
+            if (item.HasMember("SpriteRendererComponent")) {
+                const auto& srObj = item["SpriteRendererComponent"];
+                const auto& pos = srObj["Position"];
+                const auto& size = srObj["Size"];
+                const auto& pivot = srObj["Pivot"];
+                const auto& tint = srObj["TintColor"];
+
+                scene.registry.emplace<SpriteRendererComponent>(entity, SpriteRendererComponent{
+                    srObj["IsActive"].GetBool(),
+                    srObj["TextureID"].GetUint64(),
+                    DirectX::XMFLOAT2(static_cast<float>(pos[0].GetDouble()), static_cast<float>(pos[1].GetDouble())),
+                    DirectX::XMFLOAT2(static_cast<float>(size[0].GetDouble()), static_cast<float>(size[1].GetDouble())),
+                    DirectX::XMFLOAT2(static_cast<float>(pivot[0].GetDouble()), static_cast<float>(pivot[1].GetDouble())),
+                    static_cast<float>(srObj["Rotation"].GetDouble()),
+                    DirectX::XMFLOAT4(static_cast<float>(tint[0].GetDouble()), static_cast<float>(tint[1].GetDouble()), static_cast<float>(tint[2].GetDouble()), static_cast<float>(tint[3].GetDouble()))
+                    });
+            }
+
+            if (item.HasMember("TextRendererComponent")) {
+                const auto& trObj = item["TextRendererComponent"];
+                const auto& pos = trObj["Position"];
+                const auto& color = trObj["Color"];
+
+                scene.registry.emplace<TextRendererComponent>(entity, TextRendererComponent{
+                    trObj["IsActive"].GetBool(),
+                    trObj["Text"].GetString(),
+                    trObj["FontID"].GetUint64(),
+                    static_cast<float>(trObj["FontSize"].GetDouble()),
+                    DirectX::XMFLOAT2(static_cast<float>(pos[0].GetDouble()), static_cast<float>(pos[1].GetDouble())),
+                    DirectX::XMFLOAT4(static_cast<float>(color[0].GetDouble()), static_cast<float>(color[1].GetDouble()), static_cast<float>(color[2].GetDouble()), static_cast<float>(color[3].GetDouble()))
                     });
             }
 

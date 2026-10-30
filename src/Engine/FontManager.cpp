@@ -35,8 +35,8 @@ namespace Engine
 		// Prepare the FontAsset structure
         FontAsset font;
         font.fontSize = fontSize;
-        font.atlasWidth = 512;
-        font.atlasHeight = 512;
+        font.atlasWidth = 2048;
+        font.atlasHeight = 2048;
 
         // Bake the TTF into a 1-channel grayscale/alpha bitmap
         std::vector<unsigned char> tempBitmap(font.atlasWidth * font.atlasHeight);

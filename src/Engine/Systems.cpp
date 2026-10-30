@@ -312,7 +312,12 @@ namespace Engine
 
             // ----- RESTORE MAIN PIPELINE -----
             // The framebuffer bindings were destroyed by the shadow pass, so we must restore them
+			// In the editor build, we bind the custom framebuffer. In the distribution build, we bind the back buffer.
+#ifndef DIST_BUILD
             renderer.BindFramebuffer();
+#else
+            renderer.BindBackBuffer();
+#endif
 
             auto* context = renderer.GetContext();
 
@@ -729,6 +734,26 @@ namespace Engine
                 if (!textComp.isActive || textComp.text.empty()) continue;
 
                 Engine::FontAsset* font = fontManager.GetFont(textComp.fontID);
+
+                // Just-In-Time (JIT) Font Loading
+                // If the scene was freshly loaded, the font atlas hasn't been baked into GPU memory yet.
+                if (!font && textComp.fontID != 0 && scene.GetAssetManager())
+                {
+                    const Engine::AssetMetadata* meta = scene.GetAssetManager()->GetMetadata(textComp.fontID);
+                    if (meta)
+                    {
+                        // Extract the physical file path by stripping the virtual "?size=" tag
+                        std::string fullPath = meta->filepath;
+                        size_t qMark = fullPath.find('?');
+                        std::string physicalPath = (qMark != std::string::npos) ? fullPath.substr(0, qMark) : fullPath;
+
+                        // Bake the font into a texture and re-assign the ID
+                        textComp.fontID = fontManager.LoadFont(renderer.GetDevice(), *scene.GetAssetManager(), physicalPath, textComp.fontSize);
+                        font = fontManager.GetFont(textComp.fontID);
+                    }
+                }
+
+				// if the font is still null after attempting to load, skip rendering this text
                 if (!font) continue;
 
                 ID3D11ShaderResourceView* fontSRV = font->atlasSRV.Get();
