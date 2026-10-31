@@ -391,7 +391,8 @@ namespace Engine
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (size * 0.5f));
 
         // --- NATIVE EXPORT GAME BUTTON ---
-        if (ImGui::Button("Export Game", ImVec2(size * 5.0f, size)))
+		// Only allow exporting when the game is not currently running
+        if (!isPlaying && ImGui::Button("Export Game", ImVec2(size * 5.0f, size)))
         {
             if (scene.GetAssetManager())
             {

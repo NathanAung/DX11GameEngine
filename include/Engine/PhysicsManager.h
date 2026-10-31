@@ -19,7 +19,10 @@
 #include <Jolt/Physics/Body/MotionType.h>
 
 #include "Engine/MathUtils.h"
+#include "Engine/Scene.h"
 #include <entt/entt.hpp>
+#include <mutex>
+#include <vector>
 
 // for cache
 #include <unordered_map>
@@ -105,10 +108,48 @@ struct TransformComponent;
 struct RigidBodyComponent;
 class MeshManager;
 
+// Contact Listener to route collisions back to Lua
+class PhysicsContactListener : public JPH::ContactListener {
+public:
+	// Constructor takes a pointer to the scene for callback routing
+    PhysicsContactListener(Scene* scene) : m_scene(scene) {}
+
+	// Called after detecting a collision between a body pair, but before calling OnContactAdded and before adding the contact constraint.
+    virtual JPH::ValidateResult OnContactValidate(const JPH::Body& body1, const JPH::Body& body2, JPH::RVec3Arg baseOffset, const JPH::CollideShapeResult& collisionResult) override {
+        return JPH::ValidateResult::AcceptAllContactsForThisBodyPair;
+    }
+
+	// Called whenever a new contact point is detected.
+    virtual void OnContactAdded(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, JPH::ContactSettings& ioSettings) override;
+	// Called whenever a contact point persists between frames.
+    virtual void OnContactPersisted(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, JPH::ContactSettings& ioSettings) override {}
+	// Called whenever a contact point is removed (e.g., bodies separate or go to sleep).
+    virtual void OnContactRemoved(const JPH::SubShapeIDPair& subShapePair) override;
+
+    // Executes all queued events on the main thread
+    void FlushEvents();
+
+private:
+    Scene* m_scene = nullptr;
+
+    // Thread-safe queue for deferred execution
+    struct CollisionEvent {
+        JPH::BodyID body1;
+        JPH::BodyID body2;
+		bool isEnter;       // true for OnCollisionEnter, false for OnCollisionExit
+    };
+
+	std::mutex m_eventMutex;                    // Mutex to protect access to the event queue
+	std::vector<CollisionEvent> m_eventQueue;   // Queue of collision events to be processed on the main thread
+
+    // Helper to safely invoke Lua callbacks
+    void FireCollisionEvent(entt::entity targetEntity, entt::entity otherEntity, const std::string& functionName);
+};
+
 class PhysicsManager {
 public:
 	// Initialize Jolt physics system
-    bool Initialize();
+    bool Initialize(Scene* scene);
 	// Shutdown and cleanup
     void Shutdown();
 	// Update physics simulation
@@ -121,7 +162,7 @@ public:
 
     // ECS bridge: create/remove bodies from components
 	// Create the base shape first, then apply scaling and create body
-    JPH::BodyID CreateRigidBody(const TransformComponent& tc, const RigidBodyComponent& rbc, const MeshManager& meshManager);
+    JPH::BodyID CreateRigidBody(entt::entity entity, const TransformComponent& tc, const RigidBodyComponent& rbc, const MeshManager& meshManager);
     
 	// Remove body by ID
     void RemoveRigidBody(JPH::BodyID bodyID);
@@ -143,6 +184,7 @@ private:
 	BPLayerInterfaceImpl* m_bpLayerInterface = nullptr;                 // broadphase layer interface
 	ObjectVsBroadPhaseLayerFilterImpl* m_objVsBpLayerFilter = nullptr;  // object vs broadphase layer filter
 	ObjectLayerPairFilterImpl* m_objLayerPairFilter = nullptr;          // object layer pair filter
+	PhysicsContactListener* m_contactListener = nullptr;                // contact listener for collision events
 
     // Cache convex hull shapes per meshID to avoid rebuilding each time
     std::unordered_map<int, JPH::ShapeRefC> m_meshShapeCache;

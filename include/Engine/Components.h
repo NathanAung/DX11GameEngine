@@ -173,6 +173,10 @@ namespace Engine
         sol::function OnUpdate;
         sol::function OnDestroy;
 
+        // Physics Callbacks
+        sol::function OnCollisionEnter;
+        sol::function OnCollisionExit;
+
         bool isInitialized = false;
     };
 

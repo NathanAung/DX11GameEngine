@@ -356,7 +356,7 @@ int main(int argc, char** argv)
 #endif // !DIST_BUILD
 
     // Initialize physics (Jolt)
-    if (!g_physicsManager.Initialize())
+    if (!g_physicsManager.Initialize(&g_scene))
     {
         std::fprintf(stderr, "PhysicsManager initialization failed\n");
 

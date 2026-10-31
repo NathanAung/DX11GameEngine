@@ -840,7 +840,7 @@ namespace Engine
             }
 
             if (rb.bodyID.IsInvalid()) {
-                JPH::BodyID id = physicsManager.CreateRigidBody(tc, rb, meshManager);
+                JPH::BodyID id = physicsManager.CreateRigidBody(ent, tc, rb, meshManager);
                 rb.bodyID = id;
                 rb.bodyCreated = !id.IsInvalid();
             }
@@ -1018,6 +1018,10 @@ namespace Engine
                         script.OnUpdate = script.env["OnUpdate"];
                         script.OnDestroy = script.env["OnDestroy"];
 
+                        // Cache collision functions
+                        script.OnCollisionEnter = script.env["OnCollisionEnter"];
+                        script.OnCollisionExit = script.env["OnCollisionExit"];
+
                         if (script.OnCreate.valid()) {
 							// Copy to stack before execution (in case OnCreate spawns new entities or scripts and causes reallocations
                             // Use protected_function to prevent execution crashes
@@ -1087,6 +1091,9 @@ namespace Engine
                             script.OnCreate = script.env["OnCreate"];
                             script.OnUpdate = script.env["OnUpdate"];
                             script.OnDestroy = script.env["OnDestroy"];
+
+                            script.OnCollisionEnter = script.env["OnCollisionEnter"];
+                            script.OnCollisionExit = script.env["OnCollisionExit"];
 
                             if (script.OnCreate.valid()) {
                                 sol::function createFunc = script.OnCreate;
@@ -1161,6 +1168,8 @@ namespace Engine
                 resetScript.OnCreate = sol::function();
                 resetScript.OnUpdate = sol::function();
                 resetScript.OnDestroy = sol::function();
+                resetScript.OnCollisionEnter = sol::function();
+                resetScript.OnCollisionExit = sol::function();
             }
         }
     }
