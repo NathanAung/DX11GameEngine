@@ -37,16 +37,21 @@ namespace Engine
             return "Unknown";
         }
 
-		// Method to apply a linear impulse to the entity's rigid body, if it has one
-        void ApplyLinearImpulse(float x, float y, float z)
+        // Method to get the forward direction vector (+Z rotated by the entity's quaternion)
+        DirectX::XMFLOAT3 GetForwardVector()
         {
-            if (m_scene && m_scene->GetPhysicsManager() && m_scene->registry.all_of<RigidBodyComponent>(m_entity)) {
-                auto& rb = m_scene->registry.get<RigidBodyComponent>(m_entity);
-                if (!rb.bodyID.IsInvalid()) {
-                    m_scene->GetPhysicsManager()->GetBodyInterface().AddImpulse(rb.bodyID, JPH::Vec3(x, y, z));
-                }
+            if (m_scene && m_scene->registry.all_of<TransformComponent>(m_entity)) {
+                auto& tc = m_scene->registry.get<TransformComponent>(m_entity);
+                DirectX::XMVECTOR q = DirectX::XMLoadFloat4(&tc.rotation);
+                DirectX::XMVECTOR forward = DirectX::XMVector3Rotate(DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), DirectX::XMQuaternionNormalize(q));
+
+                DirectX::XMFLOAT3 fwd{};
+                DirectX::XMStoreFloat3(&fwd, forward);
+                return fwd;
             }
+            return DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f); // Default forward
         }
+
 
         // Spawning API
         ScriptEntity Instantiate(const std::string& name)
@@ -115,6 +120,44 @@ namespace Engine
                 rb.bodyID = JPH::BodyID();
                 rb.bodyCreated = false;
             }
+        }
+
+        // PHYSICS API
+
+        // Method to apply a linear impulse to the entity's rigid body, if it has one
+        void ApplyLinearImpulse(float x, float y, float z)
+        {
+            if (m_scene && m_scene->GetPhysicsManager() && m_scene->registry.all_of<RigidBodyComponent>(m_entity)) {
+                auto& rb = m_scene->registry.get<RigidBodyComponent>(m_entity);
+                if (!rb.bodyID.IsInvalid()) {
+                    m_scene->GetPhysicsManager()->GetBodyInterface().AddImpulse(rb.bodyID, JPH::Vec3(x, y, z));
+                }
+            }
+        }
+
+        // Method to forcefully set the linear velocity of the entity
+        void SetLinearVelocity(float x, float y, float z)
+        {
+            if (m_scene && m_scene->GetPhysicsManager() && m_scene->registry.all_of<RigidBodyComponent>(m_entity)) {
+                auto& rb = m_scene->registry.get<RigidBodyComponent>(m_entity);
+                if (!rb.bodyID.IsInvalid()) {
+                    // Activate the body in case it went to sleep
+                    m_scene->GetPhysicsManager()->GetBodyInterface().SetLinearVelocity(rb.bodyID, JPH::Vec3(x, y, z));
+                }
+            }
+        }
+
+        // Method to read the current linear velocity
+        DirectX::XMFLOAT3 GetLinearVelocity()
+        {
+            if (m_scene && m_scene->GetPhysicsManager() && m_scene->registry.all_of<RigidBodyComponent>(m_entity)) {
+                auto& rb = m_scene->registry.get<RigidBodyComponent>(m_entity);
+                if (!rb.bodyID.IsInvalid()) {
+                    JPH::Vec3 vel = m_scene->GetPhysicsManager()->GetBodyInterface().GetLinearVelocity(rb.bodyID);
+                    return DirectX::XMFLOAT3(vel.GetX(), vel.GetY(), vel.GetZ());
+                }
+            }
+            return DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
         }
 
 

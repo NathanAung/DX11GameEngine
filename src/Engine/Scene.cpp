@@ -520,7 +520,10 @@ namespace Engine
             sol::constructors<ScriptEntity(entt::entity, Engine::Scene*)>(),
             "GetTransform", &ScriptEntity::GetTransform,
             "GetName", &ScriptEntity::GetName,
+            "GetForwardVector", &ScriptEntity::GetForwardVector,
             "ApplyLinearImpulse", &ScriptEntity::ApplyLinearImpulse,
+            "SetLinearVelocity", &ScriptEntity::SetLinearVelocity,
+            "GetLinearVelocity", &ScriptEntity::GetLinearVelocity,
             "Instantiate", &ScriptEntity::Instantiate,
             "InstantiateCube", &ScriptEntity::InstantiateCube,
             "InstantiateSphere", &ScriptEntity::InstantiateSphere,
@@ -564,6 +567,27 @@ namespace Engine
 
         // Register Global Input Pointer
         m_lua["Input"] = inputManager;
+
+        // Global Physics Table
+        sol::table physicsTable = m_lua.create_named_table("Physics");
+
+        // Expose CastRay(originX, originY, originZ, dirX, dirY, dirZ)
+        physicsTable["CastRay"] = [this, physicsManager](float ox, float oy, float oz, float dx, float dy, float dz) -> sol::object
+            {
+                Engine::Math::Ray ray;
+                ray.origin = DirectX::XMFLOAT3(ox, oy, oz);
+                ray.direction = DirectX::XMFLOAT3(dx, dy, dz);
+
+                entt::entity hit = this->CastRay(ray, *physicsManager);
+
+                if (hit != entt::null) {
+                    // Wrap the raw entity ID into a ScriptEntity and return it to Lua
+                    return sol::make_object(this->m_lua, ScriptEntity(hit, this));
+                }
+
+                // Return 'nil' if the ray hit nothing
+                return sol::make_object(this->m_lua, sol::nil);
+            };
     }
 
 
