@@ -37,6 +37,42 @@ namespace Engine
             return "Unknown";
         }
 
+        // --- ACTIVATION API ---
+
+        bool IsActive()
+        {
+            if (m_scene && m_scene->registry.all_of<NameComponent>(m_entity)) {
+                return m_scene->registry.get<NameComponent>(m_entity).isActive;
+            }
+            return false;
+        }
+
+        void SetActive(bool active)
+        {
+            if (m_scene && m_scene->registry.all_of<NameComponent>(m_entity)) {
+                m_scene->registry.get<NameComponent>(m_entity).isActive = active;
+            }
+        }
+
+        // --- HIERARCHY API ---
+
+        // Maps directly to the engine's intrusive linked-list parenting system
+        void SetParent(ScriptEntity parentEntity)
+        {
+            if (m_scene) {
+                // We can access the private m_entity of the passed ScriptEntity because we are in the same class scope
+                m_scene->ParentEntity(m_entity, parentEntity.m_entity);
+            }
+        }
+
+        // --- COMPONENT SAFETY CHECKS ---
+
+        bool HasMesh() { return m_scene && m_scene->registry.all_of<MeshRendererComponent>(m_entity); }
+        bool HasRigidBody() { return m_scene && m_scene->registry.all_of<RigidBodyComponent>(m_entity); }
+        bool HasLight() { return m_scene && m_scene->registry.all_of<LightComponent>(m_entity); }
+        bool HasAudio() { return m_scene && m_scene->registry.all_of<AudioComponent>(m_entity); }
+        bool HasScript() { return m_scene && m_scene->registry.all_of<LuaScriptComponent>(m_entity); }
+
         // Method to get the forward direction vector (+Z rotated by the entity's quaternion)
         DirectX::XMFLOAT3 GetForwardVector()
         {
@@ -53,7 +89,8 @@ namespace Engine
         }
 
 
-        // Spawning API
+		// --- ENTITY INSTANTIATION AND DESTRUCTION API --- 
+
         ScriptEntity Instantiate(const std::string& name)
         {
             if (m_scene) return ScriptEntity(m_scene->CreateEntity(name), m_scene);
@@ -72,13 +109,13 @@ namespace Engine
             return ScriptEntity(entt::null, nullptr);
         }
 
-        // Destruction API
-        void Destroy()
+        void Destroy(float delay = 0.0f)
         {
-            if (m_scene) m_scene->SubmitForDestruction(m_entity);
+            if (m_scene) m_scene->SubmitForDestruction(m_entity, delay);
         }
 
-        // Component Addition API
+		// --- COMPONENT ADDITION API ---
+
         void AddMeshRenderer(MeshType type)
         {
             if (m_scene && m_scene->registry.valid(m_entity)) {
@@ -122,7 +159,7 @@ namespace Engine
             }
         }
 
-        // PHYSICS API
+        // --- PHYSICS API --- 
 
         // Method to apply a linear impulse to the entity's rigid body, if it has one
         void ApplyLinearImpulse(float x, float y, float z)
@@ -161,7 +198,7 @@ namespace Engine
         }
 
 
-		// SCRIPTING API
+		// --- SCRIPTING API --- 
 
         void AddLuaScript(const std::string& filepath)
         {
@@ -174,7 +211,7 @@ namespace Engine
         }
 
 
-		// AUDIO API
+		// --- AUDIO API --- 
 
         void AddAudioComponent(const std::string& filepath, bool is3D, bool loop, bool playOnCreate)
         {

@@ -351,6 +351,21 @@ namespace Engine
             physicsManager.RemoveRigidBody(rbc.bodyID);
         }
 
+        // Trigger Lua OnDestroy callbacks before the entity is deleted
+        if (registry.all_of<LuaScriptComponent>(entity)) {
+            auto& lsc = registry.get<LuaScriptComponent>(entity);
+            for (auto& script : lsc.scripts) {
+                if (script.isInitialized && script.OnDestroy.valid()) {
+                    sol::protected_function destroyFunc = script.OnDestroy;
+                    auto result = destroyFunc();
+                    if (!result.valid()) {
+                        sol::error err = result;
+                        std::fprintf(stderr, "Lua Destroy Error in %s: %s\n", script.filepath.c_str(), err.what());
+                    }
+                }
+            }
+        }
+
         // Destroy the entity
         registry.destroy(entity);
     }
@@ -441,20 +456,29 @@ namespace Engine
     }
 
 
-    void Scene::SubmitForDestruction(entt::entity entity)
+    void Scene::SubmitForDestruction(entt::entity entity, float delay)
     {
         // Add to queue if not already queued
-        if (std::find(m_entitiesToDestroy.begin(), m_entitiesToDestroy.end(), entity) == m_entitiesToDestroy.end()) {
-            m_entitiesToDestroy.push_back(entity);
+        for (const auto& pair : m_entitiesToDestroy) {
+            if (pair.first == entity) return;
         }
+        m_entitiesToDestroy.push_back({ entity, delay });
     }
 
-    void Scene::ProcessDestructionQueue(Engine::PhysicsManager& physicsManager)
+    void Scene::ProcessDestructionQueue(Engine::PhysicsManager& physicsManager, float deltaTime)
     {
-        for (auto entity : m_entitiesToDestroy) {
-            DestroyEntity(entity, physicsManager);
+        // Iterate backward so we can safely erase elements while looping
+        for (int i = (int)m_entitiesToDestroy.size() - 1; i >= 0; --i)
+        {
+            m_entitiesToDestroy[i].second -= deltaTime;
+
+            // If the timer hits zero, destroy the entity and remove it from the queue
+            if (m_entitiesToDestroy[i].second <= 0.0f)
+            {
+                DestroyEntity(m_entitiesToDestroy[i].first, physicsManager);
+                m_entitiesToDestroy.erase(m_entitiesToDestroy.begin() + i);
+            }
         }
-        m_entitiesToDestroy.clear();
     }
 
 
@@ -527,14 +551,25 @@ namespace Engine
             "Instantiate", &ScriptEntity::Instantiate,
             "InstantiateCube", &ScriptEntity::InstantiateCube,
             "InstantiateSphere", &ScriptEntity::InstantiateSphere,
-            "Destroy", &ScriptEntity::Destroy,
+            "Destroy", sol::overload(
+                [](ScriptEntity& self) { self.Destroy(0.0f); },
+                [](ScriptEntity& self, float delay) { self.Destroy(delay); }
+            ),
             "AddMeshRenderer", &ScriptEntity::AddMeshRenderer,
             "AddRigidBody", &ScriptEntity::AddRigidBody,
             "AddLuaScript", &ScriptEntity::AddLuaScript,
             "AddAudioComponent", &ScriptEntity::AddAudioComponent,
             "PlayAudio", &ScriptEntity::PlayAudio,
             "StopAudio", &ScriptEntity::StopAudio,
-            "SetAudioVolume", &ScriptEntity::SetAudioVolume
+            "SetAudioVolume", &ScriptEntity::SetAudioVolume,
+            "IsActive", &ScriptEntity::IsActive,
+            "SetActive", &ScriptEntity::SetActive,
+            "SetParent", &ScriptEntity::SetParent,
+            "HasMesh", &ScriptEntity::HasMesh,
+            "HasRigidBody", &ScriptEntity::HasRigidBody,
+            "HasLight", &ScriptEntity::HasLight,
+            "HasAudio", &ScriptEntity::HasAudio,
+            "HasScript", &ScriptEntity::HasScript
         );
 
         // Expose Engine::Key Enum 
@@ -586,6 +621,19 @@ namespace Engine
                 }
 
                 // Return 'nil' if the ray hit nothing
+                return sol::make_object(this->m_lua, sol::nil);
+            };
+
+        // Global Scene Table
+        sol::table sceneTable = m_lua.create_named_table("Scene");
+
+        // Expose FindEntityByName
+        sceneTable["FindEntityByName"] = [this](const std::string& name) -> sol::object
+            {
+                entt::entity found = this->FindEntityByName(name);
+                if (found != entt::null) {
+                    return sol::make_object(this->m_lua, ScriptEntity(found, this));
+                }
                 return sol::make_object(this->m_lua, sol::nil);
             };
     }
@@ -678,6 +726,7 @@ namespace Engine
     void Scene::StopPlayMode(entt::entity editorCameraFallback, Engine::PhysicsManager& physicsManager)
     {
         Engine::ScriptSystemShutdown(*this);
+        Engine::ScriptSystemShutdown(*this);
 
         // Restore the original scene state and reset all physics bodies
         RestoreFromBackup(physicsManager);
@@ -765,5 +814,19 @@ namespace Engine
         }
 
         return parentEntity;
+    }
+
+
+    entt::entity Scene::FindEntityByName(const std::string& name)
+    {
+        auto view = registry.view<NameComponent>();
+        for (auto entity : view)
+        {
+            if (view.get<NameComponent>(entity).name == name)
+            {
+                return entity;
+            }
+        }
+        return entt::null;
     }
 }

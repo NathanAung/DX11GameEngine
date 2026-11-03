@@ -100,6 +100,9 @@ namespace Engine
         // Generates a parent entity and child sub-meshes for imported files (.obj, .gltf, .fbx)
         entt::entity InstantiateModel(const std::string& filepath, Engine::Renderer& renderer, Engine::MeshManager& meshManager);
 
+        // Search the scene for an entity by name
+        entt::entity FindEntityByName(const std::string& name);
+
         // Intrusive hierarchy helpers
         void ParentEntity(entt::entity child, entt::entity parent);
         void UnparentEntity(entt::entity child);
@@ -118,10 +121,10 @@ namespace Engine
 		// Initialize Lua bindings for scene manipulation and scripting
         void InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager);
 
-        // Deferred Destruction Queue
-        std::vector<entt::entity> m_entitiesToDestroy;
-        void SubmitForDestruction(entt::entity entity);
-        void ProcessDestructionQueue(Engine::PhysicsManager& physicsManager);
+        // Deferred Destruction Queue, store a pair of (Entity, TimeRemaining)
+        std::vector<std::pair<entt::entity, float>> m_entitiesToDestroy;
+        void SubmitForDestruction(entt::entity entity, float delay = 0.0f);
+        void ProcessDestructionQueue(Engine::PhysicsManager& physicsManager, float deltaTime);
 
         // Safely wipes the entire registry and all subsystem data (Jolt/Audio)
         void Clear(Engine::PhysicsManager& physicsManager);

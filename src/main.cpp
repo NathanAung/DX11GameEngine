@@ -600,7 +600,7 @@ void Update(float deltaTime) {
         Engine::AudioSystem(g_scene, g_audioManager, g_assetManager);
 
         // Safely destroy any entities that scripts asked to kill this frame
-        g_scene.ProcessDestructionQueue(g_physicsManager);
+        g_scene.ProcessDestructionQueue(g_physicsManager, deltaTime);
     }
 
 #ifndef DIST_BUILD

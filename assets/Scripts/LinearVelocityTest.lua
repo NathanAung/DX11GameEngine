@@ -7,7 +7,9 @@ end
 
 function OnUpdate(dt)
 	-- Set the linear velocity of the object to (1, 0, 0) every frame
-	self:SetLinearVelocity(1, 0, 0)
+	if self:HasRigidBody() then
+		self:SetLinearVelocity(1, 0, 0)
+	end
 	-- Get the linear velocity of the object and print it
 	local velocity = self:GetLinearVelocity()
 
