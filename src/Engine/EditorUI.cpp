@@ -1548,7 +1548,7 @@ namespace Engine
             bool isHovered = ImGui::IsWindowHovered();
             m_scenePanelFocused = ImGui::IsWindowFocused();
 
-            if (m_scenePanelFocused && ImGui::IsKeyPressed(ImGuiKey_Space))
+            if (m_state == EditorState::Edit && m_scenePanelFocused && ImGui::IsKeyPressed(ImGuiKey_Space))
             {
                 // Cycle between 0 (Translate), 1 (Rotate), and 2 (Scale)
                 m_gizmoType = (m_gizmoType + 1) % 3;

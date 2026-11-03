@@ -242,6 +242,48 @@ namespace Engine
     {
         void DrawEntities(Engine::Scene& scene, MeshManager& meshManager, ShaderManager& shaderManager, Engine::Renderer& renderer, Engine::TextureManager& textureManager, Engine::FontManager& fontManager)
         {
+            // Just-In-Time (JIT) Loading Helpers
+            auto EnsureMeshLoaded = [&](UUID meshID) {
+                MeshBuffers temp{};
+                if (!meshManager.GetMesh(meshID, temp) && meshID != 0 && scene.GetAssetManager()) {
+                    const auto* meta = scene.GetAssetManager()->GetMetadata(meshID);
+                    if (meta) {
+                        // Strip the sub-mesh tag (e.g. "?mesh=0") to load the physical container file
+                        std::string p = meta->filepath;
+                        size_t q = p.find('?');
+                        if (q != std::string::npos) p = p.substr(0, q);
+                        meshManager.LoadModel(renderer.GetDevice(), *scene.GetAssetManager(), p);
+                    }
+                }
+            };
+
+            auto GetTexJIT = [&](UUID texID, UUID fallback) -> ID3D11ShaderResourceView* {
+                if (texID == 0) return textureManager.GetTexture(fallback);
+
+                // GetTexture returns the absolute default SRV if it fails to find the UUID
+                ID3D11ShaderResourceView* srv = textureManager.GetTexture(texID);
+                ID3D11ShaderResourceView* absoluteDefault = textureManager.GetTexture(textureManager.GetDefaultTexture());
+
+                // If we got the default SRV back, but we didn't explicitly ask for it, the texture is missing
+                if (srv == absoluteDefault && texID != textureManager.GetDefaultTexture()) {
+                    if (scene.GetAssetManager()) {
+                        const auto* meta = scene.GetAssetManager()->GetMetadata(texID);
+                        if (meta) {
+                            textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), meta->filepath);
+                            srv = textureManager.GetTexture(texID);
+                        }
+                    }
+                }
+
+                // If it is STILL the default after attempting to load, return the requested fallback (e.g. default normal map)
+                if (srv == absoluteDefault && texID != textureManager.GetDefaultTexture()) {
+                    return textureManager.GetTexture(fallback);
+                }
+
+                return srv;
+            };
+
+
             // ----- CASCADED SHADOW PASS -----
 			// Identify the directional light for shadow mapping
             DirectX::XMFLOAT3 dirLightVec(0, -1, 0); // Default fallback
@@ -297,6 +339,8 @@ namespace Engine
                     if (scene.registry.all_of<NameComponent>(entity) && !scene.registry.get<NameComponent>(entity).isActive) continue;
                     auto& mr = meshView.get<MeshRendererComponent>(entity);
                     if (!mr.isActive || mr.matType == Engine::MaterialType::UnlitColor) continue; // Skip unlit/debug objects
+
+                    EnsureMeshLoaded(mr.meshID);
 
                     auto& tc = meshView.get<TransformComponent>(entity);
                     renderer.UpdateWorldMatrix(DirectX::XMLoadFloat4x4(&tc.worldMatrix));
@@ -496,6 +540,8 @@ namespace Engine
                 // Respect component active toggle
                 if (!mr.isActive) continue;
 
+                EnsureMeshLoaded(mr.meshID);
+
                 // World matrix from cached TransformComponent
                 DirectX::XMMATRIX world = DirectX::XMLoadFloat4x4(&tc.worldMatrix);
                 renderer.UpdateWorldMatrix(world);
@@ -550,23 +596,12 @@ namespace Engine
                     // Bind the PBR Shader
                     renderer.BindShader(shaderManager, scene.GetDefaultShaderID());
 
-                    // Prepare an array of 3 SRVs: Albedo, Normal, ORM
-                    ID3D11ShaderResourceView* srvs[3] = { nullptr, nullptr, nullptr };
-
-                    // Albedo (t0)
-                    srvs[0] = (mr.albedoMapID != 0)
-                        ? textureManager.GetTexture(mr.albedoMapID)
-                        : textureManager.GetTexture(textureManager.GetDefaultTexture());
-
-                    // Normal (t1)
-                    srvs[1] = (mr.normalMapID != 0)
-                        ? textureManager.GetTexture(mr.normalMapID)
-                        : textureManager.GetTexture(textureManager.GetDefaultNormalMap());
-
-                    // ORM (t2)
-                    srvs[2] = (mr.ormMapID != 0)
-                        ? textureManager.GetTexture(mr.ormMapID)
-                        : textureManager.GetTexture(textureManager.GetDefaultORMMap());
+					// Bind textures to PS slots t0, t1, t2 (Albedo, Normal, ORM)
+                    ID3D11ShaderResourceView* srvs[3] = {
+                        GetTexJIT(mr.albedoMapID, textureManager.GetDefaultTexture()),
+                        GetTexJIT(mr.normalMapID, textureManager.GetDefaultNormalMap()),
+                        GetTexJIT(mr.ormMapID, textureManager.GetDefaultORMMap())
+                    };
 
                     // Bind all three textures at once
                     context->PSSetShaderResources(0, 3, srvs);
@@ -717,9 +752,22 @@ namespace Engine
                 DirectX::XMMATRIX T = DirectX::XMMatrixTranslation(px, py, 0.0f);
                 renderer.UpdateWorldMatrix(S * R * T);
 
-                ID3D11ShaderResourceView* srv = (sprite.textureID != 0)
-                    ? textureManager.GetTexture(sprite.textureID)
-                    : textureManager.GetTexture(textureManager.GetDefaultTexture());
+                // Check against defaultSRV instead of nullptr
+                ID3D11ShaderResourceView* srv = nullptr;
+                ID3D11ShaderResourceView* defaultSRV = textureManager.GetTexture(textureManager.GetDefaultTexture());
+
+                if (sprite.textureID != 0) {
+                    srv = textureManager.GetTexture(sprite.textureID);
+                    if (srv == defaultSRV && sprite.textureID != textureManager.GetDefaultTexture() && scene.GetAssetManager()) {
+                        const auto* meta = scene.GetAssetManager()->GetMetadata(sprite.textureID);
+                        if (meta) {
+                            textureManager.LoadTexture(renderer.GetDevice(), *scene.GetAssetManager(), meta->filepath);
+                            srv = textureManager.GetTexture(sprite.textureID);
+                        }
+                    }
+                }
+                if (!srv) srv = defaultSRV;
+
                 context->PSSetShaderResources(0, 1, &srv);
 
                 renderer.DrawIndexed(quad.indexCount);

@@ -569,7 +569,13 @@ namespace Engine
             "HasRigidBody", &ScriptEntity::HasRigidBody,
             "HasLight", &ScriptEntity::HasLight,
             "HasAudio", &ScriptEntity::HasAudio,
-            "HasScript", &ScriptEntity::HasScript
+            "HasScript", &ScriptEntity::HasScript,
+            "SetMesh", &ScriptEntity::SetMesh,
+            "SetAlbedo", &ScriptEntity::SetAlbedo,
+            "SetNormal", &ScriptEntity::SetNormal,
+            "SetORM", &ScriptEntity::SetORM,
+            "SetLightColor", &ScriptEntity::SetLightColor,
+            "SetLightIntensity", &ScriptEntity::SetLightIntensity
         );
 
         // Expose Engine::Key Enum 

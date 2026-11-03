@@ -124,6 +124,7 @@ namespace Engine
                 if (type == MeshType::Cube) mr.meshID = m_scene->GetCubeMeshID();
                 else if (type == MeshType::Sphere) mr.meshID = m_scene->GetSphereMeshID();
                 else if (type == MeshType::Capsule) mr.meshID = m_scene->GetCapsuleMeshID();
+				else if (type == MeshType::Custom) mr.meshID = 0; // Custom mesh will be set later
 
                 mr.matType = MaterialType::LitColor;
             }
@@ -149,6 +150,10 @@ namespace Engine
                     rb.radius = size;
                     rb.height = size * 2.0f; // Calculate a sensible default height based on radius
                 }
+                else if (shape == RBShape::Mesh) {
+                    // For mesh colliders, we can set a default scale multiplier based on the 'size' parameter
+                    rb.colliderScale = { size, size, size };
+				}
 
                 // If it already had a body, remove it so Jolt generates a fresh one next frame
                 if (!rb.bodyID.IsInvalid() && m_scene->GetPhysicsManager()) {
@@ -156,6 +161,69 @@ namespace Engine
                 }
                 rb.bodyID = JPH::BodyID();
                 rb.bodyCreated = false;
+            }
+        }
+
+        // --- RENDERING & ASSET MUTATION API ---
+
+        void SetMesh(const std::string& filepath)
+        {
+            if (m_scene && m_scene->registry.all_of<MeshRendererComponent>(m_entity)) {
+                auto& mr = m_scene->registry.get<MeshRendererComponent>(m_entity);
+                if (m_scene->GetAssetManager()) {
+                    mr.meshID = m_scene->GetAssetManager()->ImportAsset(filepath, Engine::AssetType::ModelFile);
+                }
+            }
+        }
+
+        void SetAlbedo(const std::string& filepath)
+        {
+            if (m_scene && m_scene->registry.all_of<MeshRendererComponent>(m_entity)) {
+                auto& mr = m_scene->registry.get<MeshRendererComponent>(m_entity);
+                if (m_scene->GetAssetManager()) {
+                    mr.albedoMapID = m_scene->GetAssetManager()->ImportAsset(filepath, Engine::AssetType::Texture);
+                    mr.matType = MaterialType::Textured; // Automatically switch to textured mode
+                }
+            }
+        }
+
+        void SetNormal(const std::string& filepath)
+        {
+            if (m_scene && m_scene->registry.all_of<MeshRendererComponent>(m_entity)) {
+                auto& mr = m_scene->registry.get<MeshRendererComponent>(m_entity);
+                if (m_scene->GetAssetManager()) {
+                    mr.normalMapID = m_scene->GetAssetManager()->ImportAsset(filepath, Engine::AssetType::Texture);
+                    mr.matType = MaterialType::Textured;
+                }
+            }
+        }
+
+        void SetORM(const std::string& filepath)
+        {
+            if (m_scene && m_scene->registry.all_of<MeshRendererComponent>(m_entity)) {
+                auto& mr = m_scene->registry.get<MeshRendererComponent>(m_entity);
+                if (m_scene->GetAssetManager()) {
+                    mr.ormMapID = m_scene->GetAssetManager()->ImportAsset(filepath, Engine::AssetType::Texture);
+                    mr.matType = MaterialType::Textured;
+                }
+            }
+        }
+
+        // --- LIGHTING API ---
+
+        void SetLightColor(float r, float g, float b)
+        {
+            if (m_scene && m_scene->registry.all_of<LightComponent>(m_entity)) {
+                auto& lc = m_scene->registry.get<LightComponent>(m_entity);
+                lc.color = DirectX::XMFLOAT3(r, g, b);
+            }
+        }
+
+        void SetLightIntensity(float intensity)
+        {
+            if (m_scene && m_scene->registry.all_of<LightComponent>(m_entity)) {
+                auto& lc = m_scene->registry.get<LightComponent>(m_entity);
+                lc.intensity = intensity;
             }
         }
 
