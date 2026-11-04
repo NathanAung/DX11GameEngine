@@ -73,6 +73,8 @@ namespace Engine
         bool HasAudio() { return m_scene && m_scene->registry.all_of<AudioComponent>(m_entity); }
         bool HasScript() { return m_scene && m_scene->registry.all_of<LuaScriptComponent>(m_entity); }
 
+		// --- DIRECTIONAL VECTORS ---
+
         // Method to get the forward direction vector (+Z rotated by the entity's quaternion)
         DirectX::XMFLOAT3 GetForwardVector()
         {
@@ -86,6 +88,23 @@ namespace Engine
                 return fwd;
             }
             return DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f); // Default forward
+        }
+
+        // Method to get the right direction vector (+X rotated by the entity's quaternion)
+        DirectX::XMFLOAT3 GetRightVector()
+        {
+            if (m_scene && m_scene->registry.all_of<TransformComponent>(m_entity)) {
+                auto& tc = m_scene->registry.get<TransformComponent>(m_entity);
+                DirectX::XMVECTOR q = DirectX::XMLoadFloat4(&tc.rotation);
+
+                // +X is the base right vector in a Left-Handed coordinate system
+                DirectX::XMVECTOR right = DirectX::XMVector3Rotate(DirectX::XMVectorSet(1.0f, 0.0f, 0.0f, 0.0f), DirectX::XMQuaternionNormalize(q));
+
+                DirectX::XMFLOAT3 r{};
+                DirectX::XMStoreFloat3(&r, right);
+                return r;
+            }
+            return DirectX::XMFLOAT3(1.0f, 0.0f, 0.0f); // Default right
         }
 
 
@@ -164,6 +183,46 @@ namespace Engine
             }
         }
 
+        void AddAudioComponent(const std::string& filepath, bool is3D, bool loop, bool playOnCreate)
+        {
+            if (m_scene && m_scene->registry.valid(m_entity)) {
+                auto& ac = m_scene->registry.get_or_emplace<AudioComponent>(m_entity);
+
+                // Translate the human-readable string into a UUID 
+                if (m_scene->GetAssetManager()) {
+                    ac.audioID = m_scene->GetAssetManager()->ImportAsset(filepath, Engine::AssetType::Audio);
+                }
+
+                ac.is3D = is3D;
+                ac.loop = loop;
+                ac.playOnCreate = playOnCreate;
+            }
+        }
+
+        void AddLuaScript(const std::string& filepath)
+        {
+            if (m_scene && m_scene->registry.valid(m_entity)) {
+                auto& scriptComp = m_scene->registry.get_or_emplace<LuaScriptComponent>(m_entity);
+                ScriptInstance newScript;
+                newScript.filepath = filepath;
+                scriptComp.scripts.push_back(newScript);
+            }
+        }
+
+        void AddSpriteRenderer()
+        {
+            if (m_scene && m_scene->registry.valid(m_entity)) {
+                auto& sr = m_scene->registry.get_or_emplace<SpriteRendererComponent>(m_entity);
+            }
+		}
+
+        void AddTextRenderer()
+        {
+            if (m_scene && m_scene->registry.valid(m_entity)) {
+                auto& tr = m_scene->registry.get_or_emplace<TextRendererComponent>(m_entity);
+            }
+		}
+
         // --- RENDERING & ASSET MUTATION API ---
 
         void SetMesh(const std::string& filepath)
@@ -227,6 +286,65 @@ namespace Engine
             }
         }
 
+        // --- UI SPRITE API ---
+
+        void SetSprite(const std::string& filepath)
+        {
+            if (m_scene && m_scene->registry.all_of<SpriteRendererComponent>(m_entity)) {
+                auto& sr = m_scene->registry.get<SpriteRendererComponent>(m_entity);
+                if (m_scene->GetAssetManager()) {
+                    sr.textureID = m_scene->GetAssetManager()->ImportAsset(filepath, Engine::AssetType::Texture);
+                }
+            }
+        }
+
+        void SetSpriteTint(float r, float g, float b, float a)
+        {
+            if (m_scene && m_scene->registry.all_of<SpriteRendererComponent>(m_entity)) {
+                auto& sr = m_scene->registry.get<SpriteRendererComponent>(m_entity);
+                sr.tintColor = DirectX::XMFLOAT4(r, g, b, a);
+            }
+        }
+
+        // --- UI TEXT API ---
+
+        void SetText(const std::string& text)
+        {
+            if (m_scene && m_scene->registry.all_of<TextRendererComponent>(m_entity)) {
+                auto& tr = m_scene->registry.get<TextRendererComponent>(m_entity);
+                tr.text = text;
+            }
+        }
+
+        void SetTextColor(float r, float g, float b, float a)
+        {
+            if (m_scene && m_scene->registry.all_of<TextRendererComponent>(m_entity)) {
+                auto& tr = m_scene->registry.get<TextRendererComponent>(m_entity);
+                tr.color = DirectX::XMFLOAT4(r, g, b, a);
+            }
+        }
+
+        void SetTextPosition(float x, float y)
+        {
+            if (m_scene && m_scene->registry.all_of<TextRendererComponent>(m_entity)) {
+                auto& tr = m_scene->registry.get<TextRendererComponent>(m_entity);
+                tr.position = DirectX::XMFLOAT2(x, y);
+            }
+		}
+
+        void SetFont(const std::string& filepath, float size)
+        {
+            if (m_scene && m_scene->registry.all_of<TextRendererComponent>(m_entity)) {
+                auto& tr = m_scene->registry.get<TextRendererComponent>(m_entity);
+                tr.fontSize = size;
+                if (m_scene->GetAssetManager()) {
+                    // Append the virtual size tag so the JIT compiler knows how to bake it
+                    std::string virtualPath = filepath + "?size=" + std::to_string((int)size);
+                    tr.fontID = m_scene->GetAssetManager()->ImportAsset(virtualPath, Engine::AssetType::Font);
+                }
+            }
+        }
+
         // --- PHYSICS API --- 
 
         // Method to apply a linear impulse to the entity's rigid body, if it has one
@@ -265,37 +383,10 @@ namespace Engine
             return DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
         }
 
-
-		// --- SCRIPTING API --- 
-
-        void AddLuaScript(const std::string& filepath)
-        {
-            if (m_scene && m_scene->registry.valid(m_entity)) {
-                auto& scriptComp = m_scene->registry.get_or_emplace<LuaScriptComponent>(m_entity);
-                ScriptInstance newScript;
-                newScript.filepath = filepath;
-                scriptComp.scripts.push_back(newScript);
-            }
-        }
+        
 
 
 		// --- AUDIO API --- 
-
-        void AddAudioComponent(const std::string& filepath, bool is3D, bool loop, bool playOnCreate)
-        {
-            if (m_scene && m_scene->registry.valid(m_entity)) {
-                auto& ac = m_scene->registry.get_or_emplace<AudioComponent>(m_entity);
-
-                // Translate the human-readable string into a UUID 
-                if (m_scene->GetAssetManager()) {
-                    ac.audioID = m_scene->GetAssetManager()->ImportAsset(filepath, Engine::AssetType::Audio);
-                }
-
-                ac.is3D = is3D;
-                ac.loop = loop;
-                ac.playOnCreate = playOnCreate;
-            }
-        }
 
         void PlayAudio()
         {

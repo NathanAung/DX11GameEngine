@@ -1093,6 +1093,9 @@ namespace Engine
     }
 
     void ScriptSystemUpdate(Engine::Scene& scene, float dt) {
+        // Push the current delta time to the global Lua state
+        scene.m_lua["Time"]["deltaTime"] = dt;
+
         auto view = scene.registry.view<LuaScriptComponent>();
 
 		// Cache entities to prevent iterator invalidation if scripts spawn new entities during OnUpdate

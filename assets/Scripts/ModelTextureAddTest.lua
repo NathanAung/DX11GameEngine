@@ -8,9 +8,9 @@ function OnUpdate(dt)
 	if Input:IsKeyPressed(Key.Space) then
 		self:AddMeshRenderer(MeshType.Custom)
 		-- assign a model to the mesh renderer
-		self:SetMesh("assets/Models/MyModel.obj?mesh=0")
+		self:SetMesh("assets/Models/container/model/container.obj?mesh=0")
 		-- assign a texture to the mesh renderer
-		self:SetAlbedo("assets/Textures/MyTexture.png")
+		self:SetAlbedo("assets/Models/container/textures/Container _BaseColor.png")
 		print("Model and texture assigned to entity: " .. self:GetName())
     end
 end

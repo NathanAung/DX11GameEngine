@@ -34,6 +34,10 @@ namespace Engine
 		// Lua state for scripting
         sol::state m_lua;
 
+        // Application Control Flags
+        bool m_requestQuit = false;
+        bool m_requestRestart = false;
+
         Engine::PhysicsManager* GetPhysicsManager() const { return m_physicsManager; }
 
         // Audio Manager reference for lifecycle cleanup

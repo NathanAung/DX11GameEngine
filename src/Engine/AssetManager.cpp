@@ -18,6 +18,39 @@ namespace Engine
 {
     UUID AssetManager::ImportAsset(const std::string& filepath, AssetType type)
     {
+        // Check if the file actually exists before registering it
+        // We skip this check for virtual/procedural paths that are generated at runtime
+        if (filepath.find("primitive://") != 0 && filepath.find("shader://") != 0 && filepath.find("cubemap://") != 0)
+        {
+            if (m_useVFS) {
+                // In a compiled game, the file must exist in the registry/VFS table already. 
+                // We cannot import new files at runtime.
+                bool found = false;
+                for (const auto& [uuid, metadata] : m_assetRegistry) {
+                    if (metadata.filepath == filepath) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    std::cerr << "[VFS] Asset not found in archive: " << filepath << std::endl;
+                    return 0;
+                }
+            }
+            else {
+                // In the Editor, verify the file physically exists on the disk
+                // For models with submeshes (e.g. "?mesh=0"), strip the tag before checking
+                std::string physicalPath = filepath;
+                size_t qMark = physicalPath.find('?');
+                if (qMark != std::string::npos) physicalPath = physicalPath.substr(0, qMark);
+
+                if (!std::filesystem::exists(physicalPath)) {
+                    std::cerr << "[Editor] Asset file does not exist: " << physicalPath << std::endl;
+                    return 0; // Return invalid UUID
+                }
+            }
+        }
+
         // Check if this exact file is already registered to prevent duplicates
         for (const auto& [uuid, metadata] : m_assetRegistry)
         {

@@ -445,6 +445,9 @@ int main(int argc, char** argv)
             throw std::runtime_error("Failed to load " + startScenePath + ": " + errorMsg);
         }
 
+        // Prime the Transform matrices before scripts run
+        Engine::TransformSystem(g_scene);
+
         // Snapshot the clean scene and immediately boot Script and Physics systems
         g_scene.CopyToBackup();
         Engine::ScriptSystemInit(g_scene);
@@ -553,6 +556,35 @@ int main(int argc, char** argv)
 
         // Render & present
         Render();
+
+        // Application Control processing
+        if (g_scene.m_requestQuit) {
+            g_running = false;
+        }
+        else if (g_scene.m_requestRestart) {
+            g_scene.m_requestRestart = false;
+
+            // Safely shut down all current scripts
+            Engine::ScriptSystemShutdown(g_scene);
+
+            // Restore the pristine level data from memory
+            g_scene.RestoreFromBackup(g_physicsManager);
+
+            // Re-prime the physical matrices
+            Engine::TransformSystem(g_scene);
+
+            // Reboot the scripts
+            Engine::ScriptSystemInit(g_scene);
+
+            // Re-acquire the active camera for rendering
+            auto camView = g_scene.registry.view<Engine::CameraComponent>();
+            for (auto entity : camView) {
+                if (!g_scene.registry.all_of<Engine::EditorCamControlComponent>(entity) && g_scene.registry.get<Engine::NameComponent>(entity).isActive) {
+                    g_scene.m_activeRenderCamera = entity;
+                    break;
+                }
+            }
+        }
     }
 
 #ifndef DIST_BUILD

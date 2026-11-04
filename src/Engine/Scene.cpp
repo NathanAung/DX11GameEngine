@@ -545,6 +545,7 @@ namespace Engine
             "GetTransform", &ScriptEntity::GetTransform,
             "GetName", &ScriptEntity::GetName,
             "GetForwardVector", &ScriptEntity::GetForwardVector,
+            "GetRightVector", &ScriptEntity::GetRightVector,
             "ApplyLinearImpulse", &ScriptEntity::ApplyLinearImpulse,
             "SetLinearVelocity", &ScriptEntity::SetLinearVelocity,
             "GetLinearVelocity", &ScriptEntity::GetLinearVelocity,
@@ -575,7 +576,15 @@ namespace Engine
             "SetNormal", &ScriptEntity::SetNormal,
             "SetORM", &ScriptEntity::SetORM,
             "SetLightColor", &ScriptEntity::SetLightColor,
-            "SetLightIntensity", &ScriptEntity::SetLightIntensity
+            "SetLightIntensity", &ScriptEntity::SetLightIntensity,
+            "SetSprite", &ScriptEntity::SetSprite,
+            "SetSpriteTint", &ScriptEntity::SetSpriteTint,
+            "SetText", &ScriptEntity::SetText,
+            "SetTextColor", &ScriptEntity::SetTextColor,
+            "SetTextPosition", &ScriptEntity::SetTextPosition,
+            "SetFont", &ScriptEntity::SetFont,
+			"AddSpriteRenderer", &ScriptEntity::AddSpriteRenderer,
+			"AddTextRenderer", &ScriptEntity::AddTextRenderer
         );
 
         // Expose Engine::Key Enum 
@@ -642,6 +651,15 @@ namespace Engine
                 }
                 return sol::make_object(this->m_lua, sol::nil);
             };
+
+        // Global Time Table
+        sol::table timeTable = m_lua.create_named_table("Time");
+		timeTable["deltaTime"] = 0.0f;  // This will be updated each frame in the Scene::Update method
+
+        // Global Game Table
+        sol::table gameTable = m_lua.create_named_table("Game");
+		gameTable["Restart"] = [this]() { this->m_requestRestart = true; }; // Request a restart of the current scene
+		gameTable["Quit"] = [this]() { this->m_requestQuit = true; };       // Request the application to quit
     }
 
 
