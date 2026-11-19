@@ -182,12 +182,10 @@ namespace Engine
 
     std::vector<char> ShaderManager::GetShaderBytecode(Engine::AssetManager& assetManager, const std::wstring& hlslPath, const std::string& csoPath, const std::string& entry, const std::string& target)
     {
-        // Register the binary CSO file so the AssetManager packs it into the archive
-        Engine::UUID csoUUID = assetManager.ImportAsset(csoPath, Engine::AssetType::Shader);
-
         if (assetManager.IsVFSActive())
         {
-            // GAME MODE: Read the pre-compiled binary blob directly from the VFS archive
+            // GAME MODE: Look up the pre-packed CSO UUID and read from the VFS archive
+            Engine::UUID csoUUID = assetManager.ImportAsset(csoPath, Engine::AssetType::Shader);
             std::vector<char> buffer = assetManager.ReadAssetFromVFS(csoUUID);
             if (buffer.empty()) throw std::runtime_error("Failed to load CSO from VFS: " + csoPath);
             return buffer;
@@ -206,6 +204,9 @@ namespace Engine
                 outFile.write(buffer.data(), buffer.size());
                 outFile.close();
             }
+
+            // Register the CSO now that the physical file exists on disk
+            assetManager.ImportAsset(csoPath, Engine::AssetType::Shader);
 
             return buffer;
         }
