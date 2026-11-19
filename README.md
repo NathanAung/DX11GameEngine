@@ -2,271 +2,366 @@
 
 <img src="https://i.imgur.com/8bdSI8v.jpeg"/>
 
-## はじめに
-Step Engine はゲームエンジンの設計やグラフィックスプログラミングの学習を目的として開発されている、小規模な DirectX 11 ベースのゲームエンジンです。
-C/C++ により実装されており、ECS（Entity Component System）、リソース管理、物理演算統合など、実践的なエンジン構成要素を段階的に学べる設計になっています。
-現在は基本的なライティング対応、Jolt Physics による物理演算、拡張を前提とした各種サブシステムを備えています。
-マテリアル単位での PBR パラメータ（Metallic / Roughness） にも対応しています。
+## Overview
 
-本プロジェクトは開発途中です。
+**Step Engine** is a custom 3D game engine built from scratch in **C++17** and **DirectX 11**. Designed as a practical, modular architecture for real-time rendering and gameplay development, it ships with both a full **dockable Editor (`DX11Editor`)** and a **Standalone Game Runtime (`DX11Runtime`)**.
 
----
+Core capabilities include a DirectX 11 forward PBR renderer with tangent-space normal mapping and 3-cascade shadow maps, an EnTT-based ECS with intrusive entity hierarchies, multi-threaded Jolt Physics integration, sandboxed Lua scripting via `sol2`, 3D spatial audio, 2D sprite/font HUD rendering, a UUID-driven asset pipeline with binary `.pak` Virtual File System (VFS), and one-click standalone game export.
 
-## ライセンス
-
-リポジトリを見る前にライセンスをご確認ください。
+> **Note:** This project is actively under development.
 
 ---
 
-## 開発アップデート動画（クリックで再生）
+## License
 
-2025/12/22までに実装された機能を紹介する動画です。
-
-[![Development Update](https://i.imgur.com/VwbFdgl.jpeg)](https://youtu.be/ANGTMzYf98M)
+Please review the [LICENSE](LICENSE) file before viewing or using this repository. All rights reserved; this repository is provided for viewing purposes only.
 
 ---
 
-## ポートフォリオ
-詳細な実装内容については、ポートフォリオをご覧ください。<br>
-<a href="https://drive.google.com/file/d/1DbQy8O9z-OBZ13gIXDv29bzn-9GjP03G/view?usp=sharing">ポートフォリオを見る</a><br>
+## Tech Stack
+
+### Languages
+- **C++17** — Core engine, rendering, physics, editor, and runtime architecture
+- **HLSL (Shader Model 5.0)** — Direct3D 11 vertex and pixel shaders
+- **Lua** — Gameplay scripting and runtime entity behavior
+- **CMake / Batch / PowerShell** — Build configuration, dependency resolution, and environment setup scripts
+
+### Libraries & Tools
+All third-party dependencies are managed via **CMake** and **vcpkg (manifest mode)** (`vcpkg.json`), with ImGuizmo vendored under `external/`:
+- **DirectX 11 (D3D11 / DXGI / D3DCompiler)** — GPU rendering backend
+- **SDL2** — Window management, OS event loop, high-resolution timer, and raw keyboard/mouse input
+- **EnTT** — Entity Component System (sparse-set registry)
+- **Jolt Physics** — Multi-threaded rigid-body dynamics, collision detection, and raycasting
+- **Assimp** — 3D model importing (`.obj`, `.fbx`, `.gltf`, `.glb`) with custom VFS stream hooks
+- **Dear ImGui (DX11 + SDL2 + Docking)** & **ImGuizmo** — Editor interface and 3D transform gizmos
+- **Lua** & **sol2** — Embedded scripting runtime and C++/Lua bindings
+- **RapidJSON** — Scene and asset registry JSON serialization/deserialization
+- **miniaudio** — 2D and 3D spatial audio engine
+- **stb (`stb_image`, `stb_truetype`)** — Texture loading and TrueType font atlas baking
+- **CMake**, **vcpkg**, and **Visual Studio 2022 (MSVC)** — Build toolchain
 
 ---
 
-## 使用言語
+## Architecture & Implementation Details
 
-本プロジェクトは主に以下で実装されています:
-- C++
-- C
-- CMake
-- HLSL
+### Rendering Pipeline
 
-備考:
-- コアエンジンおよびレンダリングコードは C++17 で記述されています。
-- 低レベルのユーティリティや C API は適所で使用されています。
-- CMake と vcpkg（manifest モード）でプロジェクトの構成とビルドを行います。
-- HLSL は Direct3D 11 の頂点/ピクセルシェーダーに使用されます。
+`Renderer` encapsulates the DirectX 11 device, immediate context, double-buffered swap chain (`DXGI_FORMAT_R8G8B8A8_UNORM`), depth-stencil buffer (`DXGI_FORMAT_D24_UNORM_S8_UINT`), constant buffers, and pipeline states.
 
----
-
-## 使用ライブラリとツール
-
-エンジンは複数のオープンソースライブラリとツールに依存しています。バージョン管理は vcpkg manifest モードと CMake で行われます。
-
-- SDL2 — ウィンドウ作成と入力処理（Windows 上）
-- DirectX 11 (D3D11) — GPU レンダリングバックエンド
-- Jolt Physics — 剛体力学と衝突検出
-- Assimp — モデルアセットのインポート（.fbx, .obj 等）
-- stb_image — 画像読み込み
-- EnTT — ECS（Entity Component System）
-- RapidJSON — JSON パーサ（予定）
-- Dear ImGui（DX11 バックエンド）— エディタ / UI（予定）
-- CMake — ビルドシステム
-- Visual Studio / MSVC — Windows 開発環境
-- git — バージョン管理
+- **Editor vs. Standalone Render Targets**:
+  - In **Editor builds (`DX11Editor`)**, the 3D scene renders to an off-screen **Render-to-Texture framebuffer** (`RTV` + `DSV` + `SRV`) that resizes dynamically with the ImGui Scene panel, before compositing ImGui onto the swap chain back buffer.
+  - In **Standalone builds (`DX11Runtime` / `DIST_BUILD`)**, the engine renders directly to the swap chain back buffer.
+- **Frame Pass Order**:
+  1. **Cascaded Shadow Pass** — Depth-only pass (`ShadowVS.hlsl`, pixel shader unbound) rendering active lit geometry into each slice of the 3-cascade shadow map array.
+  2. **Main 3D Geometry Pass** — Restores the main framebuffer/back buffer, uploads camera, light, and shadow constant buffers, and draws entities using PBR (`BasicVS`/`BasicPS`) or Unlit (`UnlitVS`/`UnlitPS`) shaders.
+  3. **Debug Collider Pass (Edit Mode only)** — Renders wireframe green collider meshes (`D3D11_FILL_WIREFRAME`, `D3D11_CULL_NONE`) for the currently selected entity.
+  4. **Skybox Pass** — Draws a cube mesh with translation stripped from the view matrix and `D3D11_COMPARISON_LESS_EQUAL` depth testing against a 6-face cubemap (`SkyboxVS`/`SkyboxPS`) so the sky fills only untouched background pixels.
+  5. **2D UI / HUD Pass** — Switches to alpha blending, disables depth testing/writing, and projects screen-space pixels via an orthographic matrix (`SpriteVS`/`SpritePS`) to render 2D sprites (`SpriteRendererComponent`) and dynamic text (`TextRendererComponent`).
+- **Meshes, Textures, Shaders & Fonts**:
+  - `MeshManager` manages 32-bit indexed D3D11 vertex/index buffers (`Position`, `Normal`, `TexCoord`, `Tangent`), generating procedural primitives (`Cube`, `Sphere`, `Capsule`, `Quad`) and importing external models via Assimp (`aiProcess_Triangulate`, `aiProcess_MakeLeftHanded`, `aiProcess_FlipWindingOrder`, `aiProcess_CalcTangentSpace`) while caching CPU-side vertices/indices for physics colliders.
+  - `TextureManager` loads 2D images and 6-face cubemaps via `stb_image` into D3D11 SRVs, and generates 1×1 fallback textures (`primitive://white`, flat normal `primitive://default_normal`, and `primitive://default_orm`) to prevent shader state leakage.
+  - `ShaderManager` compiles HLSL shaders to bytecode in Editor mode (caching `.cso` files on disk for packing) and loads pre-compiled `.cso` binaries directly from the VFS in Standalone builds.
+  - `FontManager` bakes `.ttf` fonts into 2048×2048 RGBA texture atlases (ASCII 32–126) via `stb_truetype`, encoding glyph coverage in the alpha channel so `SpritePS.hlsl` can tint text dynamically.
 
 ---
 
-## システム — 実装の詳細
+### PBR Lighting, Normal Mapping & Cascaded Shadow Maps
 
-以下は主要なエンジンサブシステムの実装と相互作用の概要です。
+#### Physically Based Shading (`BasicPS.hlsl`)
+Surface shading uses a forward **Cook-Torrance microfacet BRDF**:
+- **Normal Distribution (`D`)**: GGX / Trowbridge-Reitz
+- **Geometry Term (`G`)**: Smith's method with Schlick-GGX
+- **Fresnel (`F`)**: Fresnel-Schlick approximation with metallic workflow base reflectivity `F0 = lerp(0.04, albedo, metallic)`
+- **Energy Conservation**: `kD = (1 - F) * (1 - metallic)` paired with a Lambertian diffuse term (`kD * albedo / PI`) and AO-modulated ambient term.
 
-### SDL を用いたウィンドウ生成と入力処理
+#### PBR Materials & Normal Mapping
+- `MeshRendererComponent` supports three material modes: `LitColor`, `UnlitColor`, and `Textured`.
+- Textured PBR materials bind three dedicated texture slots alongside scalar multipliers (`baseColor`, `roughness`, `metallic`):
+  - `t0`: **Albedo Map**
+  - `t1`: **Tangent-Space Normal Map**
+  - `t2`: **ORM Map** (Red = Ambient Occlusion, Green = Roughness, Blue = Metallic)
+- **Tangent-Space Normal Mapping**: `BasicVS.hlsl` transforms vertex normals and tangents into world space. In `BasicPS.hlsl`, the tangent is re-orthogonalized against the normal via **Gram-Schmidt orthogonalization** (`T = normalize(T - dot(T, N) * N)`), the bitangent is computed via `cross(N, T)`, and the sampled normal is transformed from tangent space to world space through the resulting `TBN` matrix.
 
-- SDL2 がメインアプリケーションウィンドウを作成し、メッセージループを扱います。
-- プラットフォーム: 現状は Windows 専用（D3D11 バックエンド）。SDL により Windows 上で安定したキーボード / マウス入力取得ができます。
-- SDL の役割:
-  - OS ウィンドウの作成とウィンドウイベント（リサイズ、最小化、クローズ）の処理。
-  - キーボードとマウスの生イベントの提供。
-  - エンジンのメインループで使う高精度タイマーの提供。
-- 統合ノート:
-  - SDL ウィンドウを作成し、`SDL_SysWMinfo` 経由でネイティブの `HWND` を取得し、D3D11 をその `HWND` を使って初期化します。
-  - メインループでは毎フレーム SDL イベントをポーリングし、それらを入力サブシステム（`InputManager`）に渡してエンジンレベルの入力（キー割り当て、マウス差分、スクロール等）にマップします。
-  - ウィンドウのリサイズイベントはスワップチェーンのバッファ再構築やレンダーターゲット／ビューポートの再作成を引き起こします。
+#### Multi-Light Culling & Sorting
+- Supports **Directional**, **Point**, and **Spot** lights (`LightComponent`), with up to **16 active lights** (`MAX_LIGHTS`) uploaded per frame in `CB_Light` (`b3`).
+- Point and spot lights use a combined inverse-square and soft range-cutoff attenuation curve, plus cone angle checks for spot lights.
+- Before uploading to the GPU, `RenderSystem::DrawEntities` builds a world-space `DirectX::BoundingFrustum` from the active camera, frustum-culls off-screen point/spot lights by their range sphere, prioritizes directional lights, and sorts remaining lights by squared distance to the camera.
 
-### グラフィックスレンダリングパイプライン、カメラ、スカイボックス
-
-- レンダラーバックエンド: Direct3D 11 (D3D11)。`Renderer` クラスがデバイス、デバイスコンテキスト、スワップチェーン、レンダーターゲット等をラップしています。
-- 一般的なフレームフロー:
-  1. CPU 側のシーン更新（トランスフォーム、簡易アニメーション）。
-  2. フレーム毎の定数バッファ（カメラ行列、ライト情報）のアップロード。
-  3. 描画リストの構築。
-  4. 描画コールの実行。
-  5. スワップチェーンによる表示。
-- カメラ:
-  - 古典的なビュー行列と射影行列を使用します。カメラはワールド変換、ビュー行列（look-at）、およびシェーダーで使う逆行列を公開します。
-  - 遠近射影（Perspective）とエディタ風のカメラコントローラをサポートします。
-- スカイボックス:
-  - キューブメッシュとして実装され、専用のスカイボックスシェーダーで描画します。スカイボックスはキューブマップテクスチャを使用し、深度ステートを調整して常に背景として描画されるようにします。
-
-### エンティティ・コンポーネント・システム（ECS）
-
-- EnTT を用いた軽量なコンポーネントベースアーキテクチャを採用しています:
-  - エンティティ: ワールド内のオブジェクトを表す小さな整数 ID（ハンドル）。
-  - コンポーネント: `Transform`, `MeshRenderer`, `Rigidbody`, `CameraComponent`, `LightComponent` 等の小さな POD 構造体で、EnTT の疎集合に格納されキャッシュフレンドリーに反復されます。
-  - システム: 特定のコンポーネントを持つエンティティ群を巡回して作業（レンダリング、物理同期、アニメーション、入力処理）を行う関数群。
-- 実装のハイライト:
-  - エンティティのライフサイクル: 作成／破棄 API、コンポーネントの追加／削除をサポート。
-  - システムはフレーム毎に決まった順序（物理 → アニメーション → スクリプト → レンダリング）で呼び出されます。
-- シンプルさと明示性を重視して読みやすく改変しやすい設計です。
-
-### リソースロード（テクスチャとモデル）
-
-- マネージャ:
-  - MeshManager: プリミティブ生成と Assimp ベースのモデルインポートを提供。
-  - TextureManager: 画像読み込みと SRV 作成、キャッシュ機構を持つ。
-  - ShaderManager: シェーダーのコンパイル／バインドと入力レイアウト管理。
-- テクスチャ:
-  - `stb_image` で PNG/JPG 等の一般フォーマットを読み込みます。
-  - 現在は RGBA8 UNORM テクスチャを単一ミップレベルでアップロードします。
-- モデル:
-  - Assimp でメッシュをインポートし、メッシュごとの頂点属性を解析してエンジンのメッシュバッファへ変換します。
-- マテリアル:
-  - マテリアルデータ（基本的な PBR パラメータ: metallic, roughness とオプションのテクスチャ SRV）は CPU 側に保持され、描画時に定数バッファとして GPU に渡されます。
-
-### メッシュ生成（ボックス、球、カプセル、モデルメッシュ）
-
-- プリミティブメッシュジェネレータ:
-  - ボックス
-  - 球
-  - カプセル
-- モデルメッシュ:
-  - Assimp でインポート。頂点属性（位置、法線、タンジェント、UV）をメッシュバッファに格納します。
-- メッシュ表現:
-  - 頂点バッファとインデックスバッファは D3D11 バッファとして作成され、MeshManager によって管理されます。
-  - 各メッシュは描画に必要なメタデータ（インデックス数、トポロジー）を持ち、必要に応じてバウンディングボリュームが利用されます。
-
-### ライティングとマテリアル
-
-- ライトタイプ: ディレクショナル、ポイント、スポット（定数バッファで複数ライトをサポート）。
-- マテリアルパラメータ: metallic と roughness。テクスチャ SRV はピクセルシェーダーのスロットにバインド可能。
-- PBR に関する注記: 現在のシェーディングはマテリアルパラメータとライト定数を使った前方レンダリング（forward renderer）です。
-
-### 物理（Jolt 統合、剛体生成）
-
-- Jolt Physics を物理サブシステムに統合しています:
-  - エンジンは Jolt のワールドを作成し、各シミュレーションティックで進めます。
-  - 剛体:
-    - `RigidBodyComponent` を持つエンティティから剛体を作成（質量、コリジョン形状、運動タイプ等）。
-    - コリジョン形状: プリミティブ（ボックス、球、カプセル）やインポートモデルから生成したメッシュコライダーに対応。
-  - 同期:
-    - シミュレーション後に動的ボディのトランスフォームを Jolt から読み取り、ECS のコンポーネントに反映します。
-
-### CMake 構成
-
-- プロジェクトは CMake と vcpkg（manifest モード）で依存関係を取得・設定します。
-- トップレベルの `CMakeLists.txt`:
-  - 実行可能ターゲット `DX11GameEngine` を定義しています。
-  - `find_package()` を使って SDL2、Assimp、EnTT、RapidJSON、Dear ImGui、Jolt 等を参照します。
-  - Windows 系のシステムライブラリ（`d3d11`, `dxgi`, `d3dcompiler`, `dxguid`）とリンクします。
-  - ビルド出力に `shaders/` や `assets/` をコピーするカスタムターゲットを用意しています。
+#### Cascaded Shadow Maps (CSM)
+- **Shadow Map Array**: Uses a 3-slice **2048×2048 `Texture2DArray`** (`DXGI_FORMAT_R32_TYPELESS`) with individual `D32_FLOAT` Depth-Stencil Views per cascade for depth rendering and a unified `R32_FLOAT` Shader Resource View (`t3`) for sampling.
+- **Frustum Splitting & Orthographic Fitting**: `Renderer::CalculateCascadeMatrices` partitions the camera view frustum at **5%**, **20%**, and **100%** of the clip range (`near` to `far`), extracts each slice's 8 world-space frustum corners, encloses them in a bounding sphere, and constructs a tight orthographic light projection with extended Z-padding (`500.0f`) to capture shadow casters behind the camera.
+- **Anti-Shimmering & Filtering**:
+  - **Texel Snapping** rounds the light-space origin to shadow texel increments to eliminate shadow-edge swimming during camera movement.
+  - **Hardware Slope-Scaled Depth Bias** (`SlopeScaledDepthBias = 1.5f`) combined with a minimal shader bias (`0.0001f`) mitigates shadow acne.
+  - **3×3 Percentage-Closer Filtering (PCF)** samples the selected cascade slice (chosen from camera-space `viewZ` against `cascadeSplits`) to produce softer shadow edges on directional lights.
 
 ---
 
-## 今後の実装予定
+### Entity Component System (ECS)
 
-今後の開発予定機能:
+The scene world is powered by **EnTT** (`Scene::registry`), storing lightweight POD components in cache-friendly sparse sets.
 
-- 階層システム（エンティティの親子トランスフォームと伝播）
-- エディタ UI（ImGui ベースのシーン編集、マテリアル/アセットインスペクタ）
-- オブジェクトピッキングとギズモ（選択・トランスフォームハンドル）
-- オーディオシステム（空間オーディオ、再生）
-- Lua スクリプティング（高速なゲームロジックの反復開発）
-- データ永続化とエクスポート（シーン/アセットのシリアライズ、プロジェクトエクスポートパイプライン）
+#### Core Components
+| Component | Purpose |
+| :--- | :--- |
+| `IDComponent` / `NameComponent` | Stable 64-bit serialization ID, display name, and master entity `isActive` toggle |
+| `TransformComponent` | Local `position`, quaternion `rotation`, `scale`, cached `worldMatrix`, and `isDirty` flag |
+| `RelationshipComponent` | Intrusive hierarchy links (`parent`, `firstChild`, `prevSibling`, `nextSibling`) |
+| `MeshRendererComponent` | Mesh UUID, Albedo/Normal/ORM texture UUIDs, `MaterialType`, color tint, roughness, metallic |
+| `LightComponent` | Directional/Point/Spot light type, color, intensity, range, and cone angle |
+| `CameraComponent` / `ViewportComponent` / `EditorCamControlComponent` | Camera FOV/clip planes, viewport dimensions, and editor fly-camera parameters |
+| `RigidBodyComponent` | Collider shape/dimensions, static/dynamic motion, mass, friction, restitution, damping, Jolt `BodyID` |
+| `LuaScriptComponent` | List of attached `ScriptInstance` entries (isolated `sol::environment` + cached callbacks) |
+| `AudioComponent` | Audio asset UUID, 2D/3D spatial toggle, loop/play-on-create flags, volume, runtime handle |
+| `SpriteRendererComponent` / `TextRendererComponent` | Screen-space 2D sprite quads (position, size, pivot, rotation, tint) and TTF text elements |
+
+#### Entity Hierarchy & Transform Propagation
+- **Intrusive Doubly-Linked Tree**: `RelationshipComponent` models arbitrary parent-child hierarchies without heap-allocating per-entity child vectors.
+- **Safe Reparenting**: `Scene::ParentEntity` performs ancestor traversal for **cycle detection**, detaches from any previous parent, and preserves the entity's world transform by computing `newLocal = childWorld * Inverse(parentWorld)` before decomposing back into local TRS. `Scene::UnparentEntity` promotes the world matrix back to local TRS.
+- **Hierarchical Updates**: `TransformSystem` starts at root entities (`parent == entt::null`) and recursively cascades `World = Local * ParentWorld` down the sibling chains, propagating dirty flags whenever an ancestor moves.
+- **Cascade & Deferred Destruction**: `Scene::DestroyEntity` recursively destroys descendants, unregisters Jolt physics bodies, invokes Lua `OnDestroy` callbacks, and repairs sibling links. During gameplay, `Scene::SubmitForDestruction(entity, delay)` queues timed removals processed safely at the end of the update step to prevent iterator invalidation.
+
+#### Frame Update Order
+Each frame runs systems in a deterministic sequence:
+1. `PhysicsSystem` (body creation/cleanup + Jolt simulation in Play mode or gizmo sync in Edit mode)
+2. `ScriptSystemUpdate` *(Play mode)*
+3. `AudioSystem` *(Play mode)*
+4. `Scene::ProcessDestructionQueue` *(Play mode)*
+5. `EditorCameraInputSystem` *(Edit mode)*
+6. `TransformSystem` (local-to-world hierarchy cascade)
+7. `CameraMatrixSystem` (active camera view/projection upload)
 
 ---
 
-## プロジェクトのセットアップ（Visual Studio）
+### Physics
 
-本プロジェクトは **CMake + vcpkg（manifest モード）** を使用します。すべてのサードパーティ依存は CMake の構成時に自動でダウンロードされます。
+`PhysicsManager` integrates **Jolt Physics** with a multi-threaded `JobSystemThreadPool` (`hardware_concurrency - 1` worker threads), a 128 MB `TempAllocatorImpl`, and capacity for up to 10,240 bodies and 65,536 contact constraints.
 
-### 前提条件
+- **Broadphase & Collision Layers**: Separates `NON_MOVING` (static) and `MOVING` (dynamic) layers so static bodies collide only with moving bodies while dynamic bodies collide with both.
+- **Collision Shapes & Caching**:
+  - Supports **Box**, **Sphere**, **Capsule**, and **Mesh** colliders.
+  - Mesh colliders automatically generate indexed concave `JPH::MeshShape` geometry for static bodies and `JPH::ConvexHullShape` geometry for dynamic bodies, caching built shapes by mesh UUID (`m_meshShapeCache`).
+  - Entity world scale (combined with `colliderScale` for mesh colliders) is applied via `JPH::ScaledShape`.
+- **Bidirectional ECS Synchronization**:
+  - **Play Mode**: Steps Jolt with clamped delta time (`<= 1/30 s`) and 4 collision sub-steps to reduce tunneling, then pulls Jolt world-space transforms back into ECS local transforms (converting via the inverse parent world matrix—and querying Jolt directly if the parent is also a physics body to avoid 1-frame lag).
+  - **Edit Mode**: Pushes Inspector and ImGuizmo world transforms directly into Jolt, teleporting bodies, zeroing momentum, and rebuilding bodies automatically when scale, shape, mass, or damping changes.
+- **Raycasting**: `Scene::CastRay` queries Jolt's narrow-phase raycast first and falls back to mathematical Oriented Bounding Box (OBB) intersection (`Math::RayIntersectsOBB`) for non-physics entities such as lights or uncollided meshes.
+- **Thread-Safe Collision Callbacks**: `PhysicsContactListener` captures `OnContactAdded` and `OnContactRemoved` events from Jolt worker threads into a mutex-protected queue and flushes them sequentially on the main thread after `Update()`, routing `OnCollisionEnter(other)` and `OnCollisionExit(other)` directly into attached Lua scripts.
 
-* **Windows 10/11**（DirectX 11 ランタイム）
-* **Visual Studio 2022**
-* **ワークロード**: デスクトップ開発（C++）
-* **コンポーネント**: MSVC、C++ CMake ツール、Git
+---
 
-### 1. vcpkg のインストール
+### Engine Editor
 
-vcpkg がまだインストールされていない場合:
+The editor (`EditorUI` + `ImGuiManager`) is built with **Dear ImGui (Docking)** and **ImGuizmo**, excluded automatically from standalone game builds via the `DIST_BUILD` preprocessor macro.
 
-```bash
-cd C:\
-git clone https://github.com/microsoft/vcpkg.git
-cd vcpkg
-.\bootstrap-vcpkg.bat
-# (オプション推奨)
-.\vcpkg integrate install
+#### Dockable Panels & Workflows
+- **Toolbar**: Houses the **Play / Stop** toggle and the **Export Game** button.
+- **Scene Viewport**: Displays the off-screen framebuffer SRV, dynamically resizing the active camera viewport and framebuffer. Supports:
+  - **ImGuizmo 3D Manipulation**: Translate, Rotate, and Scale handles (cycle with `Space`), automatically transforming manipulated world matrices back into local space for parented entities.
+  - **Object Picking**: Left-clicking casts a screen-to-world ray through `Scene::CastRay`.
+  - **Fly Camera Navigation**: Right-click captures the cursor in relative mouse mode for WASD + Shift sprint + mouse-look navigation, plus scroll-wheel zooming, with smart input routing between ImGui and `InputManager`.
+- **Hierarchy**: Displays the entity tree with right-click creation (empty entities, cameras, primitives, lights), deletion (`Delete` key or context menu), drag-and-drop reparenting/unparenting, and dropping 3D models directly into the scene (`Scene::InstantiateModel` automatically creates a parent entity with child sub-mesh entities).
+- **Inspector**: Live editing of all attached components with active toggles, component add/remove menus, Euler-cached quaternion rotation editing (preventing gimbal jitter), real-time physics property syncing, and drag-and-drop targets for PBR textures, Lua scripts, audio clips, and `.ttf` fonts.
+- **Content Browser**: Navigates `assets/`, loads `.json` scenes on click (with VRAM preloading), provides a right-click **Create New Scene** workflow, and acts as a drag-and-drop source for models, textures, scripts, and audio. Supports `Ctrl+S` quick-save and modal dialogs for saving, creating scenes, and error reporting.
+
+#### Editor State Machine (`Edit` <-> `Play`)
+`EditorUI` manages two states (`EditorState::Edit` and `EditorState::Play`) to allow non-destructive playtesting directly inside the editor:
+- **Entering Play Mode (`Edit -> Play`)**:
+  1. `Scene::CopyToBackup()` snapshots all entities and components (preserving exact EnTT entity handles) into `m_backupRegistry`.
+  2. `ScriptSystemInit` initializes all attached Lua environments and invokes `OnCreate()`.
+  3. The active render camera switches from the cached Editor Camera to the first active Game Camera.
+  4. Editor panels (Hierarchy, Inspector, Content Browser) hide so the viewport acts as the game view, and `Update()` enables physics simulation, Lua updates, and audio.
+- **Exiting Play Mode (`Play -> Edit`)**:
+  1. `ScriptSystemShutdown` invokes `OnDestroy()` and resets all script instances.
+  2. `Scene::RestoreFromBackup()` tears down all runtime Jolt bodies and `miniaudio` sound handles, clears the live registry, and restores the clean pre-play snapshot (invalidating runtime body/audio handles so subsystems reinitialize cleanly).
+  3. The viewport reverts to the cached Editor Camera and all editor panels reappear.
+
+---
+
+### Lua Scripting System
+
+Gameplay logic is written in **Lua** and integrated via **sol2** (`Scene::InitializeLuaBindings` and `Systems.cpp`).
+
+- **Per-Script Sandboxing & Multi-Script Support**: `LuaScriptComponent` holds a vector of `ScriptInstance` objects, allowing multiple scripts per entity. Each script executes inside its own isolated `sol::environment` with a `self` variable bound to a `ScriptEntity` wrapper, preventing global namespace collisions between entities.
+- **Lifecycle & Physics Callbacks**:
+  - `OnCreate()` — Called when Play Mode starts (or on-the-fly on the first frame a script is attached at runtime).
+  - `OnUpdate(dt)` — Called every frame during Play Mode with delta time.
+  - `OnDestroy()` — Called when the entity is destroyed or Play Mode exits.
+  - `OnCollisionEnter(other)` / `OnCollisionExit(other)` — Invoked on the main thread from Jolt physics contact events with the colliding `ScriptEntity`.
+- **Stability & Error Isolation**: Scripts are loaded with `safe_script` / `safe_script_file` and invoked via `sol::protected_function` so syntax or runtime errors log to `stderr` without crashing the engine. Iteration snapshots entity lists and copies callbacks to the C++ stack to remain safe against EnTT pool reallocations if scripts instantiate entities mid-frame.
+- **Exposed Scripting API**:
+  - **`Entity` (`self`)**: Transform access (`GetTransform`, `GetForwardVector`, `GetRightVector`), activation (`IsActive`, `SetActive`), hierarchy (`SetParent`), spawning & deferred destruction (`Instantiate`, `InstantiateCube`, `InstantiateSphere`, `Destroy(delay)`), runtime component checks & attachment (`AddMeshRenderer`, `AddRigidBody`, `AddLuaScript`, `AddAudioComponent`, `AddSpriteRenderer`, `AddTextRenderer`), PBR material/mesh assignment (`SetMesh`, `SetAlbedo`, `SetNormal`, `SetORM`), lighting (`SetLightColor`, `SetLightIntensity`), physics (`ApplyLinearImpulse`, `SetLinearVelocity`, `GetLinearVelocity`), audio (`PlayAudio`, `StopAudio`, `SetAudioVolume`), and 2D HUD (`SetSprite`, `SetSpriteTint`, `SetText`, `SetTextColor`, `SetTextPosition`, `SetFont`).
+  - **Global Tables**: `Input` (`IsKeyDown`, `IsKeyPressed`, `IsKeyReleased` + `Key` enum), `Physics.CastRay(...)`, `Scene.FindEntityByName(name)`, `Time.deltaTime`, and `Game.Restart()` / `Game.Quit()`.
+
+```lua
+-- Example: Spawning a physics sphere with audio on keypress
+function OnUpdate(dt)
+    if Input:IsKeyPressed(Key.Space) then
+        local ball = self:Instantiate("Bouncing Ball")
+        local pos = self:GetTransform().position
+        ball:GetTransform():SetPosition(pos.x, pos.y + 2.0, pos.z)
+
+        ball:AddMeshRenderer(MeshType.Sphere)
+        ball:AddRigidBody(RBShape.Sphere, RBMotion.Dynamic, 0.5, 1.0, 0.8)
+        ball:AddAudioComponent("assets/audio/spawn.mp3", true, false, true)
+    end
+end
 ```
 
-`C:\vcpkg\scripts\buildsystems\vcpkg.cmake` が存在することを確認してください。
+---
 
-### 2. リポジトリをクローン
+### Asset Management, VFS & Game Export
+
+#### UUIDs & Asset Registry
+- Every asset (meshes, model files, textures, shaders, audio, fonts, Lua scripts, and scenes) is identified by a random 64-bit **`Engine::UUID`** (`std::mt19937_64` with `std::hash` support).
+- `AssetManager` maintains a central registry mapping `UUID -> AssetMetadata` (`filepath`, `AssetType`, `isLoaded`), deduplicating imports by path and supporting virtual/procedural identifiers (`primitive://...`, `shader://...`, `cubemap://...`, sub-mesh queries `?mesh=N`, and font size queries `?size=N`).
+- **Persistent Asset Ledger**: In Editor mode, the registry is serialized to and restored from `enginefiles/AssetRegistry.json` via RapidJSON so procedural and physical assets keep identical UUIDs across sessions.
+- **Just-In-Time (JIT) Loading & Preloading**: `RenderSystem` lazily resolves and uploads missing meshes, PBR textures, and font atlases via UUID metadata on demand, while standalone builds preload registered models and textures into VRAM at startup (`PreloadGameAssets`) to avoid runtime hitches.
+
+#### Scene Serialization & Deserialization
+`SceneSerializer` saves and loads scenes as human-readable JSON using RapidJSON:
+- **Serialization**: Writes all entity components using asset UUIDs and converts transient `entt::entity` relationship handles into stable `IDComponent` 64-bit IDs.
+- **4-Pass Deserialization**:
+  1. **Validation Pass**: Verifies every referenced mesh, PBR map, physics mesh, audio clip, font, and script exists in the registry (and on disk in Editor mode); aborts cleanly with an error modal before modifying the active scene if anything is missing.
+  2. **Scene Clear**: Safely tears down current entities, Jolt bodies, and audio handles.
+  3. **Entity Reconstruction**: Recreates entities and components while building a `savedID -> entt::entity` translation map.
+  4. **Hierarchy Restoration**: Rebuilds `RelationshipComponent` parent/child/sibling links from the translation map.
+
+#### Asset Packing & Virtual File System (VFS)
+- **`PAK2` Binary Archive (`AssetManager::PackAssets`)**: Compiles all physical files tracked in the registry into a single `data.pak` archive structured as:
+  - 4-byte magic header (`"PAK2"`) + `uint32_t` asset count
+  - Dynamic **Table of Contents (TOC)** storing `UUID`, `AssetType`, filepath string, byte offset, and byte size per entry
+  - Concatenated raw binary payloads
+- **Transparent VFS Mounting (`MountVFS` / `ReadAssetFromVFS`)**: In Standalone builds (`DIST_BUILD`), `DX11Runtime` mounts `data.pak` at boot, reconstructing both the asset registry and TOC offset table in memory. All engine loaders read seamlessly from VFS memory buffers without touching loose asset files:
+  - **Models**: Custom `Assimp::IOSystem` (`VFSIOSystem`) and `Assimp::IOStream` (`VFSIOStream`)
+  - **Textures**: `stbi_load_from_memory`
+  - **Shaders**: Pre-compiled `.cso` bytecode
+  - **Audio**: `miniaudio` memory decoder (`ma_decoder_init_memory`)
+  - **Fonts**: In-memory `.ttf` buffer baked via `stbtt_BakeFontBitmap`
+  - **Scripts & Scenes**: Extracted directly into strings for `sol::state::safe_script` and RapidJSON parsing
+
+#### Standalone Game Export Pipeline
+Clicking **Export Game** in the editor toolbar calls `AssetManager::ExportProject()`, which automates building a distributable game directory (`ExportedGame/`):
+1. Serializes the active scene and registers any newly attached scripts.
+2. Packs all project assets, compiled `.cso` shaders, scripts, and scenes into `ExportedGame/data.pak`.
+3. Copies the pre-built `DX11Runtime.exe` and its required DLLs from `RuntimeTemplate/`.
+4. Writes `ExportedGame/enginefiles/Launch.txt` targeting the active scene as the startup level.
+5. Opens the `ExportedGame/` directory ready to run standalone.
+
+---
+
+### Audio & Input
+
+- **Audio (`AudioManager` & `AudioSystem`)**: Wraps `miniaudio` (`ma_engine`) to provide both 2D audio and 3D spatialized sound emitters (`AudioComponent`) with looping, volume control, and play-on-create behavior. Each frame in Play mode, `AudioSystem` synchronizes the listener's world position and forward vector with the active camera and updates 3D emitter positions from decomposed entity world matrices.
+- **Window & Input (`SDL2` & `InputManager`)**: SDL2 manages the Windows `HWND` (passed to Direct3D 11 via `SDL_SysWMinfo`), high-resolution frame timing, window resize events, and input polling. `InputManager` tracks current and previous frame key states (`IsKeyDown`, `IsKeyPressed`, `IsKeyReleased`), mouse deltas, scroll wheel offsets, and relative mouse capture.
+
+---
+
+### CMake Configuration
+
+The top-level [CMakeLists.txt](CMakeLists.txt) configures the project with **CMake 3.20+**, **C++17**, MSVC warning/conformance flags (`/permissive- /W4 /EHsc` with `/external:W0` for third-party headers), and shared precompiled headers (`include/Engine/Core.h`).
+
+- **Dual Executable Targets**:
+  - **`DX11Editor`** *(Default Visual Studio startup project)* — Full engine with Dear ImGui, ImGuizmo, and disk-based asset authoring.
+  - **`DX11Runtime`** — Compiled with the `DIST_BUILD` macro to strip editor UI and boot directly into `data.pak` VFS + Play mode.
+- **Dependencies**: Resolves `SDL2`, `assimp`, `EnTT`, `RapidJSON`, `imgui`, `Jolt`, `lua`, `sol2`, `stb`, and `miniaudio` via vcpkg manifest mode, and links Windows DirectX libraries (`d3d11`, `dxgi`, `d3dcompiler`, `dxguid`).
+- **Asset Copy & Runtime Template Packaging**:
+  - Custom build targets (`CopyShaders`, `CopyAssets`, `CopyEngineFiles`) mirror `shaders/`, `assets/`, and `enginefiles/` into the runtime output directory.
+  - A `POST_BUILD` step on `DX11Runtime` automatically assembles `RuntimeTemplate/` inside `bin/` with `DX11Runtime.exe` and all required `.dll` files so the Editor's **Export Game** feature can package standalone builds immediately.
+
+---
+
+## Project Setup (Visual Studio)
+
+This project uses **CMake + vcpkg (manifest mode)**, so all third-party dependencies are automatically downloaded and built during CMake configuration.
+
+### Prerequisites
+
+- **Windows 10 / 11** (with DirectX 11 runtime)
+- **Visual Studio 2022**
+  - **Workload**: Desktop development with C++
+  - **Components**: MSVC, C++ CMake tools for Windows, Git
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/NathanAung/DX11GameEngine.git
 ```
 
-### 3. Visual Studio でプロジェクトを開く
+### 2. Install CMake and vcpkg (Automated Setup)
 
-1. Visual Studio を起動します。
-2. **ファイル → フォルダーを開く** を選択します。
-3. クローンした `DX11GameEngine` フォルダーを開きます。
-4. Visual Studio が `CMakeLists.txt` を自動検出します。
+If **CMake** and **vcpkg** are not installed on your machine yet, run the setup script located in the `tools` folder:
 
-### 4. CMake の設定（Visual Studio UI）
+```bat
+tools\SetupProject.bat
+```
 
-1. **プロジェクト → CMake 設定** を開きます。
-2. 設定（例: `x64-Debug`）を選択します。
-3. 以下の CMake 変数を設定します:
-   * **Name**: `CMAKE_TOOLCHAIN_FILE`
-   * **Value**: `C:/vcpkg/scripts/buildsystems/vcpkg.cmake`
-4. 設定を保存します。
-5. Visual Studio が CMake を構成し、vcpkg を呼び出して依存関係を取得します。
-   * 最初の構成は数分かかる場合があります。
+This script automatically:
+- Downloads and installs **CMake** into your local AppData directory (`%LOCALAPPDATA%\w64cmake`).
+- Clones and bootstraps **vcpkg** on your system drive (e.g., `C:\vcpkg`).
 
-### 5. ビルドと実行
+Verify that `%SystemDrive%\vcpkg\scripts\buildsystems\vcpkg.cmake` exists before proceeding.
 
-1. Visual Studio ツールバーで:
-   * **構成**: `Debug` または `Release`
-   * **アーキテクチャ**: `x64`
-   * **スタートアップターゲット**: `DX11GameEngine`
-2. **ビルド**: ビルド → すべてビルド
-3. **実行**: デバッグ → デバッグなしで開始（Ctrl + F5）
+### 3. Open the Project in Visual Studio
+
+1. Launch **Visual Studio 2022**.
+2. Select **File → Open → Folder...** and choose the cloned `DX11GameEngine` directory.
+3. Visual Studio will automatically detect `CMakeLists.txt` and `CMakeSettings.json`.
+
+### 4. Configure CMake Settings (Visual Studio UI)
+
+1. Open **Project → CMake Settings for DX11GameEngine**.
+2. Select a configuration (e.g., `x64-Debug` or `x64-Release`).
+3. Ensure the **CMake toolchain file** (`CMAKE_TOOLCHAIN_FILE`) is set to:
+   - `${env.SystemDrive}/vcpkg/scripts/buildsystems/vcpkg.cmake`
+4. Save the settings. Visual Studio will configure CMake and invoke vcpkg to install all dependencies listed in `vcpkg.json`.
+   - *Note: The first configuration may take several minutes while vcpkg builds the dependencies.*
+
+### 5. Build and Run
+
+1. In the Visual Studio toolbar:
+   - **Configuration**: `x64-Debug` or `x64-Release`
+   - **Startup Item**: `DX11Editor.exe`
+2. **Build**: Select **Build → Build All** (building both `DX11Editor` and `DX11Runtime` also populates `RuntimeTemplate/` required for the Editor's **Export Game** feature).
+3. **Run**: Select **Debug → Start Without Debugging (`Ctrl + F5`)**.
 
 ---
 
-## リリース
-v0.8 までに本エンジンの現在の機能を紹介するため、複数のデモを公開しています。
+## Archive
 
-* **Engine Demo**：レンダリング、ライティング、物理演算など、エンジンの基本的な機能を実演します。　<br> [**[こちらからダウンロード]**](https://github.com/NathanAung/DX11GameEngine/releases/tag/v0.8-demo)
-* **3D Model Demo**：詳細な 3D モデルの読み込みおよびレンダリングを実演します。　<br> [**[こちらからダウンロード]**](https://github.com/NathanAung/DX11GameEngine/releases/tag/v0.8-3d-model)
-* **Game Demo**：エンジンの物理演算機能を実演します。カメラを操作し、ボールを発射して箱の壁を破壊することができます。　<br> [**[こちらからダウンロード]**](https://github.com/NathanAung/DX11GameEngine/releases/tag/v0.8-game)
-* **Physics Demo**：ガルトンボードのシミュレーションを通して、エンジンの物理演算機能を実演します。　<br> [**[こちらからダウンロード]**](https://github.com/NathanAung/DX11GameEngine/releases/tag/v0.8-physics)
+> **Note:** The portfolio, videos, and screenshots below are from earlier versions of Step Engine and do not reflect the latest features (such as the ImGui Editor, Cascaded Shadow Maps, Normal Mapping, Lua Scripting, Audio, 2D UI, VFS, and Game Export).
 
----
+### Portfolio (Outdated)
+For earlier architecture notes and development details, see the archived portfolio:
+- [View Portfolio (Google Drive)](https://drive.google.com/file/d/1DbQy8O9z-OBZ13gIXDv29bzn-9GjP03G/view?usp=sharing)
 
-## デモ動画
-### ライティングデモ（クリックで再生）
+### Development Update Video (2025/12/22)
+[![Development Update](https://i.imgur.com/VwbFdgl.jpeg)](https://youtu.be/ANGTMzYf98M)
+
+### Early Demo Videos (Click to Play)
+
+#### Lighting Demo
 [![Lighting Demo](https://i.imgur.com/0RIBnX6.jpeg)](https://youtu.be/dPvAgLWRbKk)
-### ガルトンボード物理デモ（クリックで再生）
+
+#### Galton Board Physics Demo
 [![Galton Board Physics Demo](https://i.imgur.com/Bj7wcyO.jpeg)](https://youtu.be/JmqsDxMvVeI)
-### Wall Smasher ゲームデモ（クリックで再生）
+
+#### Wall Smasher Game Demo
 [![Wall Smasher Game Demo](https://i.imgur.com/jCIpugV.jpeg)](https://youtu.be/DlM2aOIT1i8)
-### 3D モデルデモ（クリックで再生）
+
+#### 3D Model Demo
 [![3D Model Demo](https://i.imgur.com/4AC6h1Z.jpeg)](https://youtu.be/XPVFZV_9ea4)
 
-## ギャラリー
-### PBR ライティング
-- メタリック／ラフネスによる PBR 表現
+### Early Gallery
+
+#### PBR Lighting
+- Metallic / Roughness PBR materials
 <img src="https://i.imgur.com/FqLpL3O.jpeg"/>
 
-- ディレクショナル、スポット、ポイントライト
+- Directional, Spot, and Point lights
 <img src="https://i.imgur.com/fT8hAZw.jpeg"/>
 
-### 3D モデルの読み込みとレンダリング
+#### 3D Model Loading & Rendering
 <img src="https://i.imgur.com/qVgbAAt.jpeg"/>
 
 <img src="https://i.imgur.com/nliMOQQ.jpeg"/>
-
---- 
