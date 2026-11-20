@@ -4,11 +4,9 @@
 
 ## Overview
 
-**Step Engine** is a custom 3D game engine built from scratch in **C++17** and **DirectX 11**. Designed as a practical, modular architecture for real-time rendering and gameplay development, it ships with both a full **dockable Editor (`DX11Editor`)** and a **Standalone Game Runtime (`DX11Runtime`)**.
+**Step Engine** is a custom 3D game engine built from scratch in **C++17** and **DirectX 11**. Designed as a practical, modular architecture for real-time rendering and gameplay development, it ships with both a full **dockable Editor** and a **Standalone Game Runtime**.
 
 Core capabilities include a DirectX 11 forward PBR renderer with tangent-space normal mapping and 3-cascade shadow maps, an EnTT-based ECS with intrusive entity hierarchies, multi-threaded Jolt Physics integration, sandboxed Lua scripting via `sol2`, 3D spatial audio, 2D sprite/font HUD rendering, a UUID-driven asset pipeline with binary `.pak` Virtual File System (VFS), and one-click standalone game export.
-
-> **Note:** This project is actively under development.
 
 ---
 
@@ -46,20 +44,20 @@ All third-party dependencies are managed via **CMake** and **vcpkg (manifest mod
 
 ### Rendering Pipeline
 
-`Renderer` encapsulates the DirectX 11 device, immediate context, double-buffered swap chain (`DXGI_FORMAT_R8G8B8A8_UNORM`), depth-stencil buffer (`DXGI_FORMAT_D24_UNORM_S8_UINT`), constant buffers, and pipeline states.
+`Renderer` encapsulates the DirectX 11 device, immediate context, double-buffered swap chain, depth-stencil buffer, constant buffers, and pipeline states.
 
 - **Editor vs. Standalone Render Targets**:
-  - In **Editor builds (`DX11Editor`)**, the 3D scene renders to an off-screen **Render-to-Texture framebuffer** (`RTV` + `DSV` + `SRV`) that resizes dynamically with the ImGui Scene panel, before compositing ImGui onto the swap chain back buffer.
-  - In **Standalone builds (`DX11Runtime` / `DIST_BUILD`)**, the engine renders directly to the swap chain back buffer.
+  - In **Editor builds**, the 3D scene renders to an off-screen **Render-to-Texture framebuffer** (`RTV` + `DSV` + `SRV`) that resizes dynamically with the ImGui Scene panel, before compositing ImGui onto the swap chain back buffer.
+  - In **Standalone builds**, the engine renders directly to the swap chain back buffer.
 - **Frame Pass Order**:
   1. **Cascaded Shadow Pass** — Depth-only pass (`ShadowVS.hlsl`, pixel shader unbound) rendering active lit geometry into each slice of the 3-cascade shadow map array.
-  2. **Main 3D Geometry Pass** — Restores the main framebuffer/back buffer, uploads camera, light, and shadow constant buffers, and draws entities using PBR (`BasicVS`/`BasicPS`) or Unlit (`UnlitVS`/`UnlitPS`) shaders.
-  3. **Debug Collider Pass (Edit Mode only)** — Renders wireframe green collider meshes (`D3D11_FILL_WIREFRAME`, `D3D11_CULL_NONE`) for the currently selected entity.
-  4. **Skybox Pass** — Draws a cube mesh with translation stripped from the view matrix and `D3D11_COMPARISON_LESS_EQUAL` depth testing against a 6-face cubemap (`SkyboxVS`/`SkyboxPS`) so the sky fills only untouched background pixels.
-  5. **2D UI / HUD Pass** — Switches to alpha blending, disables depth testing/writing, and projects screen-space pixels via an orthographic matrix (`SpriteVS`/`SpritePS`) to render 2D sprites (`SpriteRendererComponent`) and dynamic text (`TextRendererComponent`).
+  2. **Main 3D Geometry Pass** — Restores the main framebuffer/back buffer, uploads camera, light, and shadow constant buffers, and draws entities using PBR or Unlit shaders.
+  3. **Debug Collider Pass (Edit Mode only)** — Renders wireframe green collider meshes for the currently selected entity.
+  4. **Skybox Pass** — Draws a cube mesh with translation stripped from the view matrix and depth testing against a 6-face cubemap so the sky fills only untouched background pixels.
+  5. **2D UI / HUD Pass** — Switches to alpha blending, disables depth testing/writing, and projects screen-space pixels via an orthographic matrix to render 2D sprites and dynamic text.
 - **Meshes, Textures, Shaders & Fonts**:
-  - `MeshManager` manages 32-bit indexed D3D11 vertex/index buffers (`Position`, `Normal`, `TexCoord`, `Tangent`), generating procedural primitives (`Cube`, `Sphere`, `Capsule`, `Quad`) and importing external models via Assimp (`aiProcess_Triangulate`, `aiProcess_MakeLeftHanded`, `aiProcess_FlipWindingOrder`, `aiProcess_CalcTangentSpace`) while caching CPU-side vertices/indices for physics colliders.
-  - `TextureManager` loads 2D images and 6-face cubemaps via `stb_image` into D3D11 SRVs, and generates 1×1 fallback textures (`primitive://white`, flat normal `primitive://default_normal`, and `primitive://default_orm`) to prevent shader state leakage.
+  - `MeshManager` manages 32-bit indexed D3D11 vertex/index buffers (`Position`, `Normal`, `TexCoord`, `Tangent`), generating procedural primitives (`Cube`, `Sphere`, `Capsule`, `Quad`) and importing external models via Assimp while caching CPU-side vertices/indices for physics colliders.
+  - `TextureManager` loads 2D images and 6-face cubemaps via `stb_image` into D3D11 SRVs, and generates 1×1 fallback textures to prevent shader state leakage.
   - `ShaderManager` compiles HLSL shaders to bytecode in Editor mode (caching `.cso` files on disk for packing) and loads pre-compiled `.cso` binaries directly from the VFS in Standalone builds.
   - `FontManager` bakes `.ttf` fonts into 2048×2048 RGBA texture atlases (ASCII 32–126) via `stb_truetype`, encoding glyph coverage in the alpha channel so `SpritePS.hlsl` can tint text dynamically.
 
@@ -88,7 +86,7 @@ Surface shading uses a forward **Cook-Torrance microfacet BRDF**:
 - Before uploading to the GPU, `RenderSystem::DrawEntities` builds a world-space `DirectX::BoundingFrustum` from the active camera, frustum-culls off-screen point/spot lights by their range sphere, prioritizes directional lights, and sorts remaining lights by squared distance to the camera.
 
 #### Cascaded Shadow Maps (CSM)
-- **Shadow Map Array**: Uses a 3-slice **2048×2048 `Texture2DArray`** (`DXGI_FORMAT_R32_TYPELESS`) with individual `D32_FLOAT` Depth-Stencil Views per cascade for depth rendering and a unified `R32_FLOAT` Shader Resource View (`t3`) for sampling.
+- **Shadow Map Array**: Uses a 3-slice **2048×2048 `Texture2DArray`** with individual `D32_FLOAT` Depth-Stencil Views per cascade for depth rendering and a unified `R32_FLOAT` Shader Resource View (`t3`) for sampling.
 - **Frustum Splitting & Orthographic Fitting**: `Renderer::CalculateCascadeMatrices` partitions the camera view frustum at **5%**, **20%**, and **100%** of the clip range (`near` to `far`), extracts each slice's 8 world-space frustum corners, encloses them in a bounding sphere, and constructs a tight orthographic light projection with extended Z-padding (`500.0f`) to capture shadow casters behind the camera.
 - **Anti-Shimmering & Filtering**:
   - **Texel Snapping** rounds the light-space origin to shadow texel increments to eliminate shadow-edge swimming during camera movement.
@@ -137,7 +135,7 @@ Each frame runs systems in a deterministic sequence:
 
 `PhysicsManager` integrates **Jolt Physics** with a multi-threaded `JobSystemThreadPool` (`hardware_concurrency - 1` worker threads), a 128 MB `TempAllocatorImpl`, and capacity for up to 10,240 bodies and 65,536 contact constraints.
 
-- **Broadphase & Collision Layers**: Separates `NON_MOVING` (static) and `MOVING` (dynamic) layers so static bodies collide only with moving bodies while dynamic bodies collide with both.
+- **Broadphase & Collision Layers**: Separates static and dynamic layers so static bodies collide only with moving bodies while dynamic bodies collide with both.
 - **Collision Shapes & Caching**:
   - Supports **Box**, **Sphere**, **Capsule**, and **Mesh** colliders.
   - Mesh colliders automatically generate indexed concave `JPH::MeshShape` geometry for static bodies and `JPH::ConvexHullShape` geometry for dynamic bodies, caching built shapes by mesh UUID (`m_meshShapeCache`).
@@ -145,14 +143,14 @@ Each frame runs systems in a deterministic sequence:
 - **Bidirectional ECS Synchronization**:
   - **Play Mode**: Steps Jolt with clamped delta time (`<= 1/30 s`) and 4 collision sub-steps to reduce tunneling, then pulls Jolt world-space transforms back into ECS local transforms (converting via the inverse parent world matrix—and querying Jolt directly if the parent is also a physics body to avoid 1-frame lag).
   - **Edit Mode**: Pushes Inspector and ImGuizmo world transforms directly into Jolt, teleporting bodies, zeroing momentum, and rebuilding bodies automatically when scale, shape, mass, or damping changes.
-- **Raycasting**: `Scene::CastRay` queries Jolt's narrow-phase raycast first and falls back to mathematical Oriented Bounding Box (OBB) intersection (`Math::RayIntersectsOBB`) for non-physics entities such as lights or uncollided meshes.
+- **Raycasting**: `Scene::CastRay` queries Jolt's narrow-phase raycast first and falls back to mathematical Oriented Bounding Box (OBB) intersection for non-physics entities such as lights or uncollided meshes.
 - **Thread-Safe Collision Callbacks**: `PhysicsContactListener` captures `OnContactAdded` and `OnContactRemoved` events from Jolt worker threads into a mutex-protected queue and flushes them sequentially on the main thread after `Update()`, routing `OnCollisionEnter(other)` and `OnCollisionExit(other)` directly into attached Lua scripts.
 
 ---
 
 ### Engine Editor
 
-The editor (`EditorUI` + `ImGuiManager`) is built with **Dear ImGui (Docking)** and **ImGuizmo**, excluded automatically from standalone game builds via the `DIST_BUILD` preprocessor macro.
+The editor is built with **Dear ImGui (Docking)** and **ImGuizmo**, excluded automatically from standalone game builds via the `DIST_BUILD` preprocessor macro.
 
 #### Dockable Panels & Workflows
 - **Toolbar**: Houses the **Play / Stop** toggle and the **Export Game** button.
@@ -165,7 +163,7 @@ The editor (`EditorUI` + `ImGuiManager`) is built with **Dear ImGui (Docking)** 
 - **Content Browser**: Navigates `assets/`, loads `.json` scenes on click (with VRAM preloading), provides a right-click **Create New Scene** workflow, and acts as a drag-and-drop source for models, textures, scripts, and audio. Supports `Ctrl+S` quick-save and modal dialogs for saving, creating scenes, and error reporting.
 
 #### Editor State Machine (`Edit` <-> `Play`)
-`EditorUI` manages two states (`EditorState::Edit` and `EditorState::Play`) to allow non-destructive playtesting directly inside the editor:
+`EditorUI` manages two states (`Edit` and `Play`) to allow non-destructive playtesting directly inside the editor:
 - **Entering Play Mode (`Edit -> Play`)**:
   1. `Scene::CopyToBackup()` snapshots all entities and components (preserving exact EnTT entity handles) into `m_backupRegistry`.
   2. `ScriptSystemInit` initializes all attached Lua environments and invokes `OnCreate()`.
@@ -180,18 +178,36 @@ The editor (`EditorUI` + `ImGuiManager`) is built with **Dear ImGui (Docking)** 
 
 ### Lua Scripting System
 
-Gameplay logic is written in **Lua** and integrated via **sol2** (`Scene::InitializeLuaBindings` and `Systems.cpp`).
+Gameplay logic is written in **Lua** and integrated via **sol2**.
 
 - **Per-Script Sandboxing & Multi-Script Support**: `LuaScriptComponent` holds a vector of `ScriptInstance` objects, allowing multiple scripts per entity. Each script executes inside its own isolated `sol::environment` with a `self` variable bound to a `ScriptEntity` wrapper, preventing global namespace collisions between entities.
+
 - **Lifecycle & Physics Callbacks**:
   - `OnCreate()` — Called when Play Mode starts (or on-the-fly on the first frame a script is attached at runtime).
   - `OnUpdate(dt)` — Called every frame during Play Mode with delta time.
   - `OnDestroy()` — Called when the entity is destroyed or Play Mode exits.
   - `OnCollisionEnter(other)` / `OnCollisionExit(other)` — Invoked on the main thread from Jolt physics contact events with the colliding `ScriptEntity`.
+
 - **Stability & Error Isolation**: Scripts are loaded with `safe_script` / `safe_script_file` and invoked via `sol::protected_function` so syntax or runtime errors log to `stderr` without crashing the engine. Iteration snapshots entity lists and copies callbacks to the C++ stack to remain safe against EnTT pool reallocations if scripts instantiate entities mid-frame.
+
 - **Exposed Scripting API**:
-  - **`Entity` (`self`)**: Transform access (`GetTransform`, `GetForwardVector`, `GetRightVector`), activation (`IsActive`, `SetActive`), hierarchy (`SetParent`), spawning & deferred destruction (`Instantiate`, `InstantiateCube`, `InstantiateSphere`, `Destroy(delay)`), runtime component checks & attachment (`AddMeshRenderer`, `AddRigidBody`, `AddLuaScript`, `AddAudioComponent`, `AddSpriteRenderer`, `AddTextRenderer`), PBR material/mesh assignment (`SetMesh`, `SetAlbedo`, `SetNormal`, `SetORM`), lighting (`SetLightColor`, `SetLightIntensity`), physics (`ApplyLinearImpulse`, `SetLinearVelocity`, `GetLinearVelocity`), audio (`PlayAudio`, `StopAudio`, `SetAudioVolume`), and 2D HUD (`SetSprite`, `SetSpriteTint`, `SetText`, `SetTextColor`, `SetTextPosition`, `SetFont`).
-  - **Global Tables**: `Input` (`IsKeyDown`, `IsKeyPressed`, `IsKeyReleased` + `Key` enum), `Physics.CastRay(...)`, `Scene.FindEntityByName(name)`, `Time.deltaTime`, and `Game.Restart()` / `Game.Quit()`.
+  - **`Entity` (`self`)**: 
+    - Transform access (`GetTransform`, `GetForwardVector`, `GetRightVector`)
+    - Activation (`IsActive`, `SetActive`)
+    - Hierarchy (`SetParent`)
+    - Spawning & deferred destruction (`Instantiate`, `InstantiateCube`, `InstantiateSphere`, `Destroy(delay)`)
+    - Runtime component checks & attachment (`AddMeshRenderer`, `AddRigidBody`, `AddLuaScript`, `AddAudioComponent`, `AddSpriteRenderer`, `AddTextRenderer`)
+    - PBR material/mesh assignment (`SetMesh`, `SetAlbedo`, `SetNormal`, `SetORM`)
+    - Lighting (`SetLightColor`, `SetLightIntensity`), 
+    - Physics (`ApplyLinearImpulse`, `SetLinearVelocity`, `GetLinearVelocity`)
+    - Audio (`PlayAudio`, `StopAudio`, `SetAudioVolume`)
+    - 2D HUD (`SetSprite`, `SetSpriteTint`, `SetText`, `SetTextColor`, `SetTextPosition`, `SetFont`)
+  - **Global Tables**: 
+    - `Input` (`IsKeyDown`, `IsKeyPressed`, `IsKeyReleased` + `Key` enum)
+    - `Physics.CastRay(...)`
+    - `Scene.FindEntityByName(name)`
+    - `Time.deltaTime`
+    - `Game.Restart()` / `Game.Quit()`
 
 ```lua
 -- Example: Spawning a physics sphere with audio on keypress
@@ -213,8 +229,8 @@ end
 ### Asset Management, VFS & Game Export
 
 #### UUIDs & Asset Registry
-- Every asset (meshes, model files, textures, shaders, audio, fonts, Lua scripts, and scenes) is identified by a random 64-bit **`Engine::UUID`** (`std::mt19937_64` with `std::hash` support).
-- `AssetManager` maintains a central registry mapping `UUID -> AssetMetadata` (`filepath`, `AssetType`, `isLoaded`), deduplicating imports by path and supporting virtual/procedural identifiers (`primitive://...`, `shader://...`, `cubemap://...`, sub-mesh queries `?mesh=N`, and font size queries `?size=N`).
+- Every asset (meshes, model files, textures, shaders, audio, fonts, Lua scripts, and scenes) is identified by a random 64-bit **`Engine::UUID`**.
+- `AssetManager` maintains a central registry mapping `UUID -> AssetMetadata` (`filepath`, `AssetType`, `isLoaded`), deduplicating imports by path and supporting virtual/procedural identifiers.
 - **Persistent Asset Ledger**: In Editor mode, the registry is serialized to and restored from `enginefiles/AssetRegistry.json` via RapidJSON so procedural and physical assets keep identical UUIDs across sessions.
 - **Just-In-Time (JIT) Loading & Preloading**: `RenderSystem` lazily resolves and uploads missing meshes, PBR textures, and font atlases via UUID metadata on demand, while standalone builds preload registered models and textures into VRAM at startup (`PreloadGameAssets`) to avoid runtime hitches.
 
@@ -232,7 +248,7 @@ end
   - 4-byte magic header (`"PAK2"`) + `uint32_t` asset count
   - Dynamic **Table of Contents (TOC)** storing `UUID`, `AssetType`, filepath string, byte offset, and byte size per entry
   - Concatenated raw binary payloads
-- **Transparent VFS Mounting (`MountVFS` / `ReadAssetFromVFS`)**: In Standalone builds (`DIST_BUILD`), `DX11Runtime` mounts `data.pak` at boot, reconstructing both the asset registry and TOC offset table in memory. All engine loaders read seamlessly from VFS memory buffers without touching loose asset files:
+- **Transparent VFS Mounting (`MountVFS` / `ReadAssetFromVFS`)**: In Standalone builds, `DX11Runtime` mounts `data.pak` at boot, reconstructing both the asset registry and TOC offset table in memory. All engine loaders read seamlessly from VFS memory buffers without touching loose asset files:
   - **Models**: Custom `Assimp::IOSystem` (`VFSIOSystem`) and `Assimp::IOStream` (`VFSIOStream`)
   - **Textures**: `stbi_load_from_memory`
   - **Shaders**: Pre-compiled `.cso` bytecode
@@ -252,14 +268,14 @@ Clicking **Export Game** in the editor toolbar calls `AssetManager::ExportProjec
 
 ### Audio & Input
 
-- **Audio (`AudioManager` & `AudioSystem`)**: Wraps `miniaudio` (`ma_engine`) to provide both 2D audio and 3D spatialized sound emitters (`AudioComponent`) with looping, volume control, and play-on-create behavior. Each frame in Play mode, `AudioSystem` synchronizes the listener's world position and forward vector with the active camera and updates 3D emitter positions from decomposed entity world matrices.
+- **Audio (`AudioManager` & `AudioSystem`)**: Wraps `miniaudio` to provide both 2D audio and 3D spatialized sound emitters (`AudioComponent`) with looping, volume control, and play-on-create behavior. Each frame in Play mode, `AudioSystem` synchronizes the listener's world position and forward vector with the active camera and updates 3D emitter positions from decomposed entity world matrices.
 - **Window & Input (`SDL2` & `InputManager`)**: SDL2 manages the Windows `HWND` (passed to Direct3D 11 via `SDL_SysWMinfo`), high-resolution frame timing, window resize events, and input polling. `InputManager` tracks current and previous frame key states (`IsKeyDown`, `IsKeyPressed`, `IsKeyReleased`), mouse deltas, scroll wheel offsets, and relative mouse capture.
 
 ---
 
 ### CMake Configuration
 
-The top-level [CMakeLists.txt](CMakeLists.txt) configures the project with **CMake 3.20+**, **C++17**, MSVC warning/conformance flags (`/permissive- /W4 /EHsc` with `/external:W0` for third-party headers), and shared precompiled headers (`include/Engine/Core.h`).
+The top-level [CMakeLists.txt](CMakeLists.txt) configures the project with **CMake 3.20+**, **C++17**, MSVC warning/conformance flags (`/permissive- /W4 /EHsc` with `/external:W0` for third-party headers), and shared precompiled headers.
 
 - **Dual Executable Targets**:
   - **`DX11Editor`** *(Default Visual Studio startup project)* — Full engine with Dear ImGui, ImGuizmo, and disk-based asset authoring.
@@ -301,6 +317,8 @@ This script automatically:
 - Clones and bootstraps **vcpkg** on your system drive (e.g., `C:\vcpkg`).
 
 Verify that `%SystemDrive%\vcpkg\scripts\buildsystems\vcpkg.cmake` exists before proceeding.
+
+> Project setup tool provided by Francesco Paolo Mariani.
 
 ### 3. Open the Project in Visual Studio
 
