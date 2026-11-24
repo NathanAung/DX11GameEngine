@@ -146,38 +146,6 @@ static void LoadContent()
         );
     }
 
-    auto meshIDs = g_meshManager.LoadModel(g_renderer.GetDevice(), g_assetManager, "assets/Models/MyModel.obj");
-    // Create the sample entity
-    {
-        g_sampleEntity = g_scene.CreateSampleEntity("Sample 3D Model");
-
-        // Hook the sample entity to resources (now using first mesh from model)
-        auto& mr = g_scene.registry.get<Engine::MeshRendererComponent>(g_sampleEntity);
-        if (!meshIDs.empty())
-        {
-            UUID firstMeshID = meshIDs[0];
-            mr.meshID = firstMeshID;
-        }
-        else {
-            throw std::runtime_error("Failed to load model meshes.");
-        }
-
-		// example texture loading via TextureManager and AssetManager
-        UUID texID = g_textureManager.LoadTexture(g_renderer.GetDevice(), g_assetManager, "assets/Textures/MyTexture.png");
-        mr.albedoMapID = texID; // assign texture to component
-		mr.matType = Engine::MaterialType::Textured; // switch to textured shader path
-        // PBR value testing
-        mr.roughness = 0.3f; // shiny
-        mr.metallic = 0.2f; // metallic (with yellow-ish albedo you'd get gold-like)
-
-        Engine::RigidBodyComponent rb{};
-        rb.shape = Engine::RBShape::Mesh;
-        rb.motionType = Engine::RBMotion::Dynamic;
-        rb.mass = 1.0f;
-        rb.meshID = mr.meshID; // use same mesh for collider
-        g_scene.registry.emplace<Engine::RigidBodyComponent>(g_sampleEntity, rb);
-    }
-
 	// PHYSICS TEST ENTITIES
     // Ground (static box)
     {
@@ -195,6 +163,7 @@ static void LoadContent()
         rend.meshID = g_scene.GetCubeMeshID();               // cube mesh
         rend.roughness = 0.1f;
         rend.metallic = 0.2f;
+		rend.baseColor = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f); // gray
         g_scene.registry.emplace<Engine::MeshRendererComponent>(ground, rend);
     }
 
@@ -222,7 +191,7 @@ static void LoadContent()
     {
         entt::entity sphere = g_scene.CreateEntity("Physics Sphere");
         auto& tc = g_scene.registry.get<Engine::TransformComponent>(sphere);
-        tc.position = XMFLOAT3(0.5f, 20.0f, 2.0f);
+        tc.position = XMFLOAT3(0.0f, 20.0f, 0.0f);
         tc.scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 
         Engine::RigidBodyComponent rb{};
@@ -235,30 +204,28 @@ static void LoadContent()
 
         Engine::MeshRendererComponent rend{};
 		rend.meshID = g_scene.GetSphereMeshID();
-        rend.roughness = 0.1f;
-        rend.metallic = 0.2f;
+        rend.roughness = 0.5f;
+        rend.metallic = 1.0f;
+		rend.baseColor = XMFLOAT4(0.2f, 0.8f, 0.2f, 1.0f); // green
         g_scene.registry.emplace<Engine::MeshRendererComponent>(sphere, rend);
     }
 
-    // Falling Capsule (dynamic)
+    // Falling Capsule (static)
     {
-        entt::entity capsule = g_scene.CreateEntity("Physics Capsule");
+        entt::entity capsule = g_scene.CreateEntity("Capsule");
         auto& tc = g_scene.registry.get<Engine::TransformComponent>(capsule);
-        tc.position = XMFLOAT3(2.0f, 10.0f, 2.0f);
+        tc.position = XMFLOAT3(2.0f, 2.0f, 2.0f);
         tc.scale = XMFLOAT3(1.0f, 1.0f, 1.0f);
 
         Engine::RigidBodyComponent rb{};
         rb.shape = Engine::RBShape::Capsule;
-        rb.motionType = Engine::RBMotion::Dynamic;
-        rb.mass = 1.0f;
-        rb.radius = 0.5f;
-        rb.height = 1.0f; // cylinder height in PhysicsManager logic
+        rb.motionType = Engine::RBMotion::Static;
         g_scene.registry.emplace<Engine::RigidBodyComponent>(capsule, rb);
 
         Engine::MeshRendererComponent rend{};
 		rend.meshID = g_scene.GetCapsuleMeshID();
-        rend.roughness = 0.1f;
-        rend.metallic = 0.2f;
+        rend.matType = Engine::MaterialType::UnlitColor;
+		rend.baseColor = XMFLOAT4(0.8f, 0.2f, 0.2f, 1.0f); // red
         g_scene.registry.emplace<Engine::MeshRendererComponent>(capsule, rend);
     }
 }
