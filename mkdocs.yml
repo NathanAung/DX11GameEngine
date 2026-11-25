@@ -1,6 +1,7 @@
-site_name: Engine Documentation
+site_name: Step Engine Documentation
 theme:
   name: material
+  icon: assets/StepEngineIconB.svg
   features:
     - navigation.tabs
     - navigation.sections
@@ -23,3 +24,20 @@ markdown_extensions:
         - name: mermaid
           class: mermaid
           format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Architecture:
+      - Core Engine Loop & Lifecycle: architecture/engine-loop.md
+      - ECS & Entity Management: architecture/ecs.md
+      - Rendering Pipeline & Shaders: architecture/rendering-pipeline.md
+      - Subsystems, Physics, Audio & VFS: architecture/subsystems.md
+  - API Reference:
+      - Core, Scene, Systems & Serialization: api/core-and-scene.md
+      - ECS Components & Enums: api/components.md
+      - Renderer, Managers & Editor UI: api/managers-and-renderer.md
+      - Lua Scripting Bindings: api/lua-scripting.md
+  - Guides:
+      - Adding & Managing Assets: guides/adding-assets.md
+      - Creating, Editing & Exporting Scenes: guides/creating-scenes.md
+      - Writing Lua Gameplay Scripts: guides/writing-scripts.md

@@ -1,0 +1,1422 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../rendering-pipeline/">
+      
+      
+        <link rel="next" href="../../api/core-and-scene/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Subsystems, Physics, Audio & VFS - Step Engine Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#subsystems-physics-audio-vfs" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Step Engine Documentation" class="md-header__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Step Engine Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Subsystems, Physics, Audio & VFS
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../engine-loop/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/core-and-scene/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/adding-assets/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Step Engine Documentation" class="md-nav__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Step Engine Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engine-loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Engine Loop & Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ecs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS & Entity Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rendering-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering Pipeline & Shaders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subsystems, Physics, Audio & VFS
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subsystems, Physics, Audio & VFS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#jolt-physics-integration-physicsmanager-physicssystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jolt Physics Integration (PhysicsManager &amp; PhysicsSystem)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Jolt Physics Integration (PhysicsManager &amp; PhysicsSystem)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#collider-shapes-mesh-caching-world-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Collider Shapes, Mesh Caching &amp; World Scaling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bidirectional-ecs-synchronization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bidirectional ECS Synchronization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hybrid-raycasting-thread-safe-contact-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hybrid Raycasting &amp; Thread-Safe Contact Events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sandboxed-lua-scripting-sol2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sandboxed Lua Scripting (sol2)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spatial-audio-audiomanager-audiosystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spatial Audio (AudioManager &amp; AudioSystem)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#asset-pipeline-pak2-vfs-standalone-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Asset Pipeline, PAK2 VFS &amp; Standalone Export
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Asset Pipeline, PAK2 VFS &amp; Standalone Export">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uuid-registry-virtual-asset-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UUID Registry &amp; Virtual Asset Paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pak2-binary-archive-format-transparent-vfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PAK2 Binary Archive Format &amp; Transparent VFS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standalone-game-export-pipeline-assetmanagerexportproject" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standalone Game Export Pipeline (AssetManager::ExportProject)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core-and-scene/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core, Scene, Systems & Serialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS Components & Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/managers-and-renderer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer, Managers & Editor UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/lua-scripting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lua Scripting Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding & Managing Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/creating-scenes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating, Editing & Exporting Scenes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/writing-scripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Lua Gameplay Scripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#jolt-physics-integration-physicsmanager-physicssystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Jolt Physics Integration (PhysicsManager &amp; PhysicsSystem)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Jolt Physics Integration (PhysicsManager &amp; PhysicsSystem)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#collider-shapes-mesh-caching-world-scaling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Collider Shapes, Mesh Caching &amp; World Scaling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bidirectional-ecs-synchronization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bidirectional ECS Synchronization
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#hybrid-raycasting-thread-safe-contact-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Hybrid Raycasting &amp; Thread-Safe Contact Events
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#sandboxed-lua-scripting-sol2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sandboxed Lua Scripting (sol2)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spatial-audio-audiomanager-audiosystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spatial Audio (AudioManager &amp; AudioSystem)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#asset-pipeline-pak2-vfs-standalone-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Asset Pipeline, PAK2 VFS &amp; Standalone Export
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Asset Pipeline, PAK2 VFS &amp; Standalone Export">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uuid-registry-virtual-asset-paths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UUID Registry &amp; Virtual Asset Paths
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pak2-binary-archive-format-transparent-vfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PAK2 Binary Archive Format &amp; Transparent VFS
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#standalone-game-export-pipeline-assetmanagerexportproject" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standalone Game Export Pipeline (AssetManager::ExportProject)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="subsystems-physics-audio-vfs">Subsystems, Physics, Audio &amp; VFS</h1>
+<p>Step Engine coordinates its runtime subsystems around two shared hubs: <strong><code>Engine::Scene</code></strong> (which owns the EnTT registry and <code>sol::state</code> Lua VM) and <strong><code>Engine::AssetManager</code></strong> (which maps 64-bit UUIDs to disk paths or <code>data.pak</code> VFS byte ranges).</p>
+<pre class="mermaid"><code>flowchart TB
+    Main["main.cpp&lt;br/&gt;App Loop &amp; Lifecycle"]
+    Scene["Scene&lt;br/&gt;EnTT Registry + Backup + Lua VM"]
+    Assets["AssetManager&lt;br/&gt;UUID Ledger + PAK2 VFS + Exporter"]
+
+    subgraph Simulation ["Gameplay &amp; Simulation"]
+        Phys["PhysicsManager (Jolt)&lt;br/&gt;ThreadPool + Shapes + Raycast + Contacts"]
+        Lua["ScriptSystem + ScriptEntity&lt;br/&gt;Per-Script sol::environment"]
+        Audio["AudioManager (miniaudio)&lt;br/&gt;2D/3D Sound + VFS Memory Decoders"]
+        Input["InputManager (SDL2)&lt;br/&gt;Key Edges + Mouse Delta"]
+    end
+
+    subgraph Presentation ["Rendering &amp; Authoring"]
+        Rend["Renderer (D3D11)&lt;br/&gt;SwapChain + Framebuffer + CSM"]
+        Res["Mesh / Texture / Shader / Font Managers&lt;br/&gt;VRAM Caches + VFS Streams"]
+        Editor["ImGuiManager + EditorUI&lt;br/&gt;Dockspace + Inspector + ImGuizmo"]
+    end
+
+    Main --&gt; Scene
+    Main --&gt; Assets
+    Main --&gt; Simulation
+    Main --&gt; Presentation
+
+    Scene &lt;--&gt; Phys
+    Scene &lt;--&gt; Lua
+    Scene &lt;--&gt; Audio
+    Lua --&gt; Input
+    Lua --&gt; Assets
+    Res --&gt; Assets
+    Audio --&gt; Assets
+    Editor --&gt; Scene
+    Editor --&gt; Assets
+    Editor --&gt; Rend</code></pre>
+<hr />
+<h2 id="jolt-physics-integration-physicsmanager-physicssystem">Jolt Physics Integration (<code>PhysicsManager</code> &amp; <code>PhysicsSystem</code>)</h2>
+<p><code>PhysicsManager</code> (<code>src/Engine/PhysicsManager.cpp</code>) initializes <strong>Jolt Physics</strong> with:</p>
+<ul>
+<li><strong>Memory &amp; Concurrency</strong>: A 128 MB <code>JPH::TempAllocatorImpl</code> for lock-free per-step allocations and a <code>JPH::JobSystemThreadPool</code> configured with <code>max(1, hardware_concurrency - 1)</code> worker threads.</li>
+<li><strong>World Capacity</strong>: Up to <code>10,240</code> rigid bodies, <code>65,536</code> body pairs, and <code>65,536</code> contact constraints under standard earth gravity <code>(0.0f, -9.81f, 0.0f)</code>.</li>
+<li><strong>Collision Filtering</strong>: Two object and broadphase layers:<ul>
+<li><code>Layers::NON_MOVING</code> (<code>0</code>) — Static bodies; collides <em>only</em> with <code>MOVING</code> bodies.</li>
+<li><code>Layers::MOVING</code> (<code>1</code>) — Dynamic bodies; collides with both <code>NON_MOVING</code> and <code>MOVING</code> bodies.</li>
+</ul>
+</li>
+</ul>
+<h3 id="collider-shapes-mesh-caching-world-scaling">Collider Shapes, Mesh Caching &amp; World Scaling</h3>
+<p><code>PhysicsManager::CreatePhysicsShape</code> builds an unscaled base shape from <code>RigidBodyComponent</code> and wraps non-identity world scales (extracted from <code>TransformComponent::worldMatrix</code> via <code>XMMatrixDecompose</code>) in a <code>JPH::ScaledShape</code>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;"><code>RBShape</code></th>
+<th style="text-align: left;">Jolt Shape Type</th>
+<th style="text-align: left;">Dimensions Used</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Box</code></td>
+<td style="text-align: left;"><code>JPH::BoxShape</code></td>
+<td style="text-align: left;"><code>halfExtent</code> (<code>x, y, z</code>) scaled by entity world scale</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Sphere</code></td>
+<td style="text-align: left;"><code>JPH::SphereShape</code></td>
+<td style="text-align: left;"><code>radius</code> scaled by entity world scale</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Capsule</code></td>
+<td style="text-align: left;"><code>JPH::CapsuleShape</code></td>
+<td style="text-align: left;"><code>halfHeight = height * 0.5f</code> and <code>radius</code> scaled by entity world scale</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Mesh</code> <em>(Static)</em></td>
+<td style="text-align: left;"><code>JPH::MeshShape</code></td>
+<td style="text-align: left;">Concave indexed triangle list from <code>MeshManager</code> (<code>positions</code> + <code>indices</code>), scaled by <code>worldScale * colliderScale</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Mesh</code> <em>(Dynamic)</em></td>
+<td style="text-align: left;"><code>JPH::ConvexHullShape</code></td>
+<td style="text-align: left;">Convex hull built from <code>MeshManager::GetMeshPositions</code>, scaled by <code>worldScale * colliderScale</code></td>
+</tr>
+</tbody>
+</table>
+<p>Built mesh shapes are cached in <code>PhysicsManager::m_meshShapeCache</code> keyed by <code>meshID</code> so instancing multiple mesh colliders avoids redundant hull/tree construction. If <code>RigidBodyComponent::meshID</code> is <code>0</code> on a <code>Mesh</code> collider, <code>PhysicsSystem</code> automatically wires it from the entity's <code>MeshRendererComponent::meshID</code>.</p>
+<h3 id="bidirectional-ecs-synchronization">Bidirectional ECS Synchronization</h3>
+<ul>
+<li><strong>Play Mode (<code>isPlaying == true</code>)</strong>:<ol>
+<li>Steps Jolt with delta time clamped to <code>1/30 s</code> (<code>0.0333s</code>) across <strong>4 collision sub-steps</strong> to prevent high-speed tunneling.</li>
+<li>Flushes queued collision callbacks on the main thread.</li>
+<li>Pulls world-space position and rotation from <code>JPH::BodyInterface</code> back into <code>TransformComponent</code>. If the entity is parented (<code>RelationshipComponent</code>), <code>PhysicsSystem</code> multiplies by the inverse parent world matrix—querying Jolt <em>directly</em> if the parent also has a <code>RigidBodyComponent</code> to eliminate 1-frame hierarchy lag.</li>
+</ol>
+</li>
+<li><strong>Edit Mode (<code>isPlaying == false</code>)</strong>:<ul>
+<li>Pushes decomposed <code>TransformComponent::worldMatrix</code> changes (from Inspector sliders or <code>ImGuizmo</code>) into Jolt via <code>SetPositionAndRotation</code> and <code>ResetBodyTransform</code>, zeroing linear/angular velocity. If the entity's scale changed, the body is destroyed and invalidated so <code>PhysicsSystem</code> rebuilds its scaled shape and inertia tensor cleanly on the next frame.</li>
+</ul>
+</li>
+</ul>
+<h3 id="hybrid-raycasting-thread-safe-contact-events">Hybrid Raycasting &amp; Thread-Safe Contact Events</h3>
+<ul>
+<li><strong>Hybrid Raycasting (<code>Scene::CastRay</code>)</strong>: Queries <code>PhysicsManager::CastRay</code> (1000-unit <code>JPH::RRayCast</code> narrow-phase query) first. If no physics collider is hit, it falls back to testing <code>Engine::Math::RayIntersectsOBB</code> against non-rigidbody active <code>TransformComponent</code> entities (such as lights or uncollided meshes) so Editor viewport picking works on every visible object.</li>
+<li><strong>Thread-Safe Collision Routing (<code>PhysicsContactListener</code>)</strong>: Jolt invokes <code>OnContactAdded</code> and <code>OnContactRemoved</code> from worker threads. The listener locks <code>m_eventMutex</code> and records <code>{body1, body2, isEnter}</code> pairs for both directions into <code>m_eventQueue</code>. Immediately after <code>m_physicsSystem-&gt;Update(...)</code> finishes, <code>FlushEvents()</code> swaps the queue on the main thread, maps <code>BodyID</code>s to <code>entt::entity</code> handles in O(N), and invokes <code>OnCollisionEnter(other)</code> / <code>OnCollisionExit(other)</code> on attached Lua scripts.</li>
+</ul>
+<hr />
+<h2 id="sandboxed-lua-scripting-sol2">Sandboxed Lua Scripting (<code>sol2</code>)</h2>
+<p>Gameplay scripts execute inside <code>Scene::m_lua</code> (<code>sol::state</code> with <code>base</code>, <code>math</code>, <code>table</code>, and <code>string</code> standard libraries).</p>
+<ul>
+<li><strong>Per-Instance Environment Isolation</strong>: Each <code>ScriptInstance</code> inside an entity's <code>LuaScriptComponent::scripts</code> vector creates its own <code>sol::environment(scene.m_lua, sol::create, scene.m_lua.globals())</code> and binds <code>env["self"] = ScriptEntity(entity, &amp;scene)</code>. Multiple entities running the same <code>.lua</code> file—or multiple scripts on one entity—never overwrite each other's globals or <code>OnUpdate</code> functions.</li>
+<li><strong>On-The-Fly Initialization</strong>: If a script is attached dynamically during gameplay via <code>Entity:AddLuaScript(filepath)</code>, <code>ScriptSystemUpdate</code> detects <code>!script.isInitialized</code>, compiles the script, caches its callbacks, and runs <code>OnCreate()</code> immediately before its first <code>OnUpdate(dt)</code>.</li>
+<li><strong>Memory &amp; Crash Safety</strong>:<ul>
+<li><code>ScriptSystemInit</code>, <code>ScriptSystemUpdate</code>, and <code>ScriptSystemShutdown</code> snapshot entity handles into a local <code>std::vector&lt;entt::entity&gt;</code> and re-fetch component references by index so mid-frame <code>Instantiate</code> calls that reallocate EnTT pools never dangle C++ references.</li>
+<li>All script loads (<code>safe_script</code> / <code>safe_script_file</code>) and callbacks (<code>sol::protected_function</code>) trap Lua syntax and runtime errors, logging diagnostics to <code>stderr</code> instead of terminating the engine.</li>
+</ul>
+</li>
+</ul>
+<hr />
+<h2 id="spatial-audio-audiomanager-audiosystem">Spatial Audio (<code>AudioManager</code> &amp; <code>AudioSystem</code>)</h2>
+<p><code>AudioManager</code> (<code>src/Engine/AudioManager.cpp</code>) wraps <code>miniaudio</code> (<code>ma_engine</code>) behind opaque <code>void*</code> handles (<code>AudioInstance</code> structs containing <code>ma_sound</code>, <code>ma_decoder</code>, and a <code>std::vector&lt;char&gt;</code> VFS buffer).</p>
+<ul>
+<li><strong>Editor vs. VFS Decoding</strong>: In Editor mode, <code>LoadSound</code> streams/loads from disk via <code>ma_sound_init_from_file</code>. When VFS is active (<code>DIST_BUILD</code>), <code>AudioInstance</code> retains the extracted <code>data.pak</code> byte vector in memory for the lifetime of the sound and decodes it via <code>ma_decoder_init_memory</code> + <code>ma_sound_init_from_data_source</code>.</li>
+<li><strong>Per-Frame 3D Spatialization (<code>AudioSystem</code>)</strong>: Updates listener <code>0</code> with the active camera's position and quaternion-rotated <code>+Z</code> forward vector, lazily initializes <code>AudioComponent::soundHandle</code>, triggers <code>playOnCreate</code> sounds, stops sounds on deactivated entities, and updates 3D emitter positions from decomposed <code>TransformComponent::worldMatrix</code> translations.</li>
+</ul>
+<hr />
+<h2 id="asset-pipeline-pak2-vfs-standalone-export">Asset Pipeline, <code>PAK2</code> VFS &amp; Standalone Export</h2>
+<h3 id="uuid-registry-virtual-asset-paths">UUID Registry &amp; Virtual Asset Paths</h3>
+<p><code>AssetManager</code> (<code>src/Engine/AssetManager.cpp</code>) assigns every imported file or procedural resource a random 64-bit <code>Engine::UUID</code> (<code>std::mt19937_64</code>), deduplicating paths so importing the same path twice always returns the existing UUID. In addition to disk filepaths, the engine uses virtual URI conventions:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Virtual Path Pattern</th>
+<th style="text-align: left;"><code>AssetType</code></th>
+<th style="text-align: left;">Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>primitive://cube</code>, <code>primitive://quad</code>, <code>primitive://sphere_...</code>, <code>primitive://capsule_...</code></td>
+<td style="text-align: left;"><code>Mesh</code></td>
+<td style="text-align: left;">Procedural geometry generated by <code>MeshManager</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>primitive://white</code>, <code>primitive://default_normal</code>, <code>primitive://default_orm</code></td>
+<td style="text-align: left;"><code>Texture</code></td>
+<td style="text-align: left;">1x1 fallback textures generated by <code>TextureManager</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>cubemap://&lt;first_face_path&gt;</code></td>
+<td style="text-align: left;"><code>Texture</code></td>
+<td style="text-align: left;">Combined 6-face cubemap SRV entry (each physical face is also registered individually)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>shader://basic</code>, <code>shader://unlit</code>, <code>shader://skybox</code>, <code>shader://shadow</code>, <code>shader://sprite</code></td>
+<td style="text-align: left;"><code>Shader</code></td>
+<td style="text-align: left;">Logical shader pipeline identifiers (backed on disk/VFS by <code>shaders/*.cso</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;model_path&gt;?mesh=&lt;index&gt;</code></td>
+<td style="text-align: left;"><code>Mesh</code></td>
+<td style="text-align: left;">Individual sub-mesh extracted by Assimp from <code>&lt;model_path&gt;</code> (<code>ModelFile</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>&lt;ttf_path&gt;?size=&lt;float&gt;</code></td>
+<td style="text-align: left;"><code>Font</code></td>
+<td style="text-align: left;">Baked <code>stb_truetype</code> glyph atlas at a specific pixel height (backed by <code>&lt;ttf_path&gt;</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pak2-binary-archive-format-transparent-vfs"><code>PAK2</code> Binary Archive Format &amp; Transparent VFS</h3>
+<p><code>AssetManager::PackAssets</code> compiles all physical assets in the registry into a single binary <code>data.pak</code> archive:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+-------------------------------------------------------------------+
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>| Header (8 bytes)                                                  |
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|   char magic[4]      = "PAK2"                                     |
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>|   uint32_t count     = total registry entries                     |
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>+-------------------------------------------------------------------+
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>| Dynamic Table of Contents (TOC) [repeated `count` times]          |
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>|   uint64_t uuid      (8 bytes)                                    |
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>|   uint32_t type      (4 bytes, Engine::AssetType)                 |
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>|   uint32_t pathLen   (4 bytes)                                    |
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>|   char filepath[pathLen]                                          |
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>|   uint64_t offset    (8 bytes, byte offset into payload section)  |
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>|   uint64_t size      (8 bytes, 0 for virtual/procedural entries)  |
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>+-------------------------------------------------------------------+
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>| Concatenated Raw Binary Payloads                                  |
+<a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>|   [Raw bytes of models, .mtl/.bin sidecars, textures, .cso,       |
+<a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>|    audio clips, .ttf fonts, .lua scripts, and .json scenes]       |
+<a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>+-------------------------------------------------------------------+
+</code></pre></div>
+<p>When <code>DX11Runtime</code> calls <code>AssetManager::MountVFS("data.pak")</code>, the engine reconstructs <code>m_assetRegistry</code> and <code>m_vfsTable</code> in memory. Every loader switches seamlessly to memory-buffered reads via <code>ReadAssetFromVFS(uuid)</code>—including Assimp, which uses a custom <code>VFSIOSystem</code> and <code>VFSIOStream</code> (<code>src/Engine/MeshManager.cpp</code>) to resolve <code>.mtl</code>, <code>.bin</code>, and relative model dependencies directly from the archive (and automatically register those sidecar files during Editor imports).</p>
+<h3 id="standalone-game-export-pipeline-assetmanagerexportproject">Standalone Game Export Pipeline (<code>AssetManager::ExportProject</code>)</h3>
+<p>Clicking <strong>Export Game</strong> in the Editor toolbar executes a 5-step packaging pipeline:</p>
+<pre class="mermaid"><code>flowchart LR
+    A["Verify Scene Saved&lt;br/&gt;(GetCurrentScenePath != empty)"] --&gt; B["Clean &amp; Create&lt;br/&gt;ExportedGame/"]
+    B --&gt; C["SceneSerializer::Serialize&lt;br/&gt;(Register all attached scripts)"]
+    C --&gt; D["AssetManager::PackAssets&lt;br/&gt;-&gt; ExportedGame/data.pak"]
+    D --&gt; E["Copy RuntimeTemplate/&lt;br/&gt;(DX11Runtime.exe + *.dll)"]
+    E --&gt; F["Write ExportedGame/enginefiles/Launch.txt&lt;br/&gt;&amp; Open in Explorer"]</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>
