@@ -1,0 +1,1417 @@
+
+<!doctype html>
+<html lang="ja" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../engine-loop/">
+      
+      
+        <link rel="next" href="../rendering-pipeline/">
+      
+      
+        
+          <link rel="alternate" href="../../../architecture/ecs/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="ja">
+        
+      
+      
+      <link rel="icon" href="../../../assets/StepEngineIcon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>ECS & Entity Management - Step Engine Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#ecs" class="md-skip">
+          コンテンツにスキップ
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="ヘッダー">
+    <a href="../../" title="Step Engine Documentation" class="md-header__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/StepEngineIcon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Step Engine Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              ECS & Entity Management
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="言語切り替え">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../../architecture/ecs/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="ja" class="md-select__link">
+              日本語
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="検索" placeholder="検索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="検索">
+        
+        <button type="reset" class="md-search__icon md-icon" title="クリア" aria-label="クリア" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            検索を初期化
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NathanAung/DX11GameEngine" title="リポジトリへ" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NathanAung/DX11GameEngine
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="タブ" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../engine-loop/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/core-and-scene/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/adding-assets/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="ナビゲーション" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../" title="Step Engine Documentation" class="md-nav__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/StepEngineIcon.svg" alt="logo">
+
+    </a>
+    Step Engine Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NathanAung/DX11GameEngine" title="リポジトリへ" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NathanAung/DX11GameEngine
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../engine-loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Engine Loop & Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS & Entity Management
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS & Entity Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目次">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目次
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        コンポーネント構成の概要
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relationshipcomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        侵入型エンティティ階層 (RelationshipComponent)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="侵入型エンティティ階層 (RelationshipComponent)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ワールド変換を維持する親子付けと親子解除
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transformsystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        階層的トランスフォーム伝播 (TransformSystem)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        エンティティの生成・破棄・遅延破棄キュー
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="エンティティの生成・破棄・遅延破棄キュー">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scene のファクトリヘルパー
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenedestroyentity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        カスケード即時破棄 (Scene::DestroyEntity)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#submitfordestruction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        遅延破棄キュー (SubmitForDestruction)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-sceneserializer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4パス・シーンシリアライズ (SceneSerializer)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../rendering-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering Pipeline & Shaders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../subsystems/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subsystems, Physics, Audio & VFS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/core-and-scene/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core, Scene, Systems & Serialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS Components & Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/managers-and-renderer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer, Managers & Editor UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/lua-scripting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lua Scripting Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding & Managing Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/creating-scenes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating, Editing & Exporting Scenes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/writing-scripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Lua Gameplay Scripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目次">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目次
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        コンポーネント構成の概要
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relationshipcomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        侵入型エンティティ階層 (RelationshipComponent)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="侵入型エンティティ階層 (RelationshipComponent)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ワールド変換を維持する親子付けと親子解除
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#transformsystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        階層的トランスフォーム伝播 (TransformSystem)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        エンティティの生成・破棄・遅延破棄キュー
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="エンティティの生成・破棄・遅延破棄キュー">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#scene" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scene のファクトリヘルパー
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scenedestroyentity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        カスケード即時破棄 (Scene::DestroyEntity)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#submitfordestruction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        遅延破棄キュー (SubmitForDestruction)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-sceneserializer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4パス・シーンシリアライズ (SceneSerializer)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="ecs">ECS とエンティティ管理</h1>
+<p>Step Engine は、シーングラフ (<code>Engine::Scene</code>) の中核として <strong>EnTT</strong> (<code>entt::registry</code>) を採用しています。エンティティは軽量な 32 ビットハンドル (<code>entt::entity</code>) で表現され、コンポーネントは連続したスパースセットに格納される POD (Plain-Old-Data) 構造体 (<code>include/Engine/Components.h</code>)、振る舞いは <code>include/Engine/Systems.h</code> 内のステートレスな関数群として実装されています。</p>
+<hr />
+<h2 id="_1">コンポーネント構成の概要</h2>
+<p><code>Scene::CreateEntity</code> で生成されるすべてのエンティティには、以下の3つの基本コンポーネントが自動的に付与されます。</p>
+<ol>
+<li><strong><code>IDComponent</code></strong> — セーブ・ロード間でエンティティのシリアライズや階層構造の復元を行うための永続的な 64 ビット <code>id</code> です。</li>
+<li><strong><code>NameComponent</code></strong> — 人間が判読可能な表示名 <code>name</code> と、エンティティ全体の有効・無効を切り替えるマスターフラグ <code>isActive</code> を保持します。各システム（<code>RenderSystem</code>、<code>PhysicsSystem</code>、<code>AudioSystem</code>、<code>Scene::CastRay</code>）は <code>NameComponent::isActive</code> が <code>false</code> のエンティティをスキップします。</li>
+<li><strong><code>TransformComponent</code></strong> — ローカル空間の位置 (<code>position</code>)、クォータニオン回転 (<code>rotation</code>)、スケール (<code>scale</code>)、キャッシュされた <code>worldMatrix</code>、および更新フラグ <code>isDirty</code> を保持します。</li>
+</ol>
+<p>機能拡張用の各種コンポーネントは、C++ コード、エディタの <strong>Inspector</strong>、または実行時の Lua スクリプトから自由に追加できます。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">カテゴリ</th>
+<th style="text-align: left;">コンポーネント</th>
+<th style="text-align: left;">使用するシステム</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>階層構造</strong></td>
+<td style="text-align: left;"><code>RelationshipComponent</code></td>
+<td style="text-align: left;"><code>TransformSystem</code>, <code>Scene</code>, <code>EditorUI</code>, <code>SceneSerializer</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>3D レンダリング</strong></td>
+<td style="text-align: left;"><code>MeshRendererComponent</code>, <code>LightComponent</code></td>
+<td style="text-align: left;"><code>RenderSystem::DrawEntities</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>カメラ</strong></td>
+<td style="text-align: left;"><code>CameraComponent</code>, <code>ViewportComponent</code>, <code>EditorCamControlComponent</code></td>
+<td style="text-align: left;"><code>EditorCameraInputSystem</code>, <code>CameraMatrixSystem</code>, <code>RenderSystem</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>物理演算</strong></td>
+<td style="text-align: left;"><code>RigidBodyComponent</code></td>
+<td style="text-align: left;"><code>PhysicsSystem</code>, <code>RenderSystem::DrawDebugColliders</code>, <code>Scene::CastRay</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>スクリプティング</strong></td>
+<td style="text-align: left;"><code>LuaScriptComponent</code> (<code>std::vector&lt;ScriptInstance&gt;</code>)</td>
+<td style="text-align: left;"><code>ScriptSystemInit</code>, <code>ScriptSystemUpdate</code>, <code>ScriptSystemShutdown</code>, <code>PhysicsContactListener</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>オーディオ</strong></td>
+<td style="text-align: left;"><code>AudioComponent</code></td>
+<td style="text-align: left;"><code>AudioSystem</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2D UI / HUD</strong></td>
+<td style="text-align: left;"><code>SpriteRendererComponent</code>, <code>TextRendererComponent</code></td>
+<td style="text-align: left;"><code>RenderSystem::DrawUI</code></td>
+</tr>
+</tbody>
+</table>
+<p>各フィールドの正確な定義とデフォルト値については、<a href="../../api/components/">ECS コンポーネントと列挙型</a> を参照してください。</p>
+<hr />
+<h2 id="relationshipcomponent">侵入型エンティティ階層 (<code>RelationshipComponent</code>)</h2>
+<p>エンティティごとにヒープ確保された <code>std::vector&lt;entt::entity&gt;</code> の子リストを持つ代わりに、Step Engine は4つの <code>entt::entity</code> ハンドルを用いた侵入型（Intrusive）リストによって、ノードあたり O(1) のメモリ使用量で親子ツリーを構築しています。</p>
+<ul>
+<li><code>parent</code> — 親エンティティ（ルートの場合は <code>entt::null</code>）。</li>
+<li><code>firstChild</code> — 親が持つ双方向子リストの先頭要素。</li>
+<li><code>prevSibling</code> / <code>nextSibling</code> — 同じ <code>parent</code> を共有する前後の兄弟エンティティ。</li>
+</ul>
+<pre class="mermaid"><code>flowchart LR
+    subgraph ParentNode ["親エンティティ (モデルルート)"]
+        P["RelationshipComponent&lt;br/&gt;parent: null&lt;br/&gt;firstChild: Child_0"]
+    end
+
+    subgraph Children ["双方向リンクされた兄弟チェーン"]
+        C0["Child_0 (サブメッシュ 0)&lt;br/&gt;parent: Parent&lt;br/&gt;prevSibling: null&lt;br/&gt;nextSibling: Child_1"]
+        C1["Child_1 (サブメッシュ 1)&lt;br/&gt;parent: Parent&lt;br/&gt;prevSibling: Child_0&lt;br/&gt;nextSibling: Child_2"]
+        C2["Child_2 (サブメッシュ 2)&lt;br/&gt;parent: Parent&lt;br/&gt;prevSibling: Child_1&lt;br/&gt;nextSibling: null"]
+    end
+
+    P -- "firstChild" --&gt; C0
+    C0 -- "nextSibling" --&gt; C1
+    C1 -- "prevSibling" --&gt; C0
+    C1 -- "nextSibling" --&gt; C2
+    C2 -- "prevSibling" --&gt; C1</code></pre>
+<h3 id="_2">ワールド変換を維持する親子付けと親子解除</h3>
+<p><code>Scene::ParentEntity(child, parent)</code> および <code>Scene::UnparentEntity(child)</code> は、親エンティティを変更した際にもワールド空間での見た目上の位置・回転・スケールが変化しないよう自動変換を行います。</p>
+<ol>
+<li><strong>循環参照の検出</strong>: <code>ParentEntity</code> は <code>parent</code> から <code>RelationshipComponent::parent</code> ポインタを上方向に辿ります。<code>parent</code> の祖先に <code>child</code> が含まれている場合（または <code>child == parent</code> の場合）、<code>TransformSystem</code> での無限ループを防ぐため処理を即座に中断します。</li>
+<li><strong>親からの切り離し (<code>UnparentEntity</code>)</strong>: 旧親の <code>firstChild</code> ポインタを修復し、<code>prevSibling</code> / <code>nextSibling</code> を繋ぎ直します。さらに <code>child</code> のキャッシュ済み <code>worldMatrix</code> をローカルの <code>scale</code>、<code>rotation</code>、<code>position</code> へ直接分解し、<code>RelationshipComponent</code> の各リンクを <code>entt::null</code> にクリアします。</li>
+<li><strong>ローカル空間への再変換 (<code>ParentEntity</code>)</strong>: 新しい <code>parent</code> に対する相対ローカル行列を計算します。
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>M_local = M_childWorld * Inverse(M_parentWorld)
+</code></pre></div>
+   <code>DirectX::XMMatrixDecompose</code> によって更新後のローカル <code>scale</code>、<code>rotation</code>、<code>position</code> を <code>child</code> の <code>TransformComponent</code> に格納し、<code>isDirty = true</code> を設定します。</li>
+<li><strong>兄弟リスト末尾への追加</strong>: 両エンティティに <code>RelationshipComponent</code> がなければ追加し、<code>parent</code> の子リスト末尾へ <code>child</code> を連結します。</li>
+</ol>
+<hr />
+<h2 id="transformsystem">階層的トランスフォーム伝播 (<code>TransformSystem</code>)</h2>
+<p><code>TransformSystem(Scene&amp;)</code> は毎フレーム、物理演算・スクリプト・カメラ入力の処理後に実行され、描画前にすべての <code>TransformComponent::worldMatrix</code> を最新の状態へ更新します。</p>
+<pre class="mermaid"><code>flowchart TD
+    A["TransformComponent ビューを走査 (registry.view)"] --&gt; B{"ルートエンティティか?&lt;br/&gt;(RelationshipComponent なし、または parent == null)"}
+    B -- "いいえ" --&gt; A
+    B -- "はい" --&gt; C["Recurse(entity, IdentityMatrix, parentChanged = false)"]
+    C --&gt; D["Local = Scale * RotationQuat * Translation を構築"]
+    D --&gt; E{"親が存在するか?"}
+    E -- "いいえ" --&gt; F["World = Local"]
+    E -- "はい" --&gt; G["World = Local * ParentWorld"]
+    F --&gt; H["tc.worldMatrix を保存 &amp; tc.isDirty = false にクリア"]
+    G --&gt; H
+    H --&gt; I["dirty = wasDirty || parentChanged"]
+    I --&gt; J["firstChild -&gt; nextSibling の各子要素に対して:&lt;br/&gt;Recurse(child, World, dirty)"]</code></pre>
+<ul>
+<li><strong>行優先 (Row-Major) 規約</strong>: Step Engine は全体を通して <code>DirectXMath</code> の行優先規約（<code>Local = S * R * T</code> および <code>World = Local * ParentWorld</code>）を採用しており、HLSL シェーダー内の <code>row_major float4x4</code> 行列および <code>mul(rowVector, Matrix)</code> と一致しています。</li>
+</ul>
+<hr />
+<h2 id="_3">エンティティの生成・破棄・遅延破棄キュー</h2>
+<h3 id="scene"><code>Scene</code> のファクトリヘルパー</h3>
+<ul>
+<li><strong>プリミティブと空エンティティ</strong>: <code>CreateEntity</code>、<code>CreateCube</code>、<code>CreateSphere</code>、<code>CreateCapsule</code>、<code>CreateSampleEntity</code>。</li>
+<li><strong>カメラとライト</strong>: <code>CreateEditorCamera</code>、<code>CreateGameCamera</code>、<code>CreateDirectionalLight</code>、<code>CreatePointLight</code>、<code>CreateSpotLight</code>。</li>
+<li><strong>マルチメッシュモデルのインスタンス化 (<code>Scene::InstantiateModel</code>)</strong>: <code>MeshManager::LoadModel</code> を介して <code>.obj</code>、<code>.fbx</code>、<code>.gltf</code>、<code>.glb</code> ファイルを解析し、ファイル名（拡張子なし、例: <code>ABeautifulGame</code>）を持つルートエンティティを生成した上で、各サブメッシュに対応する子エンティティ (<code>&lt;stem&gt;_mesh_&lt;i&gt;</code>) を <code>MeshRendererComponent</code> 付きで親子付けします。</li>
+</ul>
+<h3 id="scenedestroyentity">カスケード即時破棄 (<code>Scene::DestroyEntity</code>)</h3>
+<p><code>Scene::DestroyEntity(entity, physicsManager)</code> を呼び出すと、対象サブツリー全体が安全にクリーンアップされます。</p>
+<ol>
+<li><strong>子孫の再帰的破棄</strong>: <code>firstChild -&gt; nextSibling</code> を走査し（再帰呼び出し前に <code>nextSibling</code> をキャッシュ）、すべての子孫を深さ優先で破棄します。</li>
+<li><strong>階層リンクの解除</strong>: <code>UnparentEntity(entity)</code> を呼び出して親の兄弟リストを修復します。</li>
+<li><strong>物理ボディの削除</strong>: <code>PhysicsManager::RemoveRigidBody</code> により関連付けられた Jolt <code>BodyID</code> を削除・破棄します。</li>
+<li><strong>Lua <code>OnDestroy</code> フックの実行</strong>: エンティティにアタッチされた初期化済み全スクリプトの <code>OnDestroy()</code> を <code>sol::protected_function</code> 経由で呼び出します。</li>
+<li><strong>レジストリからの削除</strong>: <code>registry.destroy(entity)</code> を呼び出します。</li>
+</ol>
+<h3 id="submitfordestruction">遅延破棄キュー (<code>SubmitForDestruction</code>)</h3>
+<p>Lua スクリプトの更新ループ中に <code>DestroyEntity</code> を直接呼び出すと、イテレータ無効化を引き起こす恐れがあります。そのため、<code>Entity:Destroy(delay)</code> は <code>Scene::SubmitForDestruction(entity, delay)</code> を呼び出し、<code>Scene::m_entitiesToDestroy</code> に <code>{entity, delay}</code>（重複登録防止付き）をキューイングします。</p>
+<p>Play モード中、<code>ScriptSystemUpdate</code> と <code>AudioSystem</code> の完了後に <code>Scene::ProcessDestructionQueue(physicsManager, deltaTime)</code> が実行され、末尾から逆順にタイマーを減算して <code>timeRemaining &lt;= 0.0f</code> となったエンティティに対して安全に <code>DestroyEntity</code> を実行します。</p>
+<hr />
+<h2 id="4-sceneserializer">4パス・シーンシリアライズ (<code>SceneSerializer</code>)</h2>
+<p><code>SceneSerializer</code> (<code>src/Engine/SceneSerializer.cpp</code>) は RapidJSON を用いてシーンを JSON 形式で保存・復元します。その際、実行時の一時的な <code>entt::entity</code> ハンドルを永続的な 64 ビット <code>IDComponent</code> 値およびアセット <code>UUID</code> ハンドルへ変換します。</p>
+<pre class="mermaid"><code>sequenceDiagram
+    participant Caller as EditorUI / main()
+    participant Ser as SceneSerializer
+    participant AM as AssetManager
+    participant Scn as Scene &amp; Registry
+
+    Caller-&gt;&gt;Ser: Deserialize(filepath, scene, physics, assetManager, outError)
+    Ser-&gt;&gt;AM: JSON を読み込み (VFS 有効時はアーカイブ、それ以外はディスク)
+    Note over Ser,AM: パス 1: アセット検証
+    Ser-&gt;&gt;AM: すべての Mesh / Albedo / Normal / ORM / Physics Mesh /&lt;br/&gt;Audio / Sprite / Font UUID とスクリプトパスの存在を確認
+    alt 欠損アセットがある場合
+        Ser--&gt;&gt;Caller: false + outErrorMsg を返す (現在のシーンは変更せず維持!)
+    else すべてのアセットが有効な場合
+        Note over Ser,Scn: パス 2: 現在のワールドをクリア
+        Ser-&gt;&gt;Scn: scene.Clear(physicsManager) &amp; SetCurrentScenePath(filepath)
+        Note over Ser,Scn: パス 3: エンティティとコンポーネントの再構築
+        Ser-&gt;&gt;Scn: エンティティ生成・コンポーネント付与・idMap[savedID -&gt; entt::entity] を構築
+        Note over Ser,Scn: パス 4: 階層構造の復元
+        Ser-&gt;&gt;Scn: idMap を用いて Parent / FirstChild / PrevSibling / NextSibling ID を変換
+        Ser--&gt;&gt;Caller: true を返す
+    end</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; Zayar Aung. All rights reserved.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f", "clipboard.copy": "\u30af\u30ea\u30c3\u30d7\u30dc\u30fc\u30c9\u3078\u30b3\u30d4\u30fc", "search.result.more.one": "\u3053\u306e\u30da\u30fc\u30b8\u5185\u306b\u3082\u30461\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.more.other": "\u3053\u306e\u30da\u30fc\u30b8\u5185\u306b\u3042\u3068#\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.none": "\u4f55\u3082\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3067\u3057\u305f", "search.result.one": "1\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.other": "#\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.placeholder": "\u691c\u7d22\u30ad\u30fc\u30ef\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044", "search.result.term.missing": "\u691c\u7d22\u306b\u542b\u307e\u308c\u306a\u3044", "select.version": "\u30d0\u30fc\u30b8\u30e7\u30f3\u5207\u308a\u66ff\u3048"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

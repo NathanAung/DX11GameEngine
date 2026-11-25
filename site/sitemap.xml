@@ -1,3 +1,171 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+        <loc>None./</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="None"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/"/>
+    </url>
+    <url>
+        <loc>Noneapi/components/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneapi/components/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/api/components/"/>
+    </url>
+    <url>
+        <loc>Noneapi/core-and-scene/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneapi/core-and-scene/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/api/core-and-scene/"/>
+    </url>
+    <url>
+        <loc>Noneapi/lua-scripting/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneapi/lua-scripting/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/api/lua-scripting/"/>
+    </url>
+    <url>
+        <loc>Noneapi/managers-and-renderer/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneapi/managers-and-renderer/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/api/managers-and-renderer/"/>
+    </url>
+    <url>
+        <loc>Nonearchitecture/ecs/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonearchitecture/ecs/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/architecture/ecs/"/>
+    </url>
+    <url>
+        <loc>Nonearchitecture/engine-loop/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonearchitecture/engine-loop/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/architecture/engine-loop/"/>
+    </url>
+    <url>
+        <loc>Nonearchitecture/rendering-pipeline/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonearchitecture/rendering-pipeline/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/architecture/rendering-pipeline/"/>
+    </url>
+    <url>
+        <loc>Nonearchitecture/subsystems/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonearchitecture/subsystems/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/architecture/subsystems/"/>
+    </url>
+    <url>
+        <loc>Noneguides/adding-assets/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneguides/adding-assets/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/guides/adding-assets/"/>
+    </url>
+    <url>
+        <loc>Noneguides/creating-scenes/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneguides/creating-scenes/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/guides/creating-scenes/"/>
+    </url>
+    <url>
+        <loc>Noneguides/writing-scripts/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneguides/writing-scripts/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/guides/writing-scripts/"/>
+    </url>
+    <url>
+        <loc>Noneja/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="None"/>
+    </url>
+    <url>
+        <loc>Noneja/api/components/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/api/components/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneapi/components/"/>
+    </url>
+    <url>
+        <loc>Noneja/api/core-and-scene/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/api/core-and-scene/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneapi/core-and-scene/"/>
+    </url>
+    <url>
+        <loc>Noneja/api/lua-scripting/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/api/lua-scripting/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneapi/lua-scripting/"/>
+    </url>
+    <url>
+        <loc>Noneja/api/managers-and-renderer/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/api/managers-and-renderer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneapi/managers-and-renderer/"/>
+    </url>
+    <url>
+        <loc>Noneja/architecture/ecs/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/architecture/ecs/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonearchitecture/ecs/"/>
+    </url>
+    <url>
+        <loc>Noneja/architecture/engine-loop/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/architecture/engine-loop/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonearchitecture/engine-loop/"/>
+    </url>
+    <url>
+        <loc>Noneja/architecture/rendering-pipeline/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/architecture/rendering-pipeline/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonearchitecture/rendering-pipeline/"/>
+    </url>
+    <url>
+        <loc>Noneja/architecture/subsystems/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/architecture/subsystems/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonearchitecture/subsystems/"/>
+    </url>
+    <url>
+        <loc>Noneja/guides/adding-assets/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/guides/adding-assets/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneguides/adding-assets/"/>
+    </url>
+    <url>
+        <loc>Noneja/guides/creating-scenes/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/guides/creating-scenes/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneguides/creating-scenes/"/>
+    </url>
+    <url>
+        <loc>Noneja/guides/writing-scripts/</loc>
+        <lastmod>2026-11-25</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="Noneja/guides/writing-scripts/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneguides/writing-scripts/"/>
+    </url>
 </urlset>

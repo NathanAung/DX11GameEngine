@@ -1,0 +1,1769 @@
+
+<!doctype html>
+<html lang="ja" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../../architecture/subsystems/">
+      
+      
+        <link rel="next" href="../components/">
+      
+      
+        
+          <link rel="alternate" href="../../../api/core-and-scene/" hreflang="en">
+        
+          <link rel="alternate" href="./" hreflang="ja">
+        
+      
+      
+      <link rel="icon" href="../../../assets/StepEngineIcon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Core, Scene, Systems & Serialization - Step Engine Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#scenesystems-api" class="md-skip">
+          コンテンツにスキップ
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="ヘッダー">
+    <a href="../../" title="Step Engine Documentation" class="md-header__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/StepEngineIcon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Step Engine Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Core, Scene, Systems & Serialization
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="言語切り替え">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="../../../api/core-and-scene/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="ja" class="md-select__link">
+              日本語
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="検索" placeholder="検索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="検索">
+        
+        <button type="reset" class="md-search__icon md-icon" title="クリア" aria-label="クリア" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            検索を初期化
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NathanAung/DX11GameEngine" title="リポジトリへ" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NathanAung/DX11GameEngine
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="タブ" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/engine-loop/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/adding-assets/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="ナビゲーション" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../" title="Step Engine Documentation" class="md-nav__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  <img src="../../../assets/StepEngineIcon.svg" alt="logo">
+
+    </a>
+    Step Engine Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NathanAung/DX11GameEngine" title="リポジトリへ" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NathanAung/DX11GameEngine
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/engine-loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Engine Loop & Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ecs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS & Entity Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/rendering-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering Pipeline & Shaders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/subsystems/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subsystems, Physics, Audio & VFS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core, Scene, Systems & Serialization
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core, Scene, Systems & Serialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目次">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目次
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#includeenginecoreh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        プリコンパイル済みコアヘッダー (include/Engine/Core.h)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#engineuuid-includeengineuuidh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::UUID (include/Engine/UUID.h)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enginemath-includeenginemathutilsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::Math (include/Engine/MathUtils.h)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Engine::Math (include/Engine/MathUtils.h)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enginemathray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::Math::Ray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        関数一覧
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enginescene-includeenginesceneh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::Scene (include/Engine/Scene.h)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Engine::Scene (include/Engine/Scene.h)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        パブリックフィールド
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        依存マネージャーおよびパスのアクセサ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        エンティティ生成・検索メソッド
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#play" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        階層・ライフサイクル・Play ステート制御メソッド
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enginesceneserializer-includeenginesceneserializerh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::SceneSerializer (include/Engine/SceneSerializer.h)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ecs-includeenginesystemsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ECS システム (include/Engine/Systems.h)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ECS システム (include/Engine/Systems.h)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        シミュレーションおよびトランスフォームシステム
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enginerendersystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::RenderSystem 関数群
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS Components & Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../managers-and-renderer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer, Managers & Editor UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../lua-scripting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lua Scripting Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding & Managing Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/creating-scenes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating, Editing & Exporting Scenes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/writing-scripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Lua Gameplay Scripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目次">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目次
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#includeenginecoreh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        プリコンパイル済みコアヘッダー (include/Engine/Core.h)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#engineuuid-includeengineuuidh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::UUID (include/Engine/UUID.h)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enginemath-includeenginemathutilsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::Math (include/Engine/MathUtils.h)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Engine::Math (include/Engine/MathUtils.h)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enginemathray" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::Math::Ray
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        関数一覧
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enginescene-includeenginesceneh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::Scene (include/Engine/Scene.h)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Engine::Scene (include/Engine/Scene.h)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        パブリックフィールド
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        依存マネージャーおよびパスのアクセサ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        エンティティ生成・検索メソッド
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#play" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        階層・ライフサイクル・Play ステート制御メソッド
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enginesceneserializer-includeenginesceneserializerh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::SceneSerializer (include/Engine/SceneSerializer.h)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ecs-includeenginesystemsh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ECS システム (include/Engine/Systems.h)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ECS システム (include/Engine/Systems.h)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        シミュレーションおよびトランスフォームシステム
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#enginerendersystem" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Engine::RenderSystem 関数群
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="scenesystems-api">コア・Scene・Systems・シリアライズ API</h1>
+<p>このページでは、<code>include/Engine/Core.h</code>、<code>UUID.h</code>、<code>MathUtils.h</code>、<code>Scene.h</code>、<code>Systems.h</code>、および <code>SceneSerializer.h</code> で宣言されている基盤識別子、数学ユーティリティ、シーンコンテナ、ECS システム、およびシリアライズインターフェースについて説明します。</p>
+<hr />
+<h2 id="includeenginecoreh">プリコンパイル済みコアヘッダー (<code>include/Engine/Core.h</code>)</h2>
+<p><code>Core.h</code> は <code>DX11Editor</code> と <code>DX11Runtime</code> の両方でプリコンパイル済みヘッダー (<code>target_precompile_headers</code>) として設定されており、以下をインクルードします。</p>
+<ul>
+<li>C++17 標準ライブラリヘッダー (<code>&lt;cstdio&gt;</code>, <code>&lt;stdexcept&gt;</code>, <code>&lt;string&gt;</code>, <code>&lt;vector&gt;</code>, <code>&lt;cstdint&gt;</code>)</li>
+<li>SDL2 (<code>&lt;SDL.h&gt;</code>, <code>&lt;SDL_syswm.h&gt;</code>)</li>
+<li>DirectX 11 (<code>&lt;d3d11.h&gt;</code>, <code>&lt;dxgi.h&gt;</code>, <code>&lt;d3dcompiler.h&gt;</code>, <code>&lt;wrl/client.h&gt;</code>, <code>&lt;DirectXMath.h&gt;</code>) および <code>d3d11.lib</code>, <code>dxgi.lib</code>, <code>d3dcompiler.lib</code>, <code>dxguid.lib</code> の <code>#pragma comment(lib, ...)</code> ディレクティブ</li>
+<li>Jolt Physics 統合ヘッダー (<code>"Engine/PhysicsManager.h"</code>)</li>
+</ul>
+<hr />
+<h2 id="engineuuid-includeengineuuidh"><code>Engine::UUID</code> (<code>include/Engine/UUID.h</code>)</h2>
+<p>セッション間、JSON シーンファイル、および VFS アーカイブ全体でアセットを一意に識別するための 64 ビット乱数 ID クラスです。<code>std::unordered_map</code> のキーとして直接使用できるよう <code>std::hash&lt;Engine::UUID&gt;</code> が特殊化されています。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="k">namespace</span><span class="w"> </span><span class="nn">Engine</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="p">{</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="w">    </span><span class="k">class</span><span class="w"> </span><span class="nc">UUID</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="w">    </span><span class="p">{</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="w">    </span><span class="k">public</span><span class="o">:</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="w">        </span><span class="n">UUID</span><span class="p">();</span><span class="w">                       </span><span class="c1">// Generates a random 64-bit ID via std::mt19937_64</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="w">        </span><span class="n">UUID</span><span class="p">(</span><span class="kt">uint64_t</span><span class="w"> </span><span class="n">uuid</span><span class="p">);</span><span class="w">          </span><span class="c1">// Constructs from an existing 64-bit integer (0 = invalid/none)</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="w">        </span><span class="n">UUID</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">UUID</span><span class="o">&amp;</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">default</span><span class="p">;</span>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="w">        </span><span class="k">operator</span><span class="w"> </span><span class="kt">uint64_t</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="p">;</span><span class="w">    </span><span class="c1">// Implicit conversion to uint64_t</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="w">    </span><span class="p">};</span>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="p">}</span>
+</code></pre></div>
+<hr />
+<h2 id="enginemath-includeenginemathutilsh"><code>Engine::Math</code> (<code>include/Engine/MathUtils.h</code>)</h2>
+<p><code>DirectXMath</code> および <code>DirectXCollision</code> 上に構築されたインライン数学ヘルパー群です（左手座標系：<code>+X</code> 右、<code>+Y</code> 上、<code>+Z</code> 前方、NDC 深度 <code>[0, 1]</code>）。</p>
+<h3 id="enginemathray"><code>Engine::Math::Ray</code></h3>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">Ray</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="p">{</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">    </span><span class="n">DirectX</span><span class="o">::</span><span class="n">XMFLOAT3</span><span class="w"> </span><span class="n">origin</span><span class="p">;</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">    </span><span class="n">DirectX</span><span class="o">::</span><span class="n">XMFLOAT3</span><span class="w"> </span><span class="n">direction</span><span class="p">;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">};</span>
+</code></pre></div>
+<h3 id="_1">関数一覧</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">シグネチャ</th>
+<th style="text-align: left;">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>DirectX::XMFLOAT3 QuaternionToEulerDegrees(const DirectX::XMFLOAT4&amp; q)</code></td>
+<td style="text-align: left;"><code>q</code> を正規化して回転行列を構築し、<code>[-1, 1]</code> の <code>asinf</code> クランプと ±90° ジンバルロック対策を施した上で度数法の <code>(pitch, yaw, roll)</code> を抽出します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>DirectX::XMFLOAT4 EulerDegreesToQuaternion(const DirectX::XMFLOAT3&amp; euler)</code></td>
+<td style="text-align: left;">度数法の <code>(pitch, yaw, roll)</code> をラジアンに変換し、<code>XMQuaternionRotationRollPitchYaw</code> で正規化済みクォータニオンを返します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Ray ScreenToWorldRay(float mouseX, float mouseY, float screenW, float screenH, const DirectX::XMMATRIX&amp; view, const DirectX::XMMATRIX&amp; proj)</code></td>
+<td style="text-align: left;"><code>(mouseX, mouseY)</code> を NDC <code>z = 0.0f</code> および <code>z = 1.0f</code> で逆投影 (<code>XMVector3Unproject</code>) し、正規化されたワールド空間のピッキングレイを生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>bool RayIntersectsOBB(const Ray&amp; ray, const DirectX::XMFLOAT3&amp; position, const DirectX::XMFLOAT3&amp; scale, const DirectX::XMFLOAT4&amp; rotation, float&amp; outDistance)</code></td>
+<td style="text-align: left;">中心 <code>position</code>、半径（ハーフエクステント）<code>0.5f * scale</code>、回転 <code>rotation</code> を持つ単位 <code>DirectX::BoundingOrientedBox</code> との交差判定を行い、ヒット距離を <code>outDistance</code> に書き込みます。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>std::vector&lt;DirectX::XMVECTOR&gt; GetFrustumCornersWorldSpace(const DirectX::XMMATRIX&amp; viewProj)</code></td>
+<td style="text-align: left;">DirectX NDC キューブの8頂点（<code>x, y in {-1, 1}</code>, <code>z in {0, 1}</code>）を透視除算付きで <code>Inverse(viewProj)</code> 変換します。CSM のカスケードフィッティングに使用されます。</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="enginescene-includeenginesceneh"><code>Engine::Scene</code> (<code>include/Engine/Scene.h</code>)</h2>
+<p>EnTT エンティティレジストリ、Play モード用バックアップレジストリ、組み込み <code>sol::state</code> Lua VM、エンティティ生成ファクトリ、侵入型階層リンク、および遅延破棄キューを統括する中心コンテナです。</p>
+<h3 id="_2">パブリックフィールド</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">フィールド</th>
+<th style="text-align: left;">型</th>
+<th style="text-align: left;">デフォルト値</th>
+<th style="text-align: left;">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>registry</code></td>
+<td style="text-align: left;"><code>entt::registry</code></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">メインのライブ ECS レジストリ。<code>view&lt;&gt;</code> クエリやコンポーネント操作を直接行えるよう意図的に公開されています。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>m_backupRegistry</code></td>
+<td style="text-align: left;"><code>entt::registry</code></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;"><code>Edit &lt;-&gt; Play</code> 遷移および <code>Game.Restart()</code> 時にプレイ前の状態を保持するスナップショットレジストリ。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>m_activeRenderCamera</code></td>
+<td style="text-align: left;"><code>entt::entity</code></td>
+<td style="text-align: left;"><code>entt::null</code></td>
+<td style="text-align: left;">現在レンダリングおよび 3D オーディオリスナーの姿勢を制御しているカメラのエンティティハンドル。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>m_lua</code></td>
+<td style="text-align: left;"><code>sol::state</code></td>
+<td style="text-align: left;">—</td>
+<td style="text-align: left;">サンドボックス化された各 <code>ScriptInstance</code> 環境が共有するマスター Lua 仮想マシン状態。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>m_requestQuit</code></td>
+<td style="text-align: left;"><code>bool</code></td>
+<td style="text-align: left;"><code>false</code></td>
+<td style="text-align: left;"><code>Game.Quit()</code> により設定され、現在フレームの終了時に <code>main()</code> へ終了を指示します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>m_requestRestart</code></td>
+<td style="text-align: left;"><code>bool</code></td>
+<td style="text-align: left;"><code>false</code></td>
+<td style="text-align: left;"><code>Game.Restart()</code> により設定され、描画後に <code>m_backupRegistry</code> の復元とスクリプト再初期化を <code>main()</code> へ指示します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>m_assetManager</code></td>
+<td style="text-align: left;"><code>Engine::AssetManager*</code></td>
+<td style="text-align: left;"><code>nullptr</code></td>
+<td style="text-align: left;">実行時インポートや VFS 読み込みに使用するエンジン <code>AssetManager</code> へのポインタ。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>m_currentScenePath</code></td>
+<td style="text-align: left;"><code>std::string</code></td>
+<td style="text-align: left;"><code>""</code></td>
+<td style="text-align: left;">現在ロードまたは保存されている JSON シーンのファイルパス（未保存時は空文字列）。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>m_entitiesToDestroy</code></td>
+<td style="text-align: left;"><code>std::vector&lt;std::pair&lt;entt::entity, float&gt;&gt;</code></td>
+<td style="text-align: left;"><code>{}</code></td>
+<td style="text-align: left;"><code>(entity, 残り秒数)</code> のペアを保持する遅延破棄キュー。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_3">依存マネージャーおよびパスのアクセサ</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">メソッド</th>
+<th style="text-align: left;">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Engine::PhysicsManager* GetPhysicsManager() const</code></td>
+<td style="text-align: left;"><code>InitializeLuaBindings</code> 時に設定された <code>PhysicsManager*</code> を返します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void SetAudioManager(Engine::AudioManager* am)</code> / <code>GetAudioManager() const</code></td>
+<td style="text-align: left;">サウンドハンドルのクリーンアップ用に <code>AudioManager*</code> を設定・取得します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void SetAssetManager(Engine::AssetManager* am)</code> / <code>GetAssetManager() const</code></td>
+<td style="text-align: left;">アセット検索用に <code>AssetManager*</code> を設定・取得します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void SetCurrentScenePath(const std::string&amp; path)</code> / <code>GetCurrentScenePath() const</code></td>
+<td style="text-align: left;">アクティブな <code>.json</code> シーンファイルパスを設定・取得します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void SetDefaultAssets(UUID shaderID, UUID debugShaderID, UUID skyboxShaderID, UUID spriteShaderID, UUID cubeID, UUID sphereID, UUID capsuleID, UUID quadMeshID)</code></td>
+<td style="text-align: left;">コアシェーダーおよびプリミティブメッシュの UUID をシーンにキャッシュします（<code>GetDefaultShaderID()</code>, <code>GetDebugShaderID()</code>, <code>GetSkyboxShaderID()</code>, <code>GetSpriteShaderID()</code>, <code>GetCubeMeshID()</code>, <code>GetSphereMeshID()</code>, <code>GetCapsuleMeshID()</code>, <code>GetQuadMeshID()</code> で取得）。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="_4">エンティティ生成・検索メソッド</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">シグネチャ</th>
+<th style="text-align: left;">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateEntity(const std::string&amp; name)</code></td>
+<td style="text-align: left;">自動インクリメントされる <code>IDComponent</code>、<code>NameComponent{name}</code>、および単位変換の <code>TransformComponent</code> を持つ汎用エンティティを生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateSampleEntity(const std::string&amp; name)</code></td>
+<td style="text-align: left;">座標 <code>(0, 0, 5)</code>、スケール <code>0.1</code> に配置された <code>MeshRendererComponent</code> 付きエンティティを生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateCube(const std::string&amp; name)</code></td>
+<td style="text-align: left;"><code>m_cubeMeshID</code> が割り当てられた <code>MeshRendererComponent</code> 付きエンティティを生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateSphere(const std::string&amp; name)</code></td>
+<td style="text-align: left;"><code>m_sphereMeshID</code> が割り当てられた <code>MeshRendererComponent</code> 付きエンティティを生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateCapsule(const std::string&amp; name)</code></td>
+<td style="text-align: left;"><code>m_capsuleMeshID</code> が割り当てられた <code>MeshRendererComponent</code> 付きエンティティを生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateEditorCamera(const std::string&amp; name, unsigned width, unsigned height)</code></td>
+<td style="text-align: left;">座標 <code>(0, 0, -10)</code> に <code>CameraComponent</code>、<code>ViewportComponent{width, height}</code>、<code>EditorCamControlComponent</code> を持つカメラを生成します。<code>m_activeRenderCamera</code> が <code>entt::null</code> の場合は自動的に設定します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateGameCamera(const std::string&amp; name, unsigned width, unsigned height)</code></td>
+<td style="text-align: left;">座標 <code>(0, 0, -10)</code> に <code>CameraComponent</code> と <code>ViewportComponent{width, height}</code> を持つゲーム内カメラを生成します（<code>EditorCamControlComponent</code> は付与されません）。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateDirectionalLight(const char* name)</code></td>
+<td style="text-align: left;"><code>+X</code> 軸周りに 45° 下向きに傾けた白色の <code>LightType::Directional</code> ライト (<code>intensity = 5.0f</code>) を生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreatePointLight(const char* name, const DirectX::XMFLOAT3&amp; position, const DirectX::XMFLOAT3&amp; color, float intensity, float range)</code></td>
+<td style="text-align: left;">指定した <code>position</code>、<code>color</code>、<code>intensity</code>、<code>range</code> を持つ <code>LightType::Point</code> エンティティを生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CreateSpotLight(const char* name, const DirectX::XMFLOAT3&amp; position, const DirectX::XMFLOAT3&amp; direction, const DirectX::XMFLOAT3&amp; color, float intensity, float range, float spotAngleRadians)</code></td>
+<td style="text-align: left;"><code>+Z</code> 軸を <code>direction</code> に向けるクォータニオンを構築し、<code>position</code> に <code>LightType::Spot</code> エンティティを生成します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity InstantiateModel(const std::string&amp; filepath, Engine::Renderer&amp; renderer, Engine::MeshManager&amp; meshManager)</code></td>
+<td style="text-align: left;"><code>MeshManager::LoadModel</code> で <code>filepath</code> を読み込み、ファイル名（拡張子なし）の親エンティティと、サブメッシュごとの子エンティティ (<code>&lt;stem&gt;_mesh_&lt;i&gt;</code>) を生成して階層化します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity FindEntityByName(const std::string&amp; name)</code></td>
+<td style="text-align: left;"><code>NameComponent</code> を線形探索し、最初に見つかった <code>entt::entity</code>（見つからない場合は <code>entt::null</code>）を返します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entt::entity CastRay(const Engine::Math::Ray&amp; ray, Engine::PhysicsManager&amp; physicsManager)</code></td>
+<td style="text-align: left;">まず Jolt のナローフェーズ・レイキャストを実行し、ヒットしなかった場合はリジッドボディを持たない有効なエンティティ（<code>m_activeRenderCamera</code> を除く）に対して <code>Math::RayIntersectsOBB</code> で判定します。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="play">階層・ライフサイクル・Play ステート制御メソッド</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">シグネチャ</th>
+<th style="text-align: left;">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>void ParentEntity(entt::entity child, entt::entity parent)</code></td>
+<td style="text-align: left;">祖先の循環参照チェックを行い、既存の親から切り離した上で、ワールド変換を維持するよう <code>parent</code> 基準のローカル変換へ再計算し、<code>parent</code> の侵入型子リストへ追加します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void UnparentEntity(entt::entity child)</code></td>
+<td style="text-align: left;">親の兄弟リストから <code>child</code> を取り外し、ワールド変換を維持するようキャッシュ済み <code>worldMatrix</code> をローカル TRS へ分解します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void DestroyEntity(entt::entity entity, Engine::PhysicsManager&amp; physicsManager)</code></td>
+<td style="text-align: left;">子エンティティを再帰的に破棄し、親子解除、Jolt リジッドボディの削除、Lua <code>OnDestroy()</code> コールバックの実行を行った後、EnTT ハンドルを破棄します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void SubmitForDestruction(entt::entity entity, float delay = 0.0f)</code></td>
+<td style="text-align: left;">フレーム終端で安全に削除するため、<code>m_entitiesToDestroy</code> に <code>(entity, delay)</code> を登録します（重複は無視されます）。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void ProcessDestructionQueue(Engine::PhysicsManager&amp; physicsManager, float deltaTime)</code></td>
+<td style="text-align: left;">キュー内のタイマーを減算し、残り時間が <code>&lt;= 0.0f</code> になったエントリに対して <code>DestroyEntity</code> を呼び出します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void CopyToBackup()</code></td>
+<td style="text-align: left;">すべてのエンティティ（同一の <code>entt::entity</code> ID を維持）およびコンポーネントを <code>registry</code> から <code>m_backupRegistry</code> へ複製します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void RestoreFromBackup(Engine::PhysicsManager&amp; physicsManager)</code></td>
+<td style="text-align: left;">アクティブな Jolt ボディとオーディオハンドルをすべて破棄して <code>registry</code> をクリアし、実行時ハンドルをリセットした状態で <code>m_backupRegistry</code> から全エンティティ・コンポーネントを復元します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void StartPlayMode()</code></td>
+<td style="text-align: left;"><code>CopyToBackup()</code> と <code>ScriptSystemInit(*this)</code> を実行し、<code>m_activeRenderCamera</code> を最初の有効な非エディタカメラへ切り替えます。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void StopPlayMode(entt::entity editorCameraFallback, Engine::PhysicsManager&amp; physicsManager)</code></td>
+<td style="text-align: left;">Lua スクリプトをシャットダウンして <code>RestoreFromBackup(physicsManager)</code> を呼び出し、<code>m_activeRenderCamera = editorCameraFallback</code> に戻します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void InitializeLuaBindings(Engine::InputManager* inputManager, Engine::PhysicsManager* physicsManager)</code></td>
+<td style="text-align: left;">Lua 標準ライブラリを開き、エンジンの全ユーザー型、列挙型、グローバルテーブルを <code>m_lua</code> に登録します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void Clear(Engine::PhysicsManager&amp; physicsManager)</code></td>
+<td style="text-align: left;">すべての Jolt ボディとオーディオハンドルを破棄し、<code>registry</code> と <code>m_entitiesToDestroy</code> をクリアして、<code>m_activeRenderCamera</code> と <code>m_currentScenePath</code> をリセットします。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void GenerateDefaultSetup(Engine::PhysicsManager&amp; physicsManager)</code></td>
+<td style="text-align: left;">シーンをクリアし、<code>Editor Camera</code>、<code>Main Camera</code>、<code>Sun Light</code>、および <code>y = -5</code> の位置に静的な <code>20 x 0.1 x 20</code> の <code>Ground</code> ボックスを生成します。</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="enginesceneserializer-includeenginesceneserializerh"><code>Engine::SceneSerializer</code> (<code>include/Engine/SceneSerializer.h</code>)</h2>
+<p>RapidJSON を用いた静的な JSON シーン保存および4パス読み込みクラスです。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">静的メソッド</th>
+<th style="text-align: left;">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>static bool Serialize(const std::string&amp; filepath, Scene&amp; scene)</code></td>
+<td style="text-align: left;"><code>IDComponent</code> を持つ全エンティティをトップレベルの <code>"Scene"</code> JSON 配列として <code>filepath</code> に書き出し、アタッチされた Lua スクリプトとシーン自身を <code>AssetManager</code> に登録して <code>enginefiles/AssetRegistry.json</code> を保存します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>static bool Deserialize(const std::string&amp; filepath, Scene&amp; scene, PhysicsManager&amp; physicsManager, AssetManager&amp; assetManager, std::string&amp; outErrorMsg)</code></td>
+<td style="text-align: left;">VFS（有効時）またはディスクから <code>filepath</code> を読み込み、現在のワールドを変更する <strong>前に</strong> 参照されている全アセット UUID とスクリプトファイルを検証します。検証通過後にシーンをクリアし、エンティティ・コンポーネントの再構築と <code>RelationshipComponent</code> 階層リンクの復元を行います。失敗時は <code>outErrorMsg</code> に理由を格納します。</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="ecs-includeenginesystemsh">ECS システム (<code>include/Engine/Systems.h</code>)</h2>
+<p><code>Engine::Scene</code> に対して動作するステートレスな更新および描画パス関数群です。</p>
+<h3 id="_5">シミュレーションおよびトランスフォームシステム</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">関数シグネチャ</th>
+<th style="text-align: left;">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>void PhysicsSystem(Scene&amp; scene, PhysicsManager&amp; physicsManager, const MeshManager&amp; meshManager, float dt, bool isPlaying)</code></td>
+<td style="text-align: left;">有効フラグに応じて Jolt ボディを生成・削除します。<code>isPlaying</code> が <code>true</code> の場合は Jolt をステップ実行 (<code>dt</code>) してワールド変換をローカル <code>TransformComponent</code> に書き戻し、<code>false</code> の場合は ECS のワールド行列を Jolt に反映して運動量をリセットします。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void ScriptSystemInit(Scene&amp; scene)</code></td>
+<td style="text-align: left;">分離された <code>sol::environment</code> インスタンス（<code>self</code> バインド済み）を生成し、VFS またはディスクから <code>.lua</code> ファイルを読み込んでコールバックをキャッシュし、<code>OnCreate()</code> を呼び出します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void ScriptSystemUpdate(Scene&amp; scene, float dt)</code></td>
+<td style="text-align: left;"><code>Time.deltaTime = dt</code> を更新し、実行時に新規追加されたスクリプトの遅延初期化 (<code>OnCreate</code>) を行った上で、<code>sol::protected_function</code> 経由で <code>OnUpdate(dt)</code> を呼び出します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void ScriptSystemShutdown(Scene&amp; scene)</code></td>
+<td style="text-align: left;">初期化済みの全スクリプトに対して <code>OnDestroy()</code> を呼び出し、スクリプト環境およびコールバックハンドルをリセットします。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void AudioSystem(Scene&amp; scene, AudioManager&amp; audioManager, AssetManager&amp; assetManager)</code></td>
+<td style="text-align: left;">3D リスナーを <code>m_activeRenderCamera</code> に同期し、<code>AudioComponent</code> ハンドルの遅延ロード、<code>playOnCreate</code> クリップの再生開始、非アクティブエンティティの停止、3D エミッター座標と音量の更新を行います。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void EditorCameraInputSystem(Scene&amp; scene, const InputManager&amp; input, float dt, bool isSceneFocused)</code></td>
+<td style="text-align: left;">右クリックキャプチャ時の <code>EditorCamControlComponent</code> のヨー・ピッチ更新（±89° クランプ）、フォーカス時のホイールズーム、および <code>WASD</code> + <code>LShift</code> 移動を処理します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void TransformSystem(Scene&amp; scene)</code></td>
+<td style="text-align: left;">ルートエンティティを走査し、<code>RelationshipComponent</code> の兄弟チェーンに沿って <code>World = Local * ParentWorld</code> を再帰的に伝播します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void CameraMatrixSystem(Scene&amp; scene, Renderer&amp; renderer)</code></td>
+<td style="text-align: left;"><code>m_activeRenderCamera</code> から左手系のビュー行列 (<code>Inverse(world)</code>) と透視投影行列 (<code>XMMatrixPerspectiveFovLH</code>) を計算し、<code>Renderer</code> にアップロードします。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void DemoRotationSystem(Scene&amp; scene, entt::entity sampleEntity, float dt)</code></td>
+<td style="text-align: left;"><code>sampleEntity</code> を X 軸・Y 軸周りに連続回転させるデモ用ユーティリティシステムです。</td>
+</tr>
+</tbody>
+</table>
+<h3 id="enginerendersystem"><code>Engine::RenderSystem</code> 関数群</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">関数シグネチャ</th>
+<th style="text-align: left;">説明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>void RenderSystem::DrawEntities(Scene&amp; scene, MeshManager&amp; meshManager, ShaderManager&amp; shaderManager, Renderer&amp; renderer, TextureManager&amp; textureManager, FontManager&amp; fontManager)</code></td>
+<td style="text-align: left;">3分割カスケードシャドウ深度パス (<code>ShadowVS</code>) の実行、メインレンダーターゲットの復元、最大16ライトの視錐台カリングと距離ソート、未ロードメッシュ・テクスチャの JIT 読み込み、および <code>UnlitColor</code> / <code>LitColor</code> / <code>Textured</code> PBR エンティティの描画を行います。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void RenderSystem::DrawDebugColliders(Scene&amp; scene, Renderer&amp; renderer, MeshManager&amp; meshManager, ShaderManager&amp; shaderManager, entt::entity selectedEntity)</code></td>
+<td style="text-align: left;"><code>selectedEntity</code> の <code>RigidBodyComponent</code> コライダー形状とスケールに一致する鮮やかな緑色の Unlit ワイヤーフレームメッシュを描画します。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>void RenderSystem::DrawUI(Scene&amp; scene, Renderer&amp; renderer, MeshManager&amp; meshManager, ShaderManager&amp; shaderManager, TextureManager&amp; textureManager, FontManager&amp; fontManager)</code></td>
+<td style="text-align: left;">ピクセル平行投影とアルファブレンディングを設定し、有効なすべての <code>SpriteRendererComponent</code> および <code>TextRendererComponent</code> エンティティを描画します（必要に応じて <code>.ttf</code> フォントアトラスを JIT ベイクします）。</td>
+</tr>
+</tbody>
+</table>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; Zayar Aung. All rights reserved.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f", "clipboard.copy": "\u30af\u30ea\u30c3\u30d7\u30dc\u30fc\u30c9\u3078\u30b3\u30d4\u30fc", "search.result.more.one": "\u3053\u306e\u30da\u30fc\u30b8\u5185\u306b\u3082\u30461\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.more.other": "\u3053\u306e\u30da\u30fc\u30b8\u5185\u306b\u3042\u3068#\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.none": "\u4f55\u3082\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3067\u3057\u305f", "search.result.one": "1\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.other": "#\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.placeholder": "\u691c\u7d22\u30ad\u30fc\u30ef\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044", "search.result.term.missing": "\u691c\u7d22\u306b\u542b\u307e\u308c\u306a\u3044", "select.version": "\u30d0\u30fc\u30b8\u30e7\u30f3\u5207\u308a\u66ff\u3048"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>
