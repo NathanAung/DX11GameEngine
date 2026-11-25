@@ -1,5 +1,7 @@
 # Step Engine
 
+**English** | [日本語](README.ja.md)
+
 <img src="https://i.imgur.com/8bdSI8v.jpeg"/>
 
 ## Overview
@@ -13,6 +15,20 @@ Core capabilities include a DirectX 11 forward PBR renderer with tangent-space n
 ## License
 
 Please review the [LICENSE](LICENSE) file before viewing or using this repository. All rights reserved; this repository is provided for viewing purposes only.
+
+---
+
+## Release
+
+Download the latest release of Step Engine here:
+- [v1.0 Release](https://github.com/NathanAung/DX11GameEngine/releases/tag/v1.0-release)
+
+---
+
+## Documentation
+
+Browse the Step Engine documentation here:
+- [Step Engine Documentation](https://nathanaung.github.io/DX11GameEngine/)
 
 ---
 
