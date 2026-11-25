@@ -1268,28 +1268,27 @@
 <hr />
 <h2 id="editor-state-machine-edit-play">Editor State Machine (<code>Edit</code> &lt;-&gt; <code>Play</code>)</h2>
 <p><code>EditorUI</code> maintains an <code>EditorState</code> enum (<code>Edit</code> or <code>Play</code>) toggled from the top <strong>Toolbar</strong>. Entering Play Mode performs an in-memory snapshot so runtime physics forces, spawned entities, and script mutations never corrupt the authored scene.</p>
-<pre class="mermaid"><code>stateDiagram-v2
-    [*] --&gt; Edit
+<pre class="mermaid"><code>flowchart TD
+    Boot(["Editor Launch"]) --&gt; Edit
 
-    state Edit {
-        [*] --&gt; Authoring
-        Authoring: Hierarchy, Inspector &amp; Content Browser visible
-        Authoring: EditorCameraInputSystem + ImGuizmo active
-        Authoring: PhysicsSystem pushes ECS world matrices -&gt; Jolt
-        Authoring: DrawDebugColliders renders selected collider wireframe
-    }
+    Edit["EditorState::Edit (Authoring Mode)&lt;br/&gt;- Hierarchy, Inspector &amp; Content Browser visible&lt;br/&gt;- EditorCameraInputSystem + ImGuizmo active&lt;br/&gt;- PhysicsSystem pushes ECS world matrices -&gt; Jolt&lt;br/&gt;- DrawDebugColliders renders selected collider wireframe"]
 
-    state Play {
-        [*] --&gt; Simulating
-        Simulating: Side/bottom panels hidden (Scene view acts as Game view)
-        Simulating: Active camera switched to first active Game Camera
-        Simulating: Jolt steps simulation &amp; flushes Lua collision events
-        Simulating: ScriptSystemUpdate &amp; AudioSystem active
-    }
+    StartPlay["Scene::StartPlayMode()&lt;br/&gt;1. CopyToBackup()&lt;br/&gt;2. ScriptSystemInit() (OnCreate)&lt;br/&gt;3. Select active Game Camera"]
 
-    Edit --&gt; Play: Click Play -&gt; Scene::StartPlayMode()&lt;br/&gt;1. CopyToBackup()&lt;br/&gt;2. ScriptSystemInit() (OnCreate)&lt;br/&gt;3. Select Game Camera
-    Play --&gt; Edit: Click Stop -&gt; Scene::StopPlayMode()&lt;br/&gt;1. ScriptSystemShutdown() (OnDestroy)&lt;br/&gt;2. RestoreFromBackup() (reset Jolt &amp; Audio)&lt;br/&gt;3. Revert to cached m_editorCamera
-    Play --&gt; Play: Lua Game.Restart()&lt;br/&gt;Shutdown scripts -&gt; RestoreFromBackup -&gt; TransformSystem -&gt; ScriptSystemInit</code></pre>
+    StopPlay["Scene::StopPlayMode()&lt;br/&gt;1. ScriptSystemShutdown() (OnDestroy)&lt;br/&gt;2. RestoreFromBackup() (reset Jolt &amp; Audio)&lt;br/&gt;3. Revert to cached m_editorCamera"]
+
+    Play["EditorState::Play (Simulation Mode)&lt;br/&gt;- Side/bottom panels hidden (Scene view acts as Game view)&lt;br/&gt;- Active camera switched to first active Game Camera&lt;br/&gt;- Jolt steps simulation &amp; flushes Lua collision events&lt;br/&gt;- ScriptSystemUpdate &amp; AudioSystem active"]
+
+    Restart["Scene Restart&lt;br/&gt;1. ScriptSystemShutdown()&lt;br/&gt;2. RestoreFromBackup() -&gt; TransformSystem()&lt;br/&gt;3. ScriptSystemInit()"]
+
+    Edit -- "Click Play" --&gt; StartPlay
+    StartPlay --&gt; Play
+
+    Play -- "Click Stop" --&gt; StopPlay
+    StopPlay --&gt; Edit
+
+    Play -- "Lua Game.Restart()" --&gt; Restart
+    Restart --&gt; Play</code></pre>
 <h3 id="how-copytobackup-and-restorefrombackup-work">How <code>CopyToBackup</code> and <code>RestoreFromBackup</code> Work</h3>
 <ul>
 <li><strong><code>Scene::CopyToBackup()</code></strong>: Clears <code>m_backupRegistry</code> and iterates every entity in <code>Scene::registry</code>, calling <code>m_backupRegistry.create(entity)</code> to preserve the exact <code>entt::entity</code> identifier (including <code>RelationshipComponent</code> links) before copying all 14 core component types.</li>

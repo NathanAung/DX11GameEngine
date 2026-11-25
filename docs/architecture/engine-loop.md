@@ -122,29 +122,27 @@ When `DX11Editor` is running, `Dear ImGui` intercepts `SDL_Event` messages first
 `EditorUI` maintains an `EditorState` enum (`Edit` or `Play`) toggled from the top **Toolbar**. Entering Play Mode performs an in-memory snapshot so runtime physics forces, spawned entities, and script mutations never corrupt the authored scene.
 
 ```mermaid
-stateDiagram-v2
+flowchart TD
+    Boot(["Editor Launch"]) --> Edit
 
-    [*] --> Edit
+    Edit["EditorState::Edit (Authoring Mode)<br/>- Hierarchy, Inspector & Content Browser visible<br/>- EditorCameraInputSystem + ImGuizmo active<br/>- PhysicsSystem pushes ECS world matrices -> Jolt<br/>- DrawDebugColliders renders selected collider wireframe"]
 
-    state Edit {
-        [*] --> Authoring
-        Authoring: Hierarchy, Inspector & Content Browser visible
-        Authoring: EditorCameraInputSystem + ImGuizmo active
-        Authoring: PhysicsSystem pushes ECS world matrices -> Jolt
-        Authoring: DrawDebugColliders renders selected collider wireframe
-    }
+    StartPlay["Scene::StartPlayMode()<br/>1. CopyToBackup()<br/>2. ScriptSystemInit() (OnCreate)<br/>3. Select active Game Camera"]
 
-    state Play {
-        [*] --> Simulating
-        Simulating: Side/bottom panels hidden (Scene view acts as Game view)
-        Simulating: Active camera switched to first active Game Camera
-        Simulating: Jolt steps simulation & flushes Lua collision events
-        Simulating: ScriptSystemUpdate & AudioSystem active
-    }
+    StopPlay["Scene::StopPlayMode()<br/>1. ScriptSystemShutdown() (OnDestroy)<br/>2. RestoreFromBackup() (reset Jolt & Audio)<br/>3. Revert to cached m_editorCamera"]
 
-    Edit --> Play: Click Play -> Scene&#58;&#58;StartPlayMode()<br/>1. CopyToBackup()<br/>2. ScriptSystemInit() (OnCreate)<br/>3. Select Game Camera
-    Play --> Edit: Click Stop -> Scene&#58;&#58;StopPlayMode()<br/>1. ScriptSystemShutdown() (OnDestroy)<br/>2. RestoreFromBackup() (reset Jolt & Audio)<br/>3. Revert to cached m_editorCamera
-    Play --> Play: Lua Game.Restart()<br/>Shutdown scripts -> RestoreFromBackup -> TransformSystem -> ScriptSystemInit
+    Play["EditorState::Play (Simulation Mode)<br/>- Side/bottom panels hidden (Scene view acts as Game view)<br/>- Active camera switched to first active Game Camera<br/>- Jolt steps simulation & flushes Lua collision events<br/>- ScriptSystemUpdate & AudioSystem active"]
+
+    Restart["Scene Restart<br/>1. ScriptSystemShutdown()<br/>2. RestoreFromBackup() -> TransformSystem()<br/>3. ScriptSystemInit()"]
+
+    Edit -- "Click Play" --> StartPlay
+    StartPlay --> Play
+
+    Play -- "Click Stop" --> StopPlay
+    StopPlay --> Edit
+
+    Play -- "Lua Game.Restart()" --> Restart
+    Restart --> Play
 ```
 
 ### How `CopyToBackup` and `RestoreFromBackup` Work

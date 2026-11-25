@@ -1241,7 +1241,7 @@
 <h2 id="hierarchical-transform-propagation-transformsystem">Hierarchical Transform Propagation (<code>TransformSystem</code>)</h2>
 <p><code>TransformSystem(Scene&amp;)</code> runs every frame after physics, scripts, and camera input, ensuring <code>TransformComponent::worldMatrix</code> is up-to-date before rendering.</p>
 <pre class="mermaid"><code>flowchart TD
-    A["Iterate registry.view&amp;lt;TransformComponent&amp;gt;()"] --&gt; B{"Is Root Entity?&lt;br/&gt;(No RelationshipComponent OR parent == null)"}
+    A["Iterate TransformComponent View (registry.view)"] --&gt; B{"Is Root Entity?&lt;br/&gt;(No RelationshipComponent OR parent == null)"}
     B -- "No" --&gt; A
     B -- "Yes" --&gt; C["Recurse(entity, IdentityMatrix, parentChanged = false)"]
     C --&gt; D["Build Local = Scale * RotationQuat * Translation"]

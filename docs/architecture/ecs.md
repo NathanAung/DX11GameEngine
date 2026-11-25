@@ -76,7 +76,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    A["Iterate registry.view&lt;TransformComponent&gt;()"] --> B{"Is Root Entity?<br/>(No RelationshipComponent OR parent == null)"}
+    A["Iterate TransformComponent View (registry.view)"] --> B{"Is Root Entity?<br/>(No RelationshipComponent OR parent == null)"}
     B -- "No" --> A
     B -- "Yes" --> C["Recurse(entity, IdentityMatrix, parentChanged = false)"]
     C --> D["Build Local = Scale * RotationQuat * Translation"]

@@ -1,17 +1,22 @@
 site_name: Step Engine Documentation
 theme:
   name: material
-  icon: assets/StepEngineIconB.svg
+  logo: assets/StepEngineIcon.svg
+  favicon: assets/StepEngineIcon.svg
   features:
     - navigation.tabs
     - navigation.sections
     - content.code.copy
   palette:
     - scheme: slate
+      primary: black
+      accent: cyan
       toggle:
         icon: material/brightness-4
         name: Switch to light mode
     - scheme: default
+      primary: black
+      accent: cyan
       toggle:
         icon: material/brightness-7
         name: Switch to dark mode

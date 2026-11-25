@@ -1,6 +1,8 @@
-# Step Engine (DX11GameEngine)
+# Step Engine
 
-**Step Engine** (`DX11GameEngine`) is a modular 3D game engine written from scratch in **C++17** and **DirectX 11**. It compiles from a single codebase into two distinct targets:
+<img src="https://i.imgur.com/8bdSI8v.jpeg" alt="Step Engine" referrerpolicy="no-referrer">
+
+**Step Engine** is a modular 3D game engine written from scratch in **C++17** and **DirectX 11**. It compiles from a single codebase into two distinct targets:
 
 - **`DX11Editor`** — A full visual authoring environment powered by **Dear ImGui (Docking)** and **ImGuizmo**, featuring live scene editing, asset management, non-destructive playtesting, and one-click game packaging.
 - **`DX11Runtime`** — A lightweight standalone game executable compiled with the `DIST_BUILD` preprocessor macro that strips all editor UI, mounts a packed binary `.pak` Virtual File System (VFS), and boots directly into gameplay.
