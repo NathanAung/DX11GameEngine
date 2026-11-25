@@ -3,6 +3,8 @@ theme:
   name: material
   logo: assets/StepEngineIcon.svg
   favicon: assets/StepEngineIcon.svg
+  icon:
+    repo: fontawesome/brands/github
   features:
     - navigation.tabs
     - navigation.sections
@@ -46,3 +48,9 @@ nav:
       - Adding & Managing Assets: guides/adding-assets.md
       - Creating, Editing & Exporting Scenes: guides/creating-scenes.md
       - Writing Lua Gameplay Scripts: guides/writing-scripts.md
+
+repo_name: NathanAung/DX11GameEngine
+repo_url: https://github.com/NathanAung/DX11GameEngine
+
+
+copyright: Copyright &copy; Zayar Aung. All rights reserved.
