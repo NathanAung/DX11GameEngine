@@ -1,0 +1,1933 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://nathanaung.github.io/DX11GameEngine/api/lua-scripting/">
+      
+      
+        <link rel="prev" href="../managers-and-renderer/">
+      
+      
+        <link rel="next" href="../../guides/adding-assets/">
+      
+      
+        
+          <link rel="alternate" href="./" hreflang="en">
+        
+          <link rel="alternate" href="../../ja/api/lua-scripting/" hreflang="ja">
+        
+      
+      
+      <link rel="icon" href="../../assets/StepEngineIcon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Lua Scripting Bindings - Step Engine Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#lua-scripting-bindings" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Step Engine Documentation" class="md-header__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  <img src="../../assets/StepEngineIcon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Step Engine Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Lua Scripting Bindings
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="Select language">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="./" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="../../ja/api/lua-scripting/" hreflang="ja" class="md-select__link">
+              日本語
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NathanAung/DX11GameEngine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NathanAung/DX11GameEngine
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/engine-loop/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../core-and-scene/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guides/adding-assets/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Step Engine Documentation" class="md-nav__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  <img src="../../assets/StepEngineIcon.svg" alt="logo">
+
+    </a>
+    Step Engine Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NathanAung/DX11GameEngine" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NathanAung/DX11GameEngine
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/engine-loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Engine Loop & Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ecs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS & Entity Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/rendering-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering Pipeline & Shaders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/subsystems/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subsystems, Physics, Audio & VFS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../core-and-scene/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core, Scene, Systems & Serialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS Components & Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../managers-and-renderer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer, Managers & Editor UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lua Scripting Bindings
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lua Scripting Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#execution-environment-standard-libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution Environment &amp; Standard Libraries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lifecycle-physics-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifecycle &amp; Physics Callbacks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#global-tables-singletons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Tables &amp; Singletons
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Global Tables &amp; Singletons">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#input-engineinputmanager-usertype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input (Engine::InputManager usertype)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#physics-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physics Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scene-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scene Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-game-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time &amp; Game Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usertypes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usertypes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usertypes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vector3-directxxmfloat3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vector3 (DirectX::XMFLOAT3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transformcomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TransformComponent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entity-enginescriptentity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entity (Engine::ScriptEntity)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Entity (Engine::ScriptEntity)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identity-activation-hierarchy-transforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity, Activation, Hierarchy &amp; Transforms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spawning-destruction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spawning &amp; Destruction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#component-checks-runtime-attachment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Checks &amp; Runtime Attachment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#physics-forces-velocity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physics Forces &amp; Velocity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#materials-lighting-audio-2d-ui-mutation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Materials, Lighting, Audio &amp; 2D UI Mutation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bound-enumerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bound Enumerations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/adding-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding & Managing Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/creating-scenes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating, Editing & Exporting Scenes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/writing-scripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Lua Gameplay Scripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#execution-environment-standard-libraries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Execution Environment &amp; Standard Libraries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#lifecycle-physics-callbacks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Lifecycle &amp; Physics Callbacks
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#global-tables-singletons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Global Tables &amp; Singletons
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Global Tables &amp; Singletons">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#input-engineinputmanager-usertype" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Input (Engine::InputManager usertype)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#physics-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physics Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#scene-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scene Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#time-game-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Time &amp; Game Tables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#usertypes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Usertypes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usertypes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vector3-directxxmfloat3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vector3 (DirectX::XMFLOAT3)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#transformcomponent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        TransformComponent
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#entity-enginescriptentity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entity (Engine::ScriptEntity)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Entity (Engine::ScriptEntity)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#identity-activation-hierarchy-transforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity, Activation, Hierarchy &amp; Transforms
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#spawning-destruction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Spawning &amp; Destruction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#component-checks-runtime-attachment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Checks &amp; Runtime Attachment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#physics-forces-velocity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Physics Forces &amp; Velocity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#materials-lighting-audio-2d-ui-mutation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Materials, Lighting, Audio &amp; 2D UI Mutation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bound-enumerations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bound Enumerations
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="lua-scripting-bindings">Lua Scripting Bindings</h1>
+<p>Gameplay scripts are powered by <strong>Lua</strong> and <strong>sol2</strong>. Every binding documented below is verified directly against <code>Scene::InitializeLuaBindings</code> (<code>src/Engine/Scene.cpp</code>) and <code>Engine::ScriptEntity</code> (<code>include/Engine/ScriptEntity.h</code>).</p>
+<hr />
+<h2 id="execution-environment-standard-libraries">Execution Environment &amp; Standard Libraries</h2>
+<ul>
+<li><strong>Standard Libraries Loaded</strong>: <code>base</code>, <code>math</code>, <code>table</code>, <code>string</code> (<code>m_lua.open_libraries(sol::lib::base, sol::lib::math, sol::lib::table, sol::lib::string)</code>).</li>
+<li><strong>Per-Script Sandboxing</strong>: Every <code>ScriptInstance</code> runs inside its own <code>sol::environment</code> inheriting from <code>m_lua.globals()</code>, with a pre-populated <code>self</code> variable of usertype <code>Entity</code> (<code>Engine::ScriptEntity</code>) referring to the owning entity.</li>
+</ul>
+<hr />
+<h2 id="lifecycle-physics-callbacks">Lifecycle &amp; Physics Callbacks</h2>
+<p>Define any subset of these global functions inside a <code>.lua</code> script; <code>ScriptSystem</code> and <code>PhysicsContactListener</code> cache and invoke them automatically:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Callback Signature</th>
+<th style="text-align: left;">When Invoked</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>function OnCreate()</code></td>
+<td style="text-align: left;">Once when Play Mode starts, or immediately prior to the first <code>OnUpdate</code> if attached dynamically via <code>AddLuaScript</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>function OnUpdate(dt)</code></td>
+<td style="text-align: left;">Every frame during Play Mode. <code>dt</code> (<code>number</code>) is the frame delta time in seconds.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>function OnDestroy()</code></td>
+<td style="text-align: left;">When the entity is destroyed (<code>Scene::DestroyEntity</code>) or when Play Mode stops / restarts.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>function OnCollisionEnter(other)</code></td>
+<td style="text-align: left;">Flushed on the main thread after <code>PhysicsManager::Update</code> when a new Jolt contact point is added. <code>other</code> is an <code>Entity</code> (<code>ScriptEntity</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>function OnCollisionExit(other)</code></td>
+<td style="text-align: left;">Flushed on the main thread when a Jolt contact pair separates. <code>other</code> is an <code>Entity</code> (<code>ScriptEntity</code>).</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="global-tables-singletons">Global Tables &amp; Singletons</h2>
+<blockquote>
+<p><strong>Syntax Convention:</strong> <code>Input</code> is a bound C++ <code>InputManager*</code> usertype instance—call its methods with <strong>colon</strong> syntax (<code>Input:IsKeyPressed(Key.Space)</code>). <code>Physics</code>, <code>Scene</code>, <code>Time</code>, and <code>Game</code> are plain Lua tables containing closures/fields—access them with <strong>dot</strong> syntax (<code>Physics.CastRay(...)</code>, <code>Scene.FindEntityByName(...)</code>, <code>Game.Restart()</code>).</p>
+</blockquote>
+<h3 id="input-engineinputmanager-usertype"><code>Input</code> (<code>Engine::InputManager</code> usertype)</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Lua Call</th>
+<th style="text-align: left;">Return Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Input:IsKeyDown(key)</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> every frame while <code>key</code> (<code>Key</code> enum) is held down.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Input:IsKeyPressed(key)</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> <em>only</em> on the exact frame <code>key</code> transitions from up to down.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Input:IsKeyReleased(key)</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> <em>only</em> on the exact frame <code>key</code> transitions from down to up.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="physics-table"><code>Physics</code> Table</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Lua Call</th>
+<th style="text-align: left;">Return Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Physics.CastRay(ox, oy, oz, dx, dy, dz)</code></td>
+<td style="text-align: left;"><code>Entity \| nil</code></td>
+<td style="text-align: left;">Fires a world-space ray from <code>(ox, oy, oz)</code> along <code>(dx, dy, dz)</code> via <code>Scene::CastRay</code> (Jolt narrow-phase up to 1000 units, with OBB fallback). Returns the hit <code>Entity</code>, or <code>nil</code> if nothing was hit.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scene-table"><code>Scene</code> Table</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Lua Call</th>
+<th style="text-align: left;">Return Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Scene.FindEntityByName(name)</code></td>
+<td style="text-align: left;"><code>Entity \| nil</code></td>
+<td style="text-align: left;">Searches <code>NameComponent</code> entries for an exact match with <code>name</code> (<code>string</code>). Returns <code>Entity</code> or <code>nil</code>.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="time-game-tables"><code>Time</code> &amp; <code>Game</code> Tables</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Lua Expression / Call</th>
+<th style="text-align: left;">Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>Time.deltaTime</code></td>
+<td style="text-align: left;"><code>number</code></td>
+<td style="text-align: left;">Current frame delta time in seconds, updated at the start of <code>ScriptSystemUpdate</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Game.Restart()</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Sets <code>Scene::m_requestRestart = true</code>, restoring the clean pre-play snapshot and rebooting all scripts at frame end.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>Game.Quit()</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Sets <code>Scene::m_requestQuit = true</code>, cleanly shutting down the application at frame end.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="usertypes">Usertypes</h2>
+<h3 id="vector3-directxxmfloat3"><code>Vector3</code> (<code>DirectX::XMFLOAT3</code>)</h3>
+<ul>
+<li><strong>Constructors</strong>: <code>Vector3.new()</code> or <code>Vector3.new(x, y, z)</code></li>
+<li><strong>Properties</strong>:<ul>
+<li><code>v.x</code> (<code>number</code>)</li>
+<li><code>v.y</code> (<code>number</code>)</li>
+<li><code>v.z</code> (<code>number</code>)</li>
+</ul>
+</li>
+</ul>
+<h3 id="transformcomponent"><code>TransformComponent</code></h3>
+<p>Retrieved via <code>self:GetTransform()</code>.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Member</th>
+<th style="text-align: left;">Kind</th>
+<th style="text-align: left;">Signature / Type</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>position</code></td>
+<td style="text-align: left;">Property</td>
+<td style="text-align: left;"><code>Vector3</code></td>
+<td style="text-align: left;">Gets a copy of local position, or assigns a <code>Vector3</code> and sets <code>isDirty = true</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>scale</code></td>
+<td style="text-align: left;">Property</td>
+<td style="text-align: left;"><code>Vector3</code></td>
+<td style="text-align: left;">Gets a copy of local scale, or assigns a <code>Vector3</code> and sets <code>isDirty = true</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>SetPosition</code></td>
+<td style="text-align: left;">Method</td>
+<td style="text-align: left;"><code>tc:SetPosition(x, y, z)</code></td>
+<td style="text-align: left;">Sets <code>tc.position = {x, y, z}</code> and marks <code>tc.isDirty = true</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>SetScale</code></td>
+<td style="text-align: left;">Method</td>
+<td style="text-align: left;"><code>tc:SetScale(x, y, z)</code></td>
+<td style="text-align: left;">Sets <code>tc.scale = {x, y, z}</code> and marks <code>tc.isDirty = true</code>.</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Important Value-Semantics Note:</strong> Reading <code>tc.position</code> or <code>tc.scale</code> returns a <code>Vector3</code> <strong>by value</strong>. Mutating a single field directly (<code>self:GetTransform().position.x = 5</code>) modifies a temporary copy and will <em>not</em> move the entity. Always use <code>self:GetTransform():SetPosition(x, y, z)</code> or assign a full <code>Vector3</code> (<code>tc.position = Vector3.new(x, y, z)</code>).</p>
+</blockquote>
+<hr />
+<h3 id="entity-enginescriptentity"><code>Entity</code> (<code>Engine::ScriptEntity</code>)</h3>
+<p>Bound in Lua as <code>Entity</code> and injected into every script environment as <code>self</code>. Use colon syntax (<code>self:Method(...)</code> or <code>other:Method(...)</code>).</p>
+<h4 id="identity-activation-hierarchy-transforms">Identity, Activation, Hierarchy &amp; Transforms</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Return</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>entity:GetName()</code></td>
+<td style="text-align: left;"><code>string</code></td>
+<td style="text-align: left;">Returns <code>NameComponent::name</code>, or <code>"Unknown"</code> if absent.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:IsActive()</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;">Returns <code>NameComponent::isActive</code> (<code>false</code> if invalid).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetActive(active)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Sets <code>NameComponent::isActive</code> (<code>boolean</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:GetTransform()</code></td>
+<td style="text-align: left;"><code>TransformComponent&amp;</code></td>
+<td style="text-align: left;">Returns a reference to the entity's <code>TransformComponent</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:GetForwardVector()</code></td>
+<td style="text-align: left;"><code>Vector3</code></td>
+<td style="text-align: left;">Returns <code>(0, 0, 1)</code> rotated by the entity's normalized quaternion.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:GetRightVector()</code></td>
+<td style="text-align: left;"><code>Vector3</code></td>
+<td style="text-align: left;">Returns <code>(1, 0, 0)</code> rotated by the entity's normalized quaternion.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetParent(parentEntity)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Parents this entity under <code>parentEntity</code> (<code>Entity</code>) via <code>Scene::ParentEntity</code>, preserving world transform.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="spawning-destruction">Spawning &amp; Destruction</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Return</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>entity:Instantiate(name)</code></td>
+<td style="text-align: left;"><code>Entity</code></td>
+<td style="text-align: left;">Spawns an empty entity (<code>ID</code>, <code>Name</code>, <code>Transform</code>) named <code>name</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:InstantiateCube(name)</code></td>
+<td style="text-align: left;"><code>Entity</code></td>
+<td style="text-align: left;">Spawns an entity with a unit cube <code>MeshRendererComponent</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:InstantiateSphere(name)</code></td>
+<td style="text-align: left;"><code>Entity</code></td>
+<td style="text-align: left;">Spawns an entity with a unit sphere <code>MeshRendererComponent</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:Destroy()</code> / <code>entity:Destroy(delay)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Queues this entity in <code>Scene::SubmitForDestruction</code> with optional <code>delay</code> in seconds (default <code>0.0</code>).</td>
+</tr>
+</tbody>
+</table>
+<h4 id="component-checks-runtime-attachment">Component Checks &amp; Runtime Attachment</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Return</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>entity:HasMesh()</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> if <code>MeshRendererComponent</code> is attached.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:HasRigidBody()</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> if <code>RigidBodyComponent</code> is attached.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:HasLight()</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> if <code>LightComponent</code> is attached.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:HasAudio()</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> if <code>AudioComponent</code> is attached.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:HasScript()</code></td>
+<td style="text-align: left;"><code>boolean</code></td>
+<td style="text-align: left;"><code>true</code> if <code>LuaScriptComponent</code> is attached.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:AddMeshRenderer(meshType)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Attaches/updates <code>MeshRendererComponent</code> (<code>MeshType.Cube</code>, <code>Sphere</code>, <code>Capsule</code>, or <code>Custom</code>) with <code>MaterialType::LitColor</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:AddRigidBody(shape, motion, size, mass, restitution)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Attaches/rebuilds <code>RigidBodyComponent</code>. Maps <code>size</code> to <code>radius</code> (<code>Sphere</code>), <code>{size, size, size}</code> (<code>Box</code> half-extents or <code>Mesh</code> <code>colliderScale</code>), or <code>radius = size, height = size * 2</code> (<code>Capsule</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:AddLuaScript(filepath)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Appends a new <code>ScriptInstance</code> (<code>filepath</code>) to <code>LuaScriptComponent</code>; initialized on the next <code>ScriptSystemUpdate</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:AddAudioComponent(filepath, is3D, loop, playOnCreate)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Attaches/updates <code>AudioComponent</code>, importing <code>filepath</code> as <code>AssetType::Audio</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:AddSpriteRenderer()</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Attaches <code>SpriteRendererComponent</code> if not already present.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:AddTextRenderer()</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Attaches <code>TextRendererComponent</code> if not already present.</td>
+</tr>
+</tbody>
+</table>
+<h4 id="physics-forces-velocity">Physics Forces &amp; Velocity</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Return</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>entity:ApplyLinearImpulse(x, y, z)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Applies an instantaneous world-space impulse (<code>JPH::BodyInterface::AddImpulse</code>) to a valid rigid body.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetLinearVelocity(x, y, z)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Directly sets linear velocity (<code>JPH::BodyInterface::SetLinearVelocity</code>).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:GetLinearVelocity()</code></td>
+<td style="text-align: left;"><code>Vector3</code></td>
+<td style="text-align: left;">Returns current linear velocity from Jolt (<code>{0, 0, 0}</code> if invalid).</td>
+</tr>
+</tbody>
+</table>
+<h4 id="materials-lighting-audio-2d-ui-mutation">Materials, Lighting, Audio &amp; 2D UI Mutation</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Method</th>
+<th style="text-align: left;">Return</th>
+<th style="text-align: left;">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><code>entity:SetMesh(filepath)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Imports <code>filepath</code> (e.g., <code>"assets/Models/foo.obj?mesh=0"</code>) and assigns <code>MeshRendererComponent::meshID</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetAlbedo(filepath)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Imports texture <code>filepath</code>, assigns <code>albedoMapID</code>, and switches <code>matType</code> to <code>Textured</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetNormal(filepath)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Imports texture <code>filepath</code>, assigns <code>normalMapID</code>, and switches <code>matType</code> to <code>Textured</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetORM(filepath)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Imports texture <code>filepath</code>, assigns <code>ormMapID</code>, and switches <code>matType</code> to <code>Textured</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetLightColor(r, g, b)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Updates <code>LightComponent::color</code> (<code>float</code> RGB).</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetLightIntensity(intensity)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Updates <code>LightComponent::intensity</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:PlayAudio()</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Plays (or restarts) the entity's <code>AudioComponent</code>, lazily loading the sound handle if not yet loaded.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:StopAudio()</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Stops active playback on the entity's <code>AudioComponent</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetAudioVolume(volume)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Clamps <code>volume</code> to <code>[0.0, 1.0]</code> and updates <code>AudioComponent::volume</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetSprite(filepath)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Imports texture <code>filepath</code> and assigns <code>SpriteRendererComponent::textureID</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetSpriteTint(r, g, b, a)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Updates <code>SpriteRendererComponent::tintColor</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetText(text)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Updates <code>TextRendererComponent::text</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetTextColor(r, g, b, a)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Updates <code>TextRendererComponent::color</code>.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetTextPosition(x, y)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Updates <code>TextRendererComponent::position</code> in screen pixels.</td>
+</tr>
+<tr>
+<td style="text-align: left;"><code>entity:SetFont(filepath, size)</code></td>
+<td style="text-align: left;"><code>void</code></td>
+<td style="text-align: left;">Sets <code>fontSize = size</code> and registers <code>&lt;filepath&gt;?size=&lt;int(size)&gt;</code> for JIT font atlas baking.</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="bound-enumerations">Bound Enumerations</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Lua Enum</th>
+<th style="text-align: left;">Values</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong><code>MeshType</code></strong></td>
+<td style="text-align: left;"><code>MeshType.Cube</code>, <code>MeshType.Sphere</code>, <code>MeshType.Capsule</code>, <code>MeshType.Custom</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>RBShape</code></strong></td>
+<td style="text-align: left;"><code>RBShape.Box</code>, <code>RBShape.Sphere</code>, <code>RBShape.Capsule</code>, <code>RBShape.Mesh</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>RBMotion</code></strong></td>
+<td style="text-align: left;"><code>RBMotion.Static</code>, <code>RBMotion.Dynamic</code></td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong><code>Key</code></strong></td>
+<td style="text-align: left;">Letters: <code>Key.A</code> .. <code>Key.Z</code><br/>Digits: <code>Key.Num0</code> .. <code>Key.Num9</code><br/>Arrows: <code>Key.Up</code>, <code>Key.Down</code>, <code>Key.Left</code>, <code>Key.Right</code><br/>Actions: <code>Key.Space</code>, <code>Key.Escape</code>, <code>Key.Enter</code>, <code>Key.Tab</code>, <code>Key.Backspace</code><br/>Modifiers: <code>Key.LShift</code>, <code>Key.RShift</code>, <code>Key.LControl</code>, <code>Key.RControl</code>, <code>Key.LAlt</code>, <code>Key.RAlt</code></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Note: Pressing <code>Escape</code> is also handled globally in <code>src/main.cpp</code> (<code>SDL_SCANCODE_ESCAPE</code>) to close the window.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; Zayar Aung. All rights reserved.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

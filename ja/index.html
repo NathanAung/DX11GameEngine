@@ -1,0 +1,1502 @@
+
+<!doctype html>
+<html lang="ja" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://nathanaung.github.io/DX11GameEngine/ja/">
+      
+      
+      
+        <link rel="next" href="architecture/engine-loop/">
+      
+      
+        
+          <link rel="alternate" href="/DX11GameEngine/" hreflang="en">
+        
+          <link rel="alternate" href="/DX11GameEngine/ja/" hreflang="ja">
+        
+      
+      
+      <link rel="icon" href="../assets/StepEngineIcon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.8.2">
+    
+    
+      
+        <title>Home - Step Engine Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.57a0d79d.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.fb2fffe2.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#step-engine" class="md-skip">
+          コンテンツにスキップ
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="ヘッダー">
+    <a href="./" title="Step Engine Documentation" class="md-header__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  <img src="../assets/StepEngineIcon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Step Engine Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="black" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="black" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+      <div class="md-header__option">
+  <div class="md-select">
+    
+    <button class="md-header__button md-icon" aria-label="言語切り替え">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.87 15.07-2.54-2.51.03-.03A17.5 17.5 0 0 0 14.07 6H17V4h-7V2H8v2H1v2h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2zm-2.62 7 1.62-4.33L19.12 17z"/></svg>
+    </button>
+    <div class="md-select__inner">
+      <ul class="md-select__list">
+        
+          <li class="md-select__item">
+            <a href="/DX11GameEngine/" hreflang="en" class="md-select__link">
+              English
+            </a>
+          </li>
+        
+          <li class="md-select__item">
+            <a href="/DX11GameEngine/ja/" hreflang="ja" class="md-select__link">
+              日本語
+            </a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</div>
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="検索" placeholder="検索" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="検索">
+        
+        <button type="reset" class="md-search__icon md-icon" title="クリア" aria-label="クリア" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            検索を初期化
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/NathanAung/DX11GameEngine" title="リポジトリへ" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NathanAung/DX11GameEngine
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="タブ" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+  
+  
+    <li class="md-tabs__item md-tabs__item--active">
+      <a href="./" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="architecture/engine-loop/" class="md-tabs__link">
+          
+  
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="api/core-and-scene/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="guides/adding-assets/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="ナビゲーション" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./" title="Step Engine Documentation" class="md-nav__button md-logo" aria-label="Step Engine Documentation" data-md-component="logo">
+      
+  <img src="../assets/StepEngineIcon.svg" alt="logo">
+
+    </a>
+    Step Engine Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/NathanAung/DX11GameEngine" title="リポジトリへ" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    NathanAung/DX11GameEngine
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="目次">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目次
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        主な機能
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        リポジトリ構成
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        技術スタックと依存ライブラリ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        クイックスタート・ビルド手順
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="クイックスタート・ビルド手順">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        必要環境
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-visual-studio-2022" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        方法 A: Visual Studio 2022 を使用する（推奨）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-cmake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        方法 B: コマンドラインからの CMake ビルド
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ドキュメント構成
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ドキュメント構成">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        アーキテクチャ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API リファレンス
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        開発ガイド
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture/engine-loop/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Engine Loop & Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture/ecs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS & Entity Management
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture/rendering-pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Rendering Pipeline & Shaders
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="architecture/subsystems/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Subsystems, Physics, Audio & VFS
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/core-and-scene/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core, Scene, Systems & Serialization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ECS Components & Enums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/managers-and-renderer/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer, Managers & Editor UI
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="api/lua-scripting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lua Scripting Bindings
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/adding-assets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding & Managing Assets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/creating-scenes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Creating, Editing & Exporting Scenes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="guides/writing-scripts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Writing Lua Gameplay Scripts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="目次">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      目次
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        主な機能
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        リポジトリ構成
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        技術スタックと依存ライブラリ
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        クイックスタート・ビルド手順
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="クイックスタート・ビルド手順">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        必要環境
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#a-visual-studio-2022" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        方法 A: Visual Studio 2022 を使用する（推奨）
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#b-cmake" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        方法 B: コマンドラインからの CMake ビルド
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ドキュメント構成
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ドキュメント構成">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        アーキテクチャ
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API リファレンス
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        開発ガイド
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="step-engine">Step Engine</h1>
+<p><img src="https://i.imgur.com/8bdSI8v.jpeg" alt="Step Engine" referrerpolicy="no-referrer"></p>
+<p><strong>Step Engine</strong> は、<strong>C++17</strong> と <strong>DirectX 11</strong> を用いてゼロから構築されたモジュラー設計の 3D ゲームエンジンです。単一のコードベースから、用途の異なる2つのターゲットをビルドできます。</p>
+<ul>
+<li><strong><code>DX11Editor</code></strong> — <strong>Dear ImGui (Docking)</strong> と <strong>ImGuizmo</strong> を搭載した統合ビジュアル開発環境です。リアルタイムなシーン編集、アセット管理、非破壊プレイテスト、ワンクリックでのゲームパッケージング機能を備えています。</li>
+<li><strong><code>DX11Runtime</code></strong> — <code>DIST_BUILD</code> プリプロセッサマクロを有効にしてコンパイルされる軽量なスタンドアロン実行ファイルです。エディタ UI を完全に除外し、バイナリ <code>.pak</code> 仮想ファイルシステム (VFS) をマウントして直接ゲームプレイを起動します。</li>
+</ul>
+<hr />
+<h2 id="_1">主な機能</h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">サブシステム</th>
+<th style="text-align: left;">機能概要</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>フォワード PBR &amp; CSM レンダラー</strong></td>
+<td style="text-align: left;">DirectX 11 ハードウェアパイプライン、Cook-Torrance マイクロファセット BRDF (GGX、Smith Schlick-GGX、Fresnel-Schlick)、タンジェント空間法線マッピング、3分割カスケードシャドウマップ (3x3 PCF およびテクセルスナッピング対応の 2048x2048 <code>Texture2DArray</code>)、最大16個の視錐台カリング対応ライト、スカイボックスキューブマップ、エディタ用オフスクリーンフレームバッファ。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Entity Component System (ECS)</strong></td>
+<td style="text-align: left;"><strong>EnTT</strong> によるキャッシュ効率の高いスパースセットレジストリ、14種類の組み込みコンポーネント、侵入型双方向リストによる親子エンティティ階層 (<code>RelationshipComponent</code>)、循環参照チェック付きリペアレンティング、遅延エンティティ破棄。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>マルチスレッド物理演算</strong></td>
+<td style="text-align: left;"><code>hardware_concurrency - 1</code> 個のワーカースレッドで動作する <strong>Jolt Physics</strong> 統合。Box、Sphere、Capsule、静的凹形状 <code>MeshShape</code>、動的凸包 <code>ConvexHullShape</code> コライダー、OBB フォールバック付きレイキャスト、スレッドセーフな衝突コールバックをサポート。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>サンドボックス Lua スクリプティング</strong></td>
+<td style="text-align: left;"><strong>sol2</strong> でバインドされた組み込み <strong>Lua</strong> ランタイム。エンティティごとの複数スクリプトアタッチ、分離された <code>sol::environment</code> サンドボックス、ライフサイクルフック (<code>OnCreate</code>、<code>OnUpdate</code>、<code>OnDestroy</code>)、衝突コールバック (<code>OnCollisionEnter</code>、<code>OnCollisionExit</code>)、エラー保護付き実行をサポート。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>3D 空間オーディオ</strong></td>
+<td style="text-align: left;"><strong>miniaudio</strong> バックエンドによる 2D UI・BGM 再生および、アクティブカメラのリスナー姿勢とエンティティのワールド変換に毎フレーム同期する 3D 空間サウンドエミッター。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>2D UI &amp; テキスト描画</strong></td>
+<td style="text-align: left;">2D スプライト (<code>SpriteRendererComponent</code>) と、<code>stb_truetype</code> により実行時に 2048x2048 RGBA グリフアトラスへベイクされる動的 TrueType テキスト (<code>TextRendererComponent</code>) のためのスクリーン空間平行投影オーバーレイパス。</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>UUID アセット管理・VFS・エクスポート</strong></td>
+<td style="text-align: left;">永続的な 64 ビット <code>Engine::UUID</code> アセット台帳 (<code>enginefiles/AssetRegistry.json</code>)、RapidJSON による4パス・シーンシリアライザ、<code>PAK2</code> バイナリアーカイブパッカー / VFS マウンタ、および <code>ExportedGame/</code> への自動パッケージング。</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_2">リポジトリ構成</h2>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>DX11GameEngine/
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── assets/                 # Game content (Audio, Fonts, Models, Scripts, Textures, Scenes)
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>├── cmake/                  # Shared CMake helper modules (BuildOptions.cmake)
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>├── docs/                   # MkDocs technical documentation
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>├── enginefiles/            # Engine metadata (AssetRegistry.json, Launch.txt)
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>├── external/imguizmo/      # Vendored ImGuizmo 3D gizmo library
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── include/Engine/         # Engine C++17 public header files
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>├── shaders/                # HLSL Shader Model 5.0 vertex and pixel shaders
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>├── src/                    # Application entry point (main.cpp) and Engine implementations
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>├── tools/                  # Setup and build scripts (SetupProject.bat, BuildGame.bat, VSCode.bat)
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>├── CMakeLists.txt          # Dual-target CMake configuration (DX11Editor &amp; DX11Runtime)
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>├── CMakeSettings.json      # Visual Studio CMake presets (x64-Debug, x64-Release)
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>├── mkdocs.yml              # MkDocs Material configuration
+<a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>└── vcpkg.json              # vcpkg manifest dependencies
+</code></pre></div>
+<hr />
+<h2 id="_3">技術スタックと依存ライブラリ</h2>
+<p>外部ライブラリ（Windows SDK の DirectX ライブラリおよび同梱された <code>ImGuizmo</code> を除く）はすべて <code>vcpkg.json</code> で宣言され、<strong>vcpkg マニフェストモード</strong>によって自動的に解決されます。</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">依存ライブラリ</th>
+<th style="text-align: left;">取得元</th>
+<th style="text-align: left;">エンジン内での役割</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;"><strong>Direct3D 11</strong> (<code>d3d11</code>, <code>dxgi</code>, <code>d3dcompiler</code>, <code>dxguid</code>)</td>
+<td style="text-align: left;">Windows SDK</td>
+<td style="text-align: left;">GPU レンダリングバックエンドおよび HLSL コンパイラ</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>SDL2</strong></td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">Win32 ウィンドウ生成、OS イベントループ、高精度タイマー、キーボード・マウス入力</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>EnTT</strong></td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">スパースセット方式の Entity Component System (<code>entt::registry</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Jolt Physics</strong></td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">剛体物理シミュレーション、コリジョン形状、ナローフェーズ・レイキャスト</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Assimp</strong></td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">カスタム VFS ストリーム対応の 3D モデルインポート (<code>.obj</code>, <code>.fbx</code>, <code>.gltf</code>, <code>.glb</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Dear ImGui</strong> (<code>1.91.8</code>)</td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">ドッキング対応エディタ UI (<code>dx11-binding</code>, <code>sdl2-binding</code>, <code>docking-experimental</code>)</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>ImGuizmo</strong></td>
+<td style="text-align: left;"><code>external/imguizmo/</code></td>
+<td style="text-align: left;">3D ビューポート上のインタラクティブな移動・回転・スケールギズモ</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>Lua</strong> &amp; <strong>sol2</strong></td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">ゲームプレイスクリプト VM および C++ ユーザー型・列挙型バインディング</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>RapidJSON</strong></td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">JSON シーンのシリアライズと <code>AssetRegistry.json</code> の永続化</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>miniaudio</strong></td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">2D / 3D 空間オーディオ再生およびインメモリ VFS デコード</td>
+</tr>
+<tr>
+<td style="text-align: left;"><strong>stb</strong> (<code>stb_image</code>, <code>stb_truetype</code>)</td>
+<td style="text-align: left;"><code>vcpkg</code></td>
+<td style="text-align: left;">画像デコード (<code>RGBA8</code>) および <code>.ttf</code> フォントアトラスのベイク</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="_4">クイックスタート・ビルド手順</h2>
+<h3 id="_5">必要環境</h3>
+<ul>
+<li><strong>OS</strong>: Windows 10 または Windows 11 (x64)（DirectX 11 ランタイム搭載）</li>
+<li><strong>コンパイラ / IDE</strong>: Visual Studio 2022（<strong>C++ によるデスクトップ開発</strong> ワークロード：MSVC v143、Windows 10/11 SDK、Windows 用 C++ CMake ツール）</li>
+<li><strong>ビルドツール</strong>: CMake 3.20 以降および <code>vcpkg</code>（<code>tools\SetupProject.bat</code> で自動インストール可能）</li>
+</ul>
+<h3 id="a-visual-studio-2022">方法 A: Visual Studio 2022 を使用する（推奨）</h3>
+<ol>
+<li>
+<p><strong>CMake と vcpkg のセットアップ（未導入の場合）</strong>:
+   リポジトリのルートディレクトリから自動セットアップ用バッチファイルを実行します。
+   <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>tools\SetupProject.bat
+</code></pre></div>
+   これにより CMake が <code>%LOCALAPPDATA%\w64cmake</code> にインストールされ、<code>%SystemDrive%\vcpkg</code> に <code>vcpkg</code> がクローンおよびブートストラップされます（<code>%SystemDrive%\vcpkg\scripts\buildsystems\vcpkg.cmake</code> の存在を確認してください）。</p>
+</li>
+<li>
+<p><strong>Visual Studio でフォルダを開く</strong>:
+   Visual Studio 2022 を起動し、<strong>ファイル -&gt; 開く -&gt; フォルダー...</strong> から <code>DX11GameEngine</code> のルートディレクトリを選択します。Visual Studio が自動的に <code>CMakeLists.txt</code> と <code>CMakeSettings.json</code> を検出します。</p>
+</li>
+<li>
+<p><strong>CMake の構成と依存パッケージの導入</strong>:
+   構成ドロップダウンから <code>x64-Debug</code> または <code>x64-Release</code> を選択します。<code>CMakeSettings.json</code> 内の <code>cmakeToolchain</code> が <code>${env.SystemDrive}/vcpkg/scripts/buildsystems/vcpkg.cmake</code> を指していることを確認してください。初回構成時には <code>vcpkg</code> が <code>vcpkg.json</code> に記載されたすべてのパッケージをダウンロードしてビルドします。</p>
+</li>
+<li>
+<p><strong>両ターゲットのビルド</strong>:
+   メニューから <strong>ビルド -&gt; すべてビルド</strong> を選択します。</p>
+</li>
+<li>ビルド時にカスタムターゲット <code>CopyShaders</code>、<code>CopyAssets</code>、<code>CopyEngineFiles</code> が実行され、<code>shaders/</code>、<code>assets/</code>、<code>enginefiles/</code> が <code>${CMAKE_BINARY_DIR}/bin/</code> にミラーリングされます。</li>
+<li>
+<p><code>DX11Runtime</code> のビルド後には <code>POST_BUILD</code> ステップが実行され、<code>bin/RuntimeTemplate/</code> に <code>DX11Runtime.exe</code> と必要なすべての <code>.dll</code> ファイルが集約されます。これによりエディタ上の <strong>Export Game</strong> ボタンが利用可能になります。</p>
+</li>
+<li>
+<p><strong>エディタの起動</strong>:
+   スタートアップアイテムとして <code>DX11Editor.exe</code> が選択されていることを確認し、<code>Ctrl + F5</code>（<strong>デバッグ -&gt; デバッグなしで開始</strong>）を押して起動します。</p>
+</li>
+</ol>
+<h3 id="b-cmake">方法 B: コマンドラインからの CMake ビルド</h3>
+<p>ターミナルから直接（または <code>tools\BuildGame.bat</code> を実行して）両方の実行ファイルを構成・ビルドすることもできます。</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="n">cmake</span> <span class="n">-S</span> <span class="p">.</span> <span class="n">-B</span> <span class="n">out</span><span class="p">/</span><span class="n">build</span><span class="p">/</span><span class="n">x64-Release</span> <span class="n">-G</span> <span class="s2">"Visual Studio 17 2022"</span> <span class="n">-A</span> <span class="n">x64</span> <span class="p">`</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>  <span class="n">-DCMAKE_TOOLCHAIN_FILE</span><span class="p">=</span><span class="s2">"$env:SystemDrive/vcpkg/scripts/buildsystems/vcpkg.cmake"</span>
+<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">cmake</span> <span class="p">-</span><span class="n">-build</span> <span class="n">out</span><span class="p">/</span><span class="n">build</span><span class="p">/</span><span class="n">x64-Release</span> <span class="p">-</span><span class="n">-config</span> <span class="n">Release</span>
+</code></pre></div>
+<p>コンパイルされたバイナリは <code>out/build/x64-Release/bin/Release/</code> に出力されます（<code>DX11Editor.exe</code> および <code>DX11Runtime.exe</code>）。</p>
+<hr />
+<h2 id="_6">ドキュメント構成</h2>
+<h3 id="_7">アーキテクチャ</h3>
+<ul>
+<li><a href="architecture/engine-loop/">コアエンジンループとライフサイクル</a> — 初期化フロー、フレーム更新順序、<code>Edit &lt;-&gt; Play</code> ステートマシン、デュアルビルドターゲットの仕組み。</li>
+<li><a href="architecture/ecs/">ECS とエンティティ管理</a> — EnTT レジストリ設計、侵入型エンティティ階層、トランスフォーム伝播、遅延破棄。</li>
+<li><a href="architecture/rendering-pipeline/">レンダリングパイプラインとシェーダー</a> — マルチパス DirectX 11 アーキテクチャ、PBR BRDF、カスケードシャドウマップ、スカイボックス、2D UI。</li>
+<li><a href="architecture/subsystems/">サブシステム・物理・オーディオ・VFS</a> — Jolt Physics 統合、Lua サンドボックス、空間オーディオ、UUID アセット追跡、<code>PAK2</code> VFS パッケージング。</li>
+</ul>
+<h3 id="api">API リファレンス</h3>
+<ul>
+<li><a href="api/core-and-scene/">コア・Scene・Systems・シリアライズ</a> — <code>UUID</code>、<code>Engine::Math</code>、<code>Scene</code>、<code>SceneSerializer</code>、および ECS システム関数群。</li>
+<li><a href="api/components/">ECS コンポーネントと列挙型</a> — <code>Components.h</code> で定義されている構造体レイアウト、フィールド型、デフォルト値、列挙型の詳細。</li>
+<li><a href="api/managers-and-renderer/">Renderer・各種マネージャー・Editor UI</a> — <code>Renderer</code>、<code>AssetManager</code>、<code>MeshManager</code>、<code>ShaderManager</code>、<code>TextureManager</code>、<code>FontManager</code>、<code>PhysicsManager</code>、<code>AudioManager</code>、<code>InputManager</code>、<code>ImGuiManager</code>、<code>EditorUI</code>。</li>
+<li><a href="api/lua-scripting/">Lua スクリプティングバインディング</a> — <code>ScriptEntity.h</code> および <code>Scene::InitializeLuaBindings</code> に基づく Lua ユーザー型、グローバルテーブル、コールバック、列挙型の完全リファレンス。</li>
+</ul>
+<h3 id="_8">開発ガイド</h3>
+<ul>
+<li><a href="guides/adding-assets/">アセットの追加と管理</a> — 3D モデル、PBR テクスチャマップ、オーディオクリップ、TrueType フォント、スカイボックスのインポート手順。</li>
+<li><a href="guides/creating-scenes/">シーンの作成・編集・エクスポート</a> — ビューポート操作、ギズモ、Hierarchy / Inspector ワークフロー、JSON シーン保存、スタンドアロンゲームのエクスポート。</li>
+<li><a href="guides/writing-scripts/">Lua ゲームプレイスクリプトの作成</a> — スクリプトのライフサイクル、移動制御、スポーン処理、レイキャスト、衝突判定、UI HUD 制御、よくある注意点。</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; Zayar Aung. All rights reserved.
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.tabs", "navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.a7633da7.min.js", "tags": null, "translations": {"clipboard.copied": "\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f", "clipboard.copy": "\u30af\u30ea\u30c3\u30d7\u30dc\u30fc\u30c9\u3078\u30b3\u30d4\u30fc", "search.result.more.one": "\u3053\u306e\u30da\u30fc\u30b8\u5185\u306b\u3082\u30461\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.more.other": "\u3053\u306e\u30da\u30fc\u30b8\u5185\u306b\u3042\u3068#\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.none": "\u4f55\u3082\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3067\u3057\u305f", "search.result.one": "1\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.other": "#\u4ef6\u898b\u3064\u304b\u308a\u307e\u3057\u305f", "search.result.placeholder": "\u691c\u7d22\u30ad\u30fc\u30ef\u30fc\u30c9\u3092\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044", "search.result.term.missing": "\u691c\u7d22\u306b\u542b\u307e\u308c\u306a\u3044", "select.version": "\u30d0\u30fc\u30b8\u30e7\u30f3\u5207\u308a\u66ff\u3048"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.a5f9d56c.min.js"></script>
+      
+    
+  </body>
+</html>

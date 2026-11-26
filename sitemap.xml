@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/api/components/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/api/components/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/api/components/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/api/core-and-scene/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/api/core-and-scene/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/api/core-and-scene/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/api/lua-scripting/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/api/lua-scripting/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/api/lua-scripting/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/api/managers-and-renderer/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/api/managers-and-renderer/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/api/managers-and-renderer/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/architecture/ecs/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/architecture/ecs/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/architecture/ecs/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/architecture/engine-loop/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/architecture/engine-loop/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/architecture/engine-loop/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/architecture/rendering-pipeline/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/architecture/rendering-pipeline/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/architecture/rendering-pipeline/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/architecture/subsystems/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/architecture/subsystems/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/architecture/subsystems/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/guides/adding-assets/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/guides/adding-assets/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/guides/adding-assets/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/guides/creating-scenes/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/guides/creating-scenes/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/guides/creating-scenes/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/guides/writing-scripts/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/guides/writing-scripts/"/>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/guides/writing-scripts/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/api/components/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/api/components/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/api/components/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/api/core-and-scene/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/api/core-and-scene/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/api/core-and-scene/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/api/lua-scripting/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/api/lua-scripting/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/api/lua-scripting/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/api/managers-and-renderer/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/api/managers-and-renderer/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/api/managers-and-renderer/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/architecture/ecs/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/architecture/ecs/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/architecture/ecs/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/architecture/engine-loop/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/architecture/engine-loop/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/architecture/engine-loop/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/architecture/rendering-pipeline/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/architecture/rendering-pipeline/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/architecture/rendering-pipeline/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/architecture/subsystems/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/architecture/subsystems/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/architecture/subsystems/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/guides/adding-assets/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/guides/adding-assets/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/guides/adding-assets/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/guides/creating-scenes/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/guides/creating-scenes/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/guides/creating-scenes/"/>
+    </url>
+    <url>
+        <loc>https://nathanaung.github.io/DX11GameEngine/ja/guides/writing-scripts/</loc>
+        <lastmod>2026-11-26</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ja" href="https://nathanaung.github.io/DX11GameEngine/ja/guides/writing-scripts/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="https://nathanaung.github.io/DX11GameEngine/guides/writing-scripts/"/>
+    </url>
+</urlset>
